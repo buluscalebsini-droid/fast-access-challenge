@@ -21,7 +21,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged }
 //   appId: "YOUR_APP_ID"
 // };
 
-cred = credentials.Certificate("serviceAccountKey.json")
+cred = credentials.Certificate("secret.json")
 firebase_admin.initialize_app(cred)
 
 const app = initializeApp(firebaseConfig);
