@@ -376,7 +376,7 @@ function renderLobbyPlayers() {
 
   const count = entries.length;
   document.getElementById('lobby-status').textContent =
-    count === 1 ? 'Waiting for more players... (1/4)' : `${count}/4 players connected`;
+    count === 1 ? 'Waiting for more players... (1/40)' : `${count}/40 players connected`;
 
   if (isHost) {
     const startBtn = document.getElementById('btn-start-game');
