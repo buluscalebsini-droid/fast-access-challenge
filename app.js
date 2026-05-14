@@ -103,6 +103,16 @@ let lastTime = 0;
 let arenaW = 0, arenaH = 0;
 const FRUIT_SIZE = 36;
 
+// Level 4 — Memory Flash
+let l4Round = 0;
+let l4Sequence = [];
+let l4PlayerSeq = [];
+let l4CanInput = false;
+
+// Level 5 — Reverse Controls
+let l5Round = 0;
+let l5CanClick = false;
+
 // ============================================================
 // UTILS
 // ============================================================
@@ -631,7 +641,7 @@ function nextL3Round() {
   fruitObjects = [];
 
   if (l3Round >= 5) {
-    showFinalResults();
+    finishLevel(3);
     return;
   }
 
@@ -827,9 +837,281 @@ function listenGameSync(cb) {
 }
 
 // ============================================================
-// BETWEEN LEVELS / LEADERBOARD
+// LEVEL 4 — MEMORY FLASH CHALLENGE 🧠
 // ============================================================
-function finishLevel(levelNum) {
+const L4_ROUNDS = 5;
+const L4_EMOJIS = ['🍎','⭐','🎲','🍌','🔥','💎','🎯','🌙','🎪','🦋'];
+const L4_CFG = [
+  { seqLen: 3, showTime: 3000 },
+  { seqLen: 4, showTime: 2500 },
+  { seqLen: 5, showTime: 2000 },
+  { seqLen: 5, showTime: 1500 },
+  { seqLen: 6, showTime: 1200 }
+];
+
+function startLevel4() {
+  l4Round = 0;
+  showScreen('screen-level4');
+  setupMuteButtons();
+  syncScoresDisplay('l4-scores');
+  nextL4Round();
+}
+
+function nextL4Round() {
+  stopLocalTimer();
+  if (l4Round >= L4_ROUNDS) {
+    finishLevel(4);
+    return;
+  }
+  const cfg = L4_CFG[l4Round];
+  document.getElementById('l4-round').textContent = `${l4Round + 1}/${L4_ROUNDS}`;
+  l4Sequence = [];
+  l4PlayerSeq = [];
+  l4CanInput = false;
+
+  // Build random sequence
+  for (let i = 0; i < cfg.seqLen; i++) {
+    l4Sequence.push(L4_EMOJIS[randInt(0, L4_EMOJIS.length - 1)]);
+  }
+
+  // Show phase
+  const display = document.getElementById('l4-sequence-display');
+  const prompt = document.getElementById('l4-prompt');
+  const inputArea = document.getElementById('l4-input-area');
+  const feedback = document.getElementById('l4-feedback');
+
+  feedback.textContent = '';
+  inputArea.innerHTML = '';
+  display.innerHTML = l4Sequence.map(e => `<span class="mem-emoji">${e}</span>`).join('');
+  prompt.textContent = `Memorise this sequence!`;
+  display.classList.remove('hidden');
+
+  // Flash countdown bar
+  const bar = document.getElementById('l4-flash-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  setTimeout(() => {
+    bar.style.transition = `width ${cfg.showTime}ms linear`;
+    bar.style.width = '0%';
+  }, 50);
+
+  setTimeout(() => {
+    // Hide sequence, show input
+    display.classList.add('hidden');
+    prompt.textContent = 'Recreate the sequence!';
+    bar.style.transition = 'none';
+    bar.style.width = '0%';
+    buildL4Input(cfg);
+    l4CanInput = true;
+    startTimerLocal('l4-timer', 'l4-timer-bar', 10, () => {
+      l4CanInput = false;
+      showL4Result(false);
+    });
+  }, cfg.showTime);
+}
+
+function buildL4Input(cfg) {
+  const inputArea = document.getElementById('l4-input-area');
+  const slotArea = document.getElementById('l4-slots');
+  inputArea.innerHTML = '';
+  slotArea.innerHTML = '';
+
+  // Shuffled emoji buttons
+  const pool = [...new Set(l4Sequence)];
+  // pad pool with extras so it's not trivially obvious
+  while (pool.length < Math.min(L4_EMOJIS.length, l4Sequence.length + 3)) {
+    const e = L4_EMOJIS[randInt(0, L4_EMOJIS.length - 1)];
+    if (!pool.includes(e)) pool.push(e);
+  }
+  shuffle(pool).forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.className = 'mem-btn';
+    btn.textContent = emoji;
+    btn.onclick = () => handleL4Pick(emoji, btn);
+    inputArea.appendChild(btn);
+  });
+
+  // Answer slots
+  for (let i = 0; i < l4Sequence.length; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'mem-slot';
+    slot.dataset.idx = i;
+    slotArea.appendChild(slot);
+  }
+}
+
+function handleL4Pick(emoji, btn) {
+  if (!l4CanInput) return;
+  const idx = l4PlayerSeq.length;
+  if (idx >= l4Sequence.length) return;
+
+  l4PlayerSeq.push(emoji);
+  const slots = document.querySelectorAll('.mem-slot');
+  if (slots[idx]) {
+    slots[idx].textContent = emoji;
+    slots[idx].classList.add('filled');
+  }
+  btn.disabled = true;
+
+  if (l4PlayerSeq.length === l4Sequence.length) {
+    l4CanInput = false;
+    stopLocalTimer();
+    const correct = l4PlayerSeq.every((e, i) => e === l4Sequence[i]);
+    showL4Result(correct);
+  }
+}
+
+function showL4Result(correct) {
+  const feedback = document.getElementById('l4-feedback');
+  // Reveal correct sequence
+  const display = document.getElementById('l4-sequence-display');
+  display.innerHTML = l4Sequence.map((e, i) => {
+    const playerE = l4PlayerSeq[i];
+    const ok = playerE === e;
+    return `<span class="mem-emoji ${correct ? 'correct' : (playerE ? (ok ? 'correct' : 'wrong') : 'missing')}">${e}</span>`;
+  }).join('');
+  display.classList.remove('hidden');
+
+  if (correct) {
+    const pts = 150;
+    addMyScore(pts);
+    sfxCorrect();
+    feedback.textContent = `✅ Perfect! +${pts} pts`;
+    feedback.className = 'l4-feedback correct';
+  } else {
+    sfxWrong();
+    feedback.textContent = '❌ Wrong order!';
+    feedback.className = 'l4-feedback wrong';
+  }
+  l4Round++;
+  setTimeout(nextL4Round, 1600);
+}
+
+// ============================================================
+// LEVEL 5 — REVERSE CONTROLS CHALLENGE 🔀
+// ============================================================
+const L5_ROUNDS = 6;
+const L5_CFG = [
+  { time: 10, reverseLabels: false, reverseOrder: false },
+  { time: 9,  reverseLabels: true,  reverseOrder: false },
+  { time: 8,  reverseLabels: false, reverseOrder: true  },
+  { time: 7,  reverseLabels: true,  reverseOrder: true  },
+  { time: 6,  reverseLabels: true,  reverseOrder: true  },
+  { time: 5,  reverseLabels: true,  reverseOrder: true  }
+];
+
+const L5_QUESTIONS = [
+  { prompt: 'Click the HIGHEST number', values: [3, 7, 1, 9, 4], correct: 9 },
+  { prompt: 'Click the LOWEST number',  values: [8, 2, 6, 1, 5], correct: 1 },
+  { prompt: 'Click the LARGEST fruit',  values: ['🍇','🍉','🍓','🍑','🍋'], correct: '🍉' },
+  { prompt: 'Click the ODD number',     values: [2, 4, 7, 6, 8], correct: 7 },
+  { prompt: 'Click the EVEN number',    values: [3, 5, 8, 1, 9], correct: 8 },
+  { prompt: 'Click the HIGHEST number', values: [11, 5, 23, 17, 3], correct: 23 },
+  { prompt: 'Click the LOWEST number',  values: [14, 6, 19, 3, 22], correct: 3 },
+  { prompt: 'Click the ODD number',     values: [10, 4, 6, 13, 8], correct: 13 },
+];
+
+function startLevel5() {
+  l5Round = 0;
+  showScreen('screen-level5');
+  setupMuteButtons();
+  syncScoresDisplay('l5-scores');
+  nextL5Round();
+}
+
+function nextL5Round() {
+  stopLocalTimer();
+  if (l5Round >= L5_ROUNDS) {
+    finishLevel(5);
+    return;
+  }
+  const cfg = L5_CFG[l5Round];
+  const q = L5_QUESTIONS[l5Round % L5_QUESTIONS.length];
+  document.getElementById('l5-round').textContent = `${l5Round + 1}/${L5_ROUNDS}`;
+
+  // Build prompt — if reverseLabels, show the OPPOSITE instruction
+  const promptEl = document.getElementById('l5-prompt');
+  if (cfg.reverseLabels) {
+    // Swap highest↔lowest, odd↔even in the displayed prompt
+    const flipped = q.prompt
+      .replace('HIGHEST', '§LOW§').replace('LOWEST', '§HIGH§')
+      .replace('§LOW§', 'LOWEST').replace('§HIGH§', 'HIGHEST')
+      .replace('ODD', '§EVEN§').replace('EVEN', '§ODD§')
+      .replace('§EVEN§', 'EVEN').replace('§ODD§', 'ODD');
+    promptEl.innerHTML = `${flipped} <span class="reverse-tag">⚠️ Controls reversed!</span>`;
+  } else {
+    promptEl.innerHTML = q.prompt;
+  }
+
+  // Show warning on first reversal round
+  const warn = document.getElementById('l5-warning');
+  if (cfg.reverseLabels || cfg.reverseOrder) {
+    warn.classList.remove('hidden');
+    warn.textContent = cfg.reverseLabels && cfg.reverseOrder
+      ? '🔀 Instructions AND order are reversed!'
+      : cfg.reverseLabels ? '🔀 Instructions are reversed!'
+      : '🔀 Button order is reversed!';
+  } else {
+    warn.classList.add('hidden');
+  }
+
+  // Build options
+  const container = document.getElementById('l5-options');
+  container.innerHTML = '';
+  let values = [...q.values];
+  if (cfg.reverseOrder) values = values.reverse();
+
+  values.forEach(val => {
+    const btn = document.createElement('button');
+    btn.className = 'reverse-btn';
+    btn.textContent = val;
+    btn.onclick = () => handleL5Click(btn, val, q.correct, cfg);
+    container.appendChild(btn);
+  });
+
+  l5CanClick = true;
+  startTimerLocal('l5-timer', 'l5-timer-bar', cfg.time, () => {
+    l5CanClick = false;
+    document.querySelectorAll('.reverse-btn').forEach(b => b.disabled = true);
+    // highlight correct
+    document.querySelectorAll('.reverse-btn').forEach(b => {
+      if (String(b.textContent) === String(q.correct)) b.classList.add('correct-pick');
+    });
+    sfxWrong();
+    showToast('⏱ Time\'s up!');
+    l5Round++;
+    setTimeout(nextL5Round, 1200);
+  });
+}
+
+function handleL5Click(btn, val, correct, cfg) {
+  if (!l5CanClick) return;
+  l5CanClick = false;
+  stopLocalTimer();
+  document.querySelectorAll('.reverse-btn').forEach(b => b.disabled = true);
+
+  // The "correct" answer to click: if reverseLabels, the player must click
+  // the OPPOSITE of what the prompt says, which is actually `correct` as defined
+  // (we already swapped the prompt text, so clicking `correct` is right)
+  const isCorrect = String(val) === String(correct);
+  if (isCorrect) {
+    btn.classList.add('correct-pick');
+    addMyScore(120);
+    sfxCorrect();
+    showToast('✅ +120 pts!');
+  } else {
+    btn.classList.add('wrong-pick');
+    document.querySelectorAll('.reverse-btn').forEach(b => {
+      if (String(b.textContent) === String(correct)) b.classList.add('correct-pick');
+    });
+    sfxWrong();
+    showToast('❌ Wrong!');
+  }
+  l5Round++;
+  setTimeout(nextL5Round, 1000);
+}
+
+
   stopLocalTimer();
   stopFruitAnimation();
   sfxLevelUp();
@@ -844,7 +1126,7 @@ function finishLevel(levelNum) {
 function showBetweenScreen(levelNum) {
   const nextLevel = levelNum + 1;
   document.getElementById('between-title').textContent =
-    levelNum < 3 ? `Level ${levelNum} Complete! 🎉` : 'Final Level Done! 🏆';
+    levelNum < 5 ? `Level ${levelNum} Complete! 🎉` : 'Final Level Done! 🏆';
   document.getElementById('between-sub').textContent = `Leaderboard after Level ${levelNum}`;
 
   renderLeaderboard('leaderboard-between', players);
@@ -855,16 +1137,18 @@ function showBetweenScreen(levelNum) {
 
   if (isHost) {
     nextBtn.classList.remove('hidden');
-    nextBtn.textContent = nextLevel <= 3 ? `Next Level →` : 'See Results →';
+    nextBtn.disabled = false;
+    nextBtn.textContent = nextLevel <= 5 ? `Next Level →` : 'See Results →';
     nextBtn.onclick = () => {
       nextBtn.disabled = true;
       sfxClick();
-      // FIX 1: Write the new level to Firebase so non-host players advance
-      const nextLvl = levelNum < 3 ? levelNum + 1 : 'results';
+      const nextLvl = levelNum < 5 ? levelNum + 1 : 'results';
       update(dbRef('rooms', roomCode), { 'game/level': nextLvl });
       doCountdown(() => {
         if (levelNum === 1) startLevel2();
         else if (levelNum === 2) startLevel3();
+        else if (levelNum === 3) startLevel4();
+        else if (levelNum === 4) startLevel5();
         else showFinalResults();
       });
     };
@@ -872,11 +1156,9 @@ function showBetweenScreen(levelNum) {
   } else {
     nextBtn.classList.add('hidden');
     cd.textContent = 'Waiting for host to continue...';
-    // Listen for host to move game forward
     clearListeners();
     listenOn(`rooms/${roomCode}/game/level`, snap => {
       const lvl = snap.val();
-      // FIX 2: Check 'results' BEFORE clearListeners() so it isn't swallowed
       if (lvl === 'results') {
         clearListeners();
         showFinalResults();
@@ -887,6 +1169,8 @@ function showBetweenScreen(levelNum) {
         doCountdown(() => {
           if (lvl === 2) startLevel2();
           else if (lvl === 3) startLevel3();
+          else if (lvl === 4) startLevel4();
+          else if (lvl === 5) startLevel5();
         });
       }
     });
