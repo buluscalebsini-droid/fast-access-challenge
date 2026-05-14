@@ -109,9 +109,6 @@ let l4Sequence = [];
 let l4PlayerSeq = [];
 let l4CanInput = false;
 
-// Level 5 — Reverse Controls
-let l5Round = 0;
-let l5CanClick = false;
 
 // ============================================================
 // UTILS
@@ -1007,128 +1004,6 @@ function showL4Result(correct) {
   setTimeout(nextL4Round, 1600);
 }
 
-// ============================================================
-// LEVEL 5 — REVERSE CONTROLS CHALLENGE 🔀
-// ============================================================
-const L5_ROUNDS = 6;
-const L5_CFG = [
-  { time: 10, reverseLabels: false, reverseOrder: false },
-  { time: 9,  reverseLabels: true,  reverseOrder: false },
-  { time: 8,  reverseLabels: false, reverseOrder: true  },
-  { time: 7,  reverseLabels: true,  reverseOrder: true  },
-  { time: 6,  reverseLabels: true,  reverseOrder: true  },
-  { time: 5,  reverseLabels: true,  reverseOrder: true  }
-];
-
-const L5_QUESTIONS = [
-  { prompt: 'Click the HIGHEST number', values: [3, 7, 1, 9, 4],          correct: 9,    flippedCorrect: 1  },
-  { prompt: 'Click the LOWEST number',  values: [8, 2, 6, 1, 5],          correct: 1,    flippedCorrect: 8  },
-  { prompt: 'Click the LARGEST fruit',  values: ['🍇','🍉','🍓','🍑','🍋'], correct: '🍉', flippedCorrect: '🍓' },
-  { prompt: 'Click the ODD number',     values: [2, 4, 7, 6, 8],          correct: 7,    flippedCorrect: 2  },
-  { prompt: 'Click the EVEN number',    values: [3, 5, 8, 1, 9],          correct: 8,    flippedCorrect: 3  },
-  { prompt: 'Click the HIGHEST number', values: [11, 5, 23, 17, 3],       correct: 23,   flippedCorrect: 3  },
-  { prompt: 'Click the LOWEST number',  values: [14, 6, 19, 3, 22],       correct: 3,    flippedCorrect: 22 },
-  { prompt: 'Click the ODD number',     values: [10, 4, 6, 13, 8],        correct: 13,   flippedCorrect: 10 },
-];
-
-function startLevel5() {
-  l5Round = 0;
-  showScreen('screen-level5');
-  setupMuteButtons();
-  syncScoresDisplay('l5-scores');
-  nextL5Round();
-}
-
-function nextL5Round() {
-  stopLocalTimer();
-  if (l5Round >= L5_ROUNDS) {
-    finishLevel(5);
-    return;
-  }
-  const cfg = L5_CFG[l5Round];
-  const q = L5_QUESTIONS[l5Round % L5_QUESTIONS.length];
-  document.getElementById('l5-round').textContent = `${l5Round + 1}/${L5_ROUNDS}`;
-
-  // Build prompt — if reverseLabels, show the OPPOSITE instruction
-  const promptEl = document.getElementById('l5-prompt');
-  if (cfg.reverseLabels) {
-    // Swap highest↔lowest, odd↔even in the displayed prompt
-    const flipped = q.prompt
-      .replace('HIGHEST', '§LOW§').replace('LOWEST', '§HIGH§')
-      .replace('§LOW§', 'LOWEST').replace('§HIGH§', 'HIGHEST')
-      .replace('ODD', '§EVEN§').replace('EVEN', '§ODD§')
-      .replace('§EVEN§', 'EVEN').replace('§ODD§', 'ODD');
-    promptEl.innerHTML = `${flipped} <span class="reverse-tag">⚠️ Controls reversed!</span>`;
-  } else {
-    promptEl.innerHTML = q.prompt;
-  }
-
-  // Show warning on first reversal round
-  const warn = document.getElementById('l5-warning');
-  if (cfg.reverseLabels || cfg.reverseOrder) {
-    warn.classList.remove('hidden');
-    warn.textContent = cfg.reverseLabels && cfg.reverseOrder
-      ? '🔀 Instructions AND order are reversed!'
-      : cfg.reverseLabels ? '🔀 Instructions are reversed!'
-      : '🔀 Button order is reversed!';
-  } else {
-    warn.classList.add('hidden');
-  }
-
-  // Build options
-  const container = document.getElementById('l5-options');
-  container.innerHTML = '';
-  let values = [...q.values];
-  if (cfg.reverseOrder) values = values.reverse();
-
-  const effectiveCorrect = cfg.reverseLabels ? q.flippedCorrect : q.correct;
-
-  values.forEach(val => {
-    const btn = document.createElement('button');
-    btn.className = 'reverse-btn';
-    btn.textContent = val;
-    btn.onclick = () => handleL5Click(btn, val, effectiveCorrect, cfg);
-    container.appendChild(btn);
-  });
-
-  l5CanClick = true;
-  startTimerLocal('l5-timer', 'l5-timer-bar', cfg.time, () => {
-    l5CanClick = false;
-    document.querySelectorAll('.reverse-btn').forEach(b => b.disabled = true);
-    document.querySelectorAll('.reverse-btn').forEach(b => {
-      if (String(b.textContent) === String(effectiveCorrect)) b.classList.add('correct-pick');
-    });
-    sfxWrong();
-    showToast('⏱ Time\'s up!');
-    l5Round++;
-    setTimeout(nextL5Round, 1200);
-  });
-}
-
-function handleL5Click(btn, val, correct, cfg) {
-  if (!l5CanClick) return;
-  l5CanClick = false;
-  stopLocalTimer();
-  document.querySelectorAll('.reverse-btn').forEach(b => b.disabled = true);
-
-  const isCorrect = String(val) === String(correct);
-  if (isCorrect) {
-    btn.classList.add('correct-pick');
-    addMyScore(120);
-    sfxCorrect();
-    showToast('✅ +120 pts!');
-  } else {
-    btn.classList.add('wrong-pick');
-    document.querySelectorAll('.reverse-btn').forEach(b => {
-      if (String(b.textContent) === String(correct)) b.classList.add('correct-pick');
-    });
-    sfxWrong();
-    showToast('❌ Wrong!');
-  }
-  l5Round++;
-  setTimeout(nextL5Round, 1000);
-}
-
 
 // ============================================================
 // BETWEEN LEVELS / LEADERBOARD
@@ -1148,7 +1023,7 @@ function finishLevel(levelNum) {
 function showBetweenScreen(levelNum) {
   const nextLevel = levelNum + 1;
   document.getElementById('between-title').textContent =
-    levelNum < 5 ? `Level ${levelNum} Complete! 🎉` : 'Final Level Done! 🏆';
+    levelNum < 4 ? `Level ${levelNum} Complete! 🎉` : 'Final Level Done! 🏆';
   document.getElementById('between-sub').textContent = `Leaderboard after Level ${levelNum}`;
 
   renderLeaderboard('leaderboard-between', players);
@@ -1160,17 +1035,16 @@ function showBetweenScreen(levelNum) {
   if (isHost) {
     nextBtn.classList.remove('hidden');
     nextBtn.disabled = false;
-    nextBtn.textContent = nextLevel <= 5 ? `Next Level →` : 'See Results →';
+    nextBtn.textContent = nextLevel <= 4 ? `Next Level →` : 'See Results →';
     nextBtn.onclick = () => {
       nextBtn.disabled = true;
       sfxClick();
-      const nextLvl = levelNum < 5 ? levelNum + 1 : 'results';
+      const nextLvl = levelNum < 4 ? levelNum + 1 : 'results';
       update(dbRef('rooms', roomCode), { 'game/level': nextLvl });
       doCountdown(() => {
         if (levelNum === 1) startLevel2();
         else if (levelNum === 2) startLevel3();
         else if (levelNum === 3) startLevel4();
-        else if (levelNum === 4) startLevel5();
         else showFinalResults();
       });
     };
@@ -1192,7 +1066,6 @@ function showBetweenScreen(levelNum) {
           if (lvl === 2) startLevel2();
           else if (lvl === 3) startLevel3();
           else if (lvl === 4) startLevel4();
-          else if (lvl === 5) startLevel5();
         });
       }
     });
