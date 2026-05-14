@@ -761,7 +761,7 @@ function nextL4Round() {
   if(cfg.reversed) {
     promptEl.textContent = task.prompt;
     warn.classList.remove('hidden');
-    warn.innerHTML = `⚠️ Rules are REVERSED!   ${reverseLogic.explain(task.rule, task.values)}`;
+    warn.textContent = '⚠️ Rules Reversed!';
   } else {
     promptEl.textContent = task.prompt;
     warn.classList.add('hidden');
@@ -805,7 +805,7 @@ function handleL4Click(btn, val, correctAnswer, rule, values, reversed) {
   } else {
     btn.classList.add('wrong-pick'); missCombo(); sfxWrong();
     fb.textContent = reversed
-      ? `❌ Reversed! ${reverseLogic.explain(rule, values)} Answer: "${correctAnswer}"`
+      ? `❌ Wrong! Rules were reversed. Answer: "${correctAnswer}"`
       : `❌ Wrong! Answer: "${correctAnswer}"`;
     fb.className = 'level-feedback wrong';
   }
@@ -845,13 +845,23 @@ function nextL5Event() {
   if(l5Round>=L5_EVENTS){finishLevel(5);return;}
   document.getElementById('l5-round').textContent=`${l5Round+1}/${L5_EVENTS}`;
   document.getElementById('l5-feedback').textContent='';
+  document.getElementById('l5-arena').innerHTML='';
 
-  // Cycle through event types
   const type=l5Round%4;
   if(type===0) buildL5WordEvent();
   else if(type===1) buildL5FindEvent();
   else if(type===2) buildL5MemoryEvent();
   else buildL5ReverseEvent();
+}
+
+// Show a brief instruction card, then call cb() after ~1.8s
+function l5ShowInstruction(promptText, cb) {
+  const promptEl = document.getElementById('l5-prompt');
+  const arena    = document.getElementById('l5-arena');
+  promptEl.innerHTML = promptText;
+  arena.innerHTML = '<div class="l5-get-ready">Get ready…</div>';
+  l5CanClick = false;
+  setTimeout(cb, 1800);
 }
 
 function l5Resolve(correct) {
@@ -867,105 +877,104 @@ function l5Resolve(correct) {
 function buildL5WordEvent() {
   const wordSet=pick(WORD_POOL);
   const opts=shuffle([wordSet.correct,...shuffle(wordSet.variants).slice(0,5)]);
-  const arena=document.getElementById('l5-arena');
-  arena.innerHTML='';
-  document.getElementById('l5-prompt').textContent='✍️ Find the correct spelling!';
-  opts.forEach(w=>{
-    const btn=document.createElement('button'); btn.className='l5-word-btn';
-    btn.textContent=w;
-    btn.onclick=()=>l5Resolve(w===wordSet.correct);
-    arena.appendChild(btn);
+  l5ShowInstruction('✍️ Find the correctly spelled word!', () => {
+    const arena=document.getElementById('l5-arena');
+    arena.innerHTML='';
+    opts.forEach(w=>{
+      const btn=document.createElement('button'); btn.className='l5-word-btn';
+      btn.textContent=w;
+      btn.onclick=()=>l5Resolve(w===wordSet.correct);
+      arena.appendChild(btn);
+    });
+    l5CanClick=true;
+    startTimerLocal('l5-timer','l5-timer-bar',L5_EVENT_TIME,()=>{ if(l5CanClick){l5CanClick=false;missCombo();l5Round++;document.getElementById('l5-feedback').textContent='⏱ Too slow!';document.getElementById('l5-feedback').className='level-feedback timeout';document.getElementById('l5-arena').querySelectorAll('button').forEach(b=>b.disabled=true);setTimeout(nextL5Event,700);} });
   });
-  l5CanClick=true;
-  startTimerLocal('l5-timer','l5-timer-bar',L5_EVENT_TIME,()=>{ if(l5CanClick){l5CanClick=false;missCombo();l5Round++;document.getElementById('l5-feedback').textContent='⏱ Too slow!';document.getElementById('l5-feedback').className='level-feedback timeout';document.getElementById('l5-arena').querySelectorAll('button').forEach(b=>b.disabled=true);setTimeout(nextL5Event,700);} });
 }
 function buildL5FindEvent() {
   const target=pick(L2_TARGET_EMOJIS);
   const opts=shuffle([target,...shuffle(L2_NOISE_EMOJIS).slice(0,7)]);
-  const arena=document.getElementById('l5-arena');
-  arena.innerHTML='';
-  document.getElementById('l5-prompt').textContent=`👀 Find: ${target}`;
-  opts.forEach(e=>{
-    const btn=document.createElement('button'); btn.className='l5-emoji-btn';
-    btn.textContent=e;
-    btn.onclick=()=>l5Resolve(e===target);
-    arena.appendChild(btn);
-  });
-  l5CanClick=true;
-  startTimerLocal('l5-timer','l5-timer-bar',L5_EVENT_TIME,()=>{ if(l5CanClick){l5CanClick=false;missCombo();l5Round++;document.getElementById('l5-feedback').textContent='⏱ Too slow!';document.getElementById('l5-feedback').className='level-feedback timeout';document.getElementById('l5-arena').querySelectorAll('button').forEach(b=>b.disabled=true);setTimeout(nextL5Event,700);} });
-}
-function buildL5MemoryEvent() {
-  const seq=[pick(L3_EMOJIS),pick(L3_EMOJIS),pick(L3_EMOJIS)];
-  const arena=document.getElementById('l5-arena');
-  arena.innerHTML='';
-  document.getElementById('l5-prompt').textContent='🧠 Remember & tap in order!';
-  const seqDisplay=document.createElement('div'); seqDisplay.className='l5-seq-display';
-  seqDisplay.textContent=seq.join(' ');
-  arena.appendChild(seqDisplay);
-  l5CanClick=false;
-  startTimerLocal('l5-timer','l5-timer-bar', L5_MEM_SHOW/1000 + L5_MEM_ANS, ()=>{
-    if(!l5CanClick) return;
-    l5CanClick=false; missCombo(); l5Round++;
-    document.getElementById('l5-feedback').textContent='⏱ Too slow!';
-    document.getElementById('l5-feedback').className='level-feedback timeout';
-    arena.querySelectorAll('button').forEach(b=>b.disabled=true);
-    setTimeout(nextL5Event,600);
-  });
-  setTimeout(()=>{
-    seqDisplay.textContent='???';
-    const pool=shuffle([...new Set([...seq,...shuffle(L3_EMOJIS).slice(0,3)])]);
-    const picked=[];
-    pool.forEach(e=>{
+  l5ShowInstruction(`👀 Find this emoji: <strong style="font-size:26px">${target}</strong>`, () => {
+    const arena=document.getElementById('l5-arena');
+    arena.innerHTML='';
+    opts.forEach(e=>{
       const btn=document.createElement('button'); btn.className='l5-emoji-btn';
       btn.textContent=e;
-      btn.onclick=()=>{
-        if(!l5CanClick)return;
-        picked.push(e); btn.classList.add('picked'); btn.disabled=true;
-        if(picked.length===seq.length){ l5Resolve(picked.every((v,i)=>v===seq[i])); }
-      };
+      btn.onclick=()=>l5Resolve(e===target);
       arena.appendChild(btn);
     });
     l5CanClick=true;
-  }, L5_MEM_SHOW);
+    startTimerLocal('l5-timer','l5-timer-bar',L5_EVENT_TIME,()=>{ if(l5CanClick){l5CanClick=false;missCombo();l5Round++;document.getElementById('l5-feedback').textContent='⏱ Too slow!';document.getElementById('l5-feedback').className='level-feedback timeout';document.getElementById('l5-arena').querySelectorAll('button').forEach(b=>b.disabled=true);setTimeout(nextL5Event,700);} });
+  });
+}
+function buildL5MemoryEvent() {
+  const seq=[pick(L3_EMOJIS),pick(L3_EMOJIS),pick(L3_EMOJIS)];
+  l5ShowInstruction('🧠 Memorise this sequence, then tap in order!', () => {
+    const arena=document.getElementById('l5-arena');
+    arena.innerHTML='';
+    const seqDisplay=document.createElement('div'); seqDisplay.className='l5-seq-display';
+    seqDisplay.textContent=seq.join(' ');
+    arena.appendChild(seqDisplay);
+    l5CanClick=false;
+    startTimerLocal('l5-timer','l5-timer-bar', L5_MEM_SHOW/1000 + L5_MEM_ANS, ()=>{
+      if(!l5CanClick) return;
+      l5CanClick=false; missCombo(); l5Round++;
+      document.getElementById('l5-feedback').textContent='⏱ Too slow!';
+      document.getElementById('l5-feedback').className='level-feedback timeout';
+      arena.querySelectorAll('button').forEach(b=>b.disabled=true);
+      setTimeout(nextL5Event,600);
+    });
+    setTimeout(()=>{
+      seqDisplay.textContent='???';
+      const pool=shuffle([...new Set([...seq,...shuffle(L3_EMOJIS).slice(0,3)])]);
+      const picked=[];
+      pool.forEach(e=>{
+        const btn=document.createElement('button'); btn.className='l5-emoji-btn';
+        btn.textContent=e;
+        btn.onclick=()=>{
+          if(!l5CanClick)return;
+          picked.push(e); btn.classList.add('picked'); btn.disabled=true;
+          if(picked.length===seq.length){ l5Resolve(picked.every((v,i)=>v===seq[i])); }
+        };
+        arena.appendChild(btn);
+      });
+      l5CanClick=true;
+    }, L5_MEM_SHOW);
+  });
 }
 function buildL5ReverseEvent() {
   const task = pick(L4_TASKS);
-  const arena = document.getElementById('l5-arena');
-  arena.innerHTML = '';
-
   const correctAnswer = reverseLogic.solve(task.rule, task.values, true);
-
-  document.getElementById('l5-prompt').innerHTML =
-    `🔀 ${task.prompt} <span class="l5-reversed-tag">⚠️ REVERSED! ${reverseLogic.explain(task.rule, task.values)}</span>`;
-
-  shuffle([...task.values]).forEach(val => {
-    const btn = document.createElement('button');
-    btn.className = 'reverse-option-btn';
-    btn.textContent = val;
-    btn.onclick = () => {
+  l5ShowInstruction(`🔀 ${task.prompt} <span class="l5-reversed-tag">⚠️ Rules Reversed!</span>`, () => {
+    const arena = document.getElementById('l5-arena');
+    arena.innerHTML = '';
+    shuffle([...task.values]).forEach(val => {
+      const btn = document.createElement('button');
+      btn.className = 'reverse-option-btn';
+      btn.textContent = val;
+      btn.onclick = () => {
+        if(!l5CanClick) return;
+        const isCorrect = String(val) === String(correctAnswer);
+        arena.querySelectorAll('button').forEach(b => {
+          b.disabled = true;
+          if(String(b.textContent) === String(correctAnswer)) b.classList.add('correct-reveal');
+        });
+        l5Resolve(isCorrect);
+      };
+      arena.appendChild(btn);
+    });
+    l5CanClick = true;
+    startTimerLocal('l5-timer','l5-timer-bar',4,()=>{
       if(!l5CanClick) return;
-      const isCorrect = String(val) === String(correctAnswer);
-      arena.querySelectorAll('button').forEach(b => {
+      l5CanClick = false; missCombo();
+      arena.querySelectorAll('button').forEach(b=>{
         b.disabled = true;
         if(String(b.textContent) === String(correctAnswer)) b.classList.add('correct-reveal');
       });
-      l5Resolve(isCorrect);
-    };
-    arena.appendChild(btn);
-  });
-
-  l5CanClick = true;
-  startTimerLocal('l5-timer','l5-timer-bar',4,()=>{
-    if(!l5CanClick) return;
-    l5CanClick = false; missCombo();
-    arena.querySelectorAll('button').forEach(b=>{
-      b.disabled = true;
-      if(String(b.textContent) === String(correctAnswer)) b.classList.add('correct-reveal');
+      l5Round++;
+      document.getElementById('l5-feedback').textContent = `⏱ Answer: "${correctAnswer}"`;
+      document.getElementById('l5-feedback').className = 'level-feedback timeout';
+      setTimeout(nextL5Event, 700);
     });
-    l5Round++;
-    document.getElementById('l5-feedback').textContent = `⏱ Answer: "${correctAnswer}"`;
-    document.getElementById('l5-feedback').className = 'level-feedback timeout';
-    setTimeout(nextL5Event, 700);
   });
 }
 
