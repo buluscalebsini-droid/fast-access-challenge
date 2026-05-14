@@ -1112,6 +1112,10 @@ function handleL5Click(btn, val, correct, cfg) {
 }
 
 
+// ============================================================
+// BETWEEN LEVELS / LEADERBOARD
+// ============================================================
+function finishLevel(levelNum) {
   stopLocalTimer();
   stopFruitAnimation();
   sfxLevelUp();
