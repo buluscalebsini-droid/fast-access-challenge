@@ -561,206 +561,225 @@ function showL2Feedback(correct, sample) {
     fb.className = 'l2-feedback wrong';
   }
 }
-
 // ============================================================
 // LEVEL 3 — REAL OR AI IMAGE? 🖼️
 // ============================================================
+
 const L3_ROUNDS = 6;
+
 const L3_CFG = [
-  { time: 12 }, { time: 10 }, { time: 9 },
-  { time: 8  }, { time: 7  }, { time: 6 }
+  { time: 12 },
+  { time: 10 },
+  { time: 9  },
+  { time: 8  },
+  { time: 7  },
+  { time: 6  }
 ];
 
-// Visual "image cards" built entirely in CSS + emoji
-// gradient: CSS gradient string for background
-// elements: array of {emoji, style} positioned absolutely
-// caption: what the image supposedly shows
-// label: 'real' or 'ai'
-// tell: why it's real or AI
+// REAL PHOTOS + AI IMAGES
 const L3_IMAGES = [
+
+  // REAL
   {
-    gradient: 'linear-gradient(160deg, #ff7b3a 0%, #ffcc00 40%, #87ceeb 70%, #4a90d9 100%)',
-    elements: [
-      {emoji:'⛰️', style:'font-size:56px;bottom:10px;left:50%;transform:translateX(-50%)'},
-      {emoji:'🌅', style:'font-size:40px;top:18px;left:50%;transform:translateX(-50%)'},
-      {emoji:'🌲', style:'font-size:32px;bottom:8px;left:12%'},
-      {emoji:'🌲', style:'font-size:28px;bottom:8px;right:14%'},
-    ],
-    caption: '"Mountain sunset with pine trees"',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1200&auto=format&fit=crop',
+    caption: 'Mountain sunset landscape',
     label: 'real',
-    tell: 'Natural color gradient, consistent lighting, real composition'
+    tell: 'Natural lighting and realistic environment'
   },
+
+  // AI
   {
-    gradient: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-    elements: [
-      {emoji:'🌃', style:'font-size:52px;bottom:10px;left:50%;transform:translateX(-50%)'},
-      {emoji:'✨', style:'font-size:22px;top:20px;left:20%'},
-      {emoji:'✨', style:'font-size:16px;top:30px;right:25%'},
-      {emoji:'🌙', style:'font-size:30px;top:15px;right:15%'},
-    ],
-    caption: '"City skyline at midnight — buildings float 3cm above ground"',
+    image: 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?q=80&w=1200&auto=format&fit=crop',
+    caption: 'Dog portrait with strange anatomy',
     label: 'ai',
-    tell: 'AI tell: floating buildings, impossible physics, subtle sky distortion'
+    tell: 'Distorted body structure and unrealistic details'
   },
+
+  // REAL
   {
-    gradient: 'linear-gradient(135deg, #f5e6c8 0%, #e8d5a3 40%, #c4a882 100%)',
-    elements: [
-      {emoji:'🐕', style:'font-size:58px;bottom:10px;left:50%;transform:translateX(-50%)'},
-      {emoji:'🍂', style:'font-size:24px;bottom:8px;left:15%'},
-      {emoji:'🍂', style:'font-size:20px;bottom:12px;right:18%'},
-      {emoji:'☀️', style:'font-size:24px;top:12px;right:12%'},
-    ],
-    caption: '"Golden retriever playing in autumn leaves"',
+    image: 'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?q=80&w=1200&auto=format&fit=crop',
+    caption: 'Forest hiking trail',
     label: 'real',
-    tell: 'Warm authentic palette, natural dog pose, real outdoor scene'
+    tell: 'Consistent shadows and natural depth'
   },
+
+  // AI
   {
-    gradient: 'linear-gradient(180deg, #2d5016 0%, #4a7c1f 35%, #7aaa3f 60%, #a8d060 100%)',
-    elements: [
-      {emoji:'👤', style:'font-size:50px;bottom:10px;left:50%;transform:translateX(-50%)'},
-      {emoji:'🖐️', style:'font-size:28px;bottom:28px;left:22%'},
-      {emoji:'🖐️', style:'font-size:32px;bottom:28px;right:18%;transform:scaleX(-1)'},
-      {emoji:'❓', style:'font-size:16px;bottom:42px;left:28%;color:red;font-weight:bold'},
-    ],
-    caption: '"Person waving in a park — has 7 fingers on left hand"',
+    image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=1200&auto=format&fit=crop',
+    caption: 'Office workers with warped fingers',
     label: 'ai',
-    tell: 'AI tell: wrong finger count, warped hand anatomy, classic AI failure'
+    tell: 'Unnatural hands and distorted proportions'
   },
+
+  // REAL
   {
-    gradient: 'linear-gradient(160deg, #87ceeb 0%, #b0e2ff 30%, #e8f4f8 60%, #d4e8c2 100%)',
-    elements: [
-      {emoji:'👶', style:'font-size:44px;bottom:18px;left:50%;transform:translateX(-50%)'},
-      {emoji:'🎂', style:'font-size:36px;bottom:10px;left:28%'},
-      {emoji:'🕯️', style:'font-size:22px;bottom:30px;left:35%'},
-      {emoji:'🎉', style:'font-size:24px;top:15px;left:18%'},
-      {emoji:'🎉', style:'font-size:24px;top:15px;right:18%'},
-    ],
-    caption: '"Child blowing out birthday candles, family in background"',
+    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop',
+    caption: 'City skyline at sunset',
     label: 'real',
-    tell: 'Warm indoor lighting, natural family moment, candid composition'
+    tell: 'Real reflections and perspective'
   },
+
+  // AI
   {
-    gradient: 'linear-gradient(180deg, #ff9a9e 0%, #fecfef 40%, #ffecd2 80%, #ffcc02 100%)',
-    elements: [
-      {emoji:'🦁', style:'font-size:52px;bottom:10px;left:50%;transform:translateX(-50%)'},
-      {emoji:'🦅', style:'font-size:28px;top:18px;left:20%'},
-      {emoji:'🐠', style:'font-size:24px;top:22px;right:22%'},
-      {emoji:'❓', style:'font-size:20px;top:10px;left:50%;color:red'},
-    ],
-    caption: '"Lion portrait — eagle and tropical fish visible in desert background"',
+    image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1200&auto=format&fit=crop',
+    caption: 'Portrait with unrealistic facial details',
     label: 'ai',
-    tell: 'AI tell: impossible ecosystem, unrelated animals in same scene'
-  },
-  {
-    gradient: 'linear-gradient(160deg, #a8e6cf 0%, #7fcdcd 40%, #5db8d5 70%, #3498db 100%)',
-    elements: [
-      {emoji:'🤿', style:'font-size:40px;bottom:15px;left:50%;transform:translateX(-50%)'},
-      {emoji:'🐠', style:'font-size:28px;bottom:20px;left:18%'},
-      {emoji:'🐙', style:'font-size:26px;bottom:12px;right:16%'},
-      {emoji:'🌊', style:'font-size:32px;top:18px;left:50%;transform:translateX(-50%)'},
-    ],
-    caption: '"Scuba diver exploring a coral reef"',
-    label: 'real',
-    tell: 'Natural underwater colors, coherent marine environment'
-  },
-  {
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-    elements: [
-      {emoji:'🏙️', style:'font-size:52px;bottom:8px;left:50%;transform:translateX(-50%)'},
-      {emoji:'🚗', style:'font-size:24px;bottom:10px;left:10%;transform:scaleY(-1)'},
-      {emoji:'🚗', style:'font-size:22px;top:20px;right:15%'},
-      {emoji:'❓', style:'font-size:18px;bottom:35px;right:12%;color:yellow'},
-    ],
-    caption: '"City street — cars driving on ceiling, reflections appear on wrong surfaces"',
-    label: 'ai',
-    tell: 'AI tell: gravity-defying cars, impossible reflections, warped perspective'
-  },
+    tell: 'Artificial facial texture and symmetry issues'
+  }
+
 ];
 
 function startLevel3() {
   l3Round = 0;
+
   showScreen('screen-level3');
+
   setupMuteButtons();
+
   syncScoresDisplay('l3-scores');
+
   nextL3Round();
 }
 
 function nextL3Round() {
+
   stopLocalTimer();
-  if (l3Round >= L3_ROUNDS) { finishLevel(3); return; }
+
+  if (l3Round >= L3_ROUNDS) {
+    finishLevel(3);
+    return;
+  }
+
   const cfg = L3_CFG[l3Round];
+
   const img = L3_IMAGES[l3Round % L3_IMAGES.length];
-  document.getElementById('l3-round').textContent = `${l3Round + 1}/${L3_ROUNDS}`;
+
+  document.getElementById('l3-round').textContent =
+    `${l3Round + 1}/${L3_ROUNDS}`;
+
   document.getElementById('l3-feedback').textContent = '';
-  document.getElementById('l3-feedback').className = 'l3-feedback';
+
+  document.getElementById('l3-feedback').className =
+    'l3-feedback';
+
   buildL3Card(img);
 
-  document.querySelectorAll('.rai-btn').forEach(b => {
-    b.disabled = false;
-    b.classList.remove('correct-pick', 'wrong-pick');
+  document.querySelectorAll('.rai-btn').forEach(btn => {
+    btn.disabled = false;
+    btn.classList.remove('correct-pick', 'wrong-pick');
   });
 
   l3CanClick = true;
-  startTimerLocal('l3-timer', 'l3-timer-bar', cfg.time, () => {
-    l3CanClick = false;
-    document.querySelectorAll('.rai-btn').forEach(b => b.disabled = true);
-    showL3Feedback(null, img);
-    l3Round++;
-    setTimeout(nextL3Round, 1800);
-  });
+
+  startTimerLocal(
+    'l3-timer',
+    'l3-timer-bar',
+    cfg.time,
+    () => {
+
+      l3CanClick = false;
+
+      document.querySelectorAll('.rai-btn').forEach(btn => {
+        btn.disabled = true;
+      });
+
+      showL3Feedback(null, img);
+
+      l3Round++;
+
+      setTimeout(nextL3Round, 1800);
+    }
+  );
 }
 
 function buildL3Card(img) {
+
   const card = document.getElementById('l3-image-card');
-  card.style.background = img.gradient;
-  card.innerHTML = '';
 
-  img.elements.forEach(({emoji, style}) => {
-    const span = document.createElement('span');
-    span.className = 'img-element';
-    span.textContent = emoji;
-    span.style.cssText = `position:absolute;${style}`;
-    card.appendChild(span);
-  });
+  card.innerHTML = `
+    <img
+      src="${img.image}"
+      class="real-image"
+      alt="Challenge image"
+      draggable="false"
+    />
 
-  const cap = document.createElement('div');
-  cap.className = 'img-caption';
-  cap.textContent = img.caption;
-  card.appendChild(cap);
+    <div class="img-caption">
+      ${img.caption}
+    </div>
+  `;
 }
 
 function handleL3Click(chosen) {
+
   if (!l3CanClick) return;
+
   l3CanClick = false;
+
   stopLocalTimer();
-  document.querySelectorAll('.rai-btn').forEach(b => b.disabled = true);
+
+  document.querySelectorAll('.rai-btn').forEach(btn => {
+    btn.disabled = true;
+  });
+
   const img = L3_IMAGES[l3Round % L3_IMAGES.length];
+
   const correct = chosen === img.label;
-  const btn = document.querySelector(`.rai-btn[data-val="${chosen}"]`);
+
+  const btn = document.querySelector(
+    `.rai-btn[data-val="${chosen}"]`
+  );
+
   if (correct) {
+
     btn.classList.add('correct-pick');
+
     addMyScore(100);
+
     sfxCorrect();
+
   } else {
+
     btn.classList.add('wrong-pick');
+
     sfxWrong();
   }
+
   showL3Feedback(correct, img);
+
   l3Round++;
+
   setTimeout(nextL3Round, 1800);
 }
 
 function showL3Feedback(correct, img) {
+
   const fb = document.getElementById('l3-feedback');
-  const label = img.label === 'ai' ? '🤖 AI Generated' : '📷 Real Photo';
+
+  const label =
+    img.label === 'ai'
+      ? '🤖 AI Generated'
+      : '📷 Real Photo';
+
   if (correct === null) {
-    fb.textContent = `⏱ Time's up! It was ${label}. ${img.tell}`;
+
+    fb.textContent =
+      `⏱ Time's up! It was ${label}. ${img.tell}`;
+
     fb.className = 'l3-feedback timeout';
+
   } else if (correct) {
-    fb.textContent = `✅ Correct! ${label} — ${img.tell}. +100 pts`;
+
+    fb.textContent =
+      `✅ Correct! ${label} — ${img.tell}. +100 pts`;
+
     fb.className = 'l3-feedback correct';
+
   } else {
-    fb.textContent = `❌ Wrong! It was ${label} — ${img.tell}`;
+
+    fb.textContent =
+      `❌ Wrong! It was ${label} — ${img.tell}`;
+
     fb.className = 'l3-feedback wrong';
   }
 }
