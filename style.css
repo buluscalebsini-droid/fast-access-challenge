@@ -538,6 +538,13 @@ html, body {
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: transform 0.1s, background 0.15s, opacity 0.2s;
+  position: relative;
+}
+.mem-btn::after {
+  content: attr(data-count);
+  position: absolute; top: 2px; right: 4px;
+  font-size: 10px; font-weight: 800;
+  color: var(--accent2); line-height: 1;
 }
 .mem-btn:hover { background: rgba(255,255,255,0.08); transform: scale(1.1); }
 .mem-btn:active { transform: scale(0.95); }
