@@ -266,7 +266,7 @@ async function joinRoom(name, code) {
 
   const existingPlayers = data.players || {};
   const playerList = Object.keys(existingPlayers);
-  if (playerList.length >= 4) { return 'Room is full (max 4 players).'; }
+  if (playerList.length >= 40) { return 'Room is full (max 40 players).'; }
 
   roomCode = upper;
   isHost = data.host === myUid;
