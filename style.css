@@ -213,6 +213,7 @@ html,body { width:100%;height:100%;background:var(--bg);color:var(--text);font-f
 .l5-emoji-btn:disabled { opacity:0.5;cursor:not-allowed;transform:none; }
 .l5-emoji-btn.picked { border-color:var(--accent3);background:rgba(74,222,128,0.1); }
 .l5-seq-display { font-size:28px;text-align:center;padding:8px;letter-spacing:4px;background:var(--bg3);border:1px solid var(--card-border);border-radius:var(--radius-sm);width:100%; }
+.l5-get-ready { font-size:16px;color:var(--text-muted);text-align:center;padding:16px;letter-spacing:2px;text-transform:uppercase;animation:fadeIn 0.3s ease; }
 
 /* ===== BETWEEN SCREEN ===== */
 .between-inner { text-align:center;width:100%;max-width:440px; }
