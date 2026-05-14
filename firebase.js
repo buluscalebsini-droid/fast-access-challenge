@@ -9,8 +9,6 @@ import { getDatabase, ref, set, get, update, onValue, onDisconnect, serverTimest
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, signInAnonymously, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import firebase_admin
-from firebase_admin import credentials
 
 // ⚠️  REPLACE THIS WITH YOUR FIREBASE CONFIG
 // const firebaseConfig = {
