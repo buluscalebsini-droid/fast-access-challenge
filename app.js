@@ -859,6 +859,9 @@ function showBetweenScreen(levelNum) {
     nextBtn.onclick = () => {
       nextBtn.disabled = true;
       sfxClick();
+      // FIX 1: Write the new level to Firebase so non-host players advance
+      const nextLvl = levelNum < 3 ? levelNum + 1 : 'results';
+      update(dbRef('rooms', roomCode), { 'game/level': nextLvl });
       doCountdown(() => {
         if (levelNum === 1) startLevel2();
         else if (levelNum === 2) startLevel3();
@@ -873,6 +876,12 @@ function showBetweenScreen(levelNum) {
     clearListeners();
     listenOn(`rooms/${roomCode}/game/level`, snap => {
       const lvl = snap.val();
+      // FIX 2: Check 'results' BEFORE clearListeners() so it isn't swallowed
+      if (lvl === 'results') {
+        clearListeners();
+        showFinalResults();
+        return;
+      }
       if (lvl > levelNum) {
         clearListeners();
         doCountdown(() => {
@@ -880,7 +889,6 @@ function showBetweenScreen(levelNum) {
           else if (lvl === 3) startLevel3();
         });
       }
-      if (snap.val() === 'results') { showFinalResults(); }
     });
   }
 }
