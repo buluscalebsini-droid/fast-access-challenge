@@ -24,7 +24,7 @@
     <div class="menu-subtitle">Multiplayer Brain Race</div>
     <button class="btn-main" id="btn-create">🏠 Create Room</button>
     <button class="btn-secondary" id="btn-join-open">🔗 Join Room</button>
-    <div class="menu-foot">Up to 40 players • 4 levels • Real-time</div>
+    <div class="menu-foot">Up to 40 players • 5 levels • Real-time</div>
     <div class="qr-wrap">
       <div class="qr-label">Scan to join</div>
       <div id="qr-code"></div>
@@ -80,13 +80,13 @@
   <div class="countdown-num" id="countdown-num">3</div>
 </div>
 
-<!-- LEVEL 1 -->
+<!-- LEVEL 1 — SPOT THE DIFFERENCE -->
 <div id="screen-level1" class="screen">
   <div class="game-screen-inner">
     <div class="game-hud">
       <div class="hud-info">
         <span class="hud-level">🎨 Level 1</span>
-        <span class="hud-round" id="l1-round">1/7</span>
+        <span class="hud-round" id="l1-round">1/6</span>
       </div>
       <div class="hud-timer-wrap">
         <div class="hud-timer" id="l1-timer">12</div>
@@ -94,60 +94,66 @@
       </div>
       <button class="btn-mute" id="mute-btn-l1">🎵</button>
     </div>
-    <div class="level-desc">Find the <strong>odd color</strong>!</div>
-    <div id="color-grid" class="color-grid"></div>
+    <div class="level-desc">Find the <strong>odd one out</strong>! 🔍</div>
+    <div id="spot-grid" class="spot-grid"></div>
     <div class="live-scores" id="l1-scores"></div>
   </div>
 </div>
 
-<!-- LEVEL 2 -->
+<!-- LEVEL 2 — HUMAN OR AI? -->
 <div id="screen-level2" class="screen">
   <div class="game-screen-inner">
     <div class="game-hud">
       <div class="hud-info">
-        <span class="hud-level">📝 Level 2</span>
-        <span class="hud-round" id="l2-round">1/5</span>
+        <span class="hud-level">🤖 Level 2</span>
+        <span class="hud-round" id="l2-round">1/6</span>
       </div>
       <div class="hud-timer-wrap">
-        <div class="hud-timer" id="l2-timer">8</div>
+        <div class="hud-timer" id="l2-timer">12</div>
         <div class="timer-bar-wrap"><div class="timer-bar" id="l2-timer-bar"></div></div>
       </div>
       <button class="btn-mute" id="mute-btn-l2">🎵</button>
     </div>
-    <div class="level-desc">Pick the <strong>correct spelling</strong>!</div>
-    <div class="word-prompt" id="word-prompt"></div>
-    <div class="word-options" id="word-options"></div>
+    <div class="level-desc">Was this written by a <strong>Human or AI?</strong></div>
+    <div id="l2-text-card" class="hai-text-card"></div>
+    <div class="hai-buttons">
+      <button class="hai-btn" data-val="human" onclick="handleL2Click('human')">👤 Human</button>
+      <button class="hai-btn" data-val="ai"    onclick="handleL2Click('ai')">🤖 AI</button>
+    </div>
+    <div id="l2-feedback" class="l2-feedback"></div>
     <div class="live-scores" id="l2-scores"></div>
   </div>
 </div>
 
-<!-- LEVEL 3 -->
+<!-- LEVEL 3 — REAL OR AI IMAGE? -->
 <div id="screen-level3" class="screen">
   <div class="game-screen-inner">
     <div class="game-hud">
       <div class="hud-info">
-        <span class="hud-level">🍎 Level 3</span>
-        <span class="hud-round" id="l3-round">1/5</span>
+        <span class="hud-level">🖼️ Level 3</span>
+        <span class="hud-round" id="l3-round">1/6</span>
       </div>
       <div class="hud-timer-wrap">
-        <div class="hud-timer" id="l3-timer">14</div>
+        <div class="hud-timer" id="l3-timer">12</div>
         <div class="timer-bar-wrap"><div class="timer-bar" id="l3-timer-bar"></div></div>
       </div>
       <button class="btn-mute" id="mute-btn-l3">🎵</button>
     </div>
-    <div class="target-display">
-      <span class="target-label">Tap all:</span>
-      <span class="target-fruit" id="l3-target">🍎</span>
-      <span class="hit-count" id="l3-hits">0/5</span>
+    <div class="level-desc"><strong>Real photo</strong> or <strong>AI generated?</strong> 🧐</div>
+    <div id="l3-image-card" class="ai-image-card"></div>
+    <div class="rai-buttons">
+      <button class="rai-btn" data-val="real" onclick="handleL3Click('real')">📷 Real</button>
+      <button class="rai-btn" data-val="ai"   onclick="handleL3Click('ai')">🤖 AI</button>
     </div>
-    <div id="l3-arena" class="fruit-arena"></div>
+    <div id="l3-feedback" class="l3-feedback"></div>
     <div class="live-scores" id="l3-scores"></div>
   </div>
 </div>
 
-<!-- LEVEL 4 -->
+<!-- LEVEL 4 — MEMORY & DISTRACTION PANIC -->
 <div id="screen-level4" class="screen">
-  <div class="game-screen-inner">
+  <div class="game-screen-inner" style="position:relative">
+    <div id="l4-distractor-layer" class="distractor-layer"></div>
     <div class="game-hud">
       <div class="hud-info">
         <span class="hud-level">🧠 Level 4</span>
@@ -169,7 +175,31 @@
   </div>
 </div>
 
-<!-- BETWEEN LEVELS (leaderboard) -->
+<!-- LEVEL 5 — CROWDED SCREEN EXTREME -->
+<div id="screen-level5" class="screen">
+  <div class="game-screen-inner" style="position:relative;overflow:hidden">
+    <div id="l5-distractor-bg" class="l5-distractor-bg"></div>
+    <div class="game-hud">
+      <div class="hud-info">
+        <span class="hud-level">👀 Level 5</span>
+        <span class="hud-round" id="l5-round">1/6</span>
+      </div>
+      <div class="hud-timer-wrap">
+        <div class="hud-timer" id="l5-timer">10</div>
+        <div class="timer-bar-wrap"><div class="timer-bar" id="l5-timer-bar"></div></div>
+      </div>
+      <button class="btn-mute" id="mute-btn-l5">🎵</button>
+    </div>
+    <div class="chaos-panel">
+      <div class="chaos-prompt" id="l5-prompt"></div>
+      <div id="l5-arena" class="chaos-arena"></div>
+      <div id="l5-feedback" class="l5-feedback"></div>
+    </div>
+    <div class="live-scores" id="l5-scores"></div>
+  </div>
+</div>
+
+<!-- BETWEEN LEVELS -->
 <div id="screen-between" class="screen">
   <div class="between-inner">
     <div class="between-title" id="between-title">Level Complete! 🎉</div>
@@ -218,10 +248,8 @@
 <script>
   new QRCode(document.getElementById('qr-code'), {
     text: 'https://fast-access-challenge-m3n6.vercel.app/',
-    width: 140,
-    height: 140,
-    colorDark: '#ffffff',
-    colorLight: '#12122a',
+    width: 140, height: 140,
+    colorDark: '#ffffff', colorLight: '#12122a',
     correctLevel: QRCode.CorrectLevel.M
   });
 </script>
