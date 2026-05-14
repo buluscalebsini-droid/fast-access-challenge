@@ -40,42 +40,30 @@ function playTone(freq, type = 'sine', dur = 0.18, vol = 0.15, delay = 0) {
   } catch (e) {}
 }
 
-const sfxCorrect = () => { playTone(880, 'sine', 0.12, 0.25); playTone(1100, 'sine', 0.12, 0.22, 0.1); };
-const sfxWrong = () => playTone(200, 'sawtooth', 0.22, 0.25);
-const sfxCountdown = () => playTone(440, 'square', 0.1, 0.18);
-const sfxGo = () => [523, 659, 784].forEach((f, i) => playTone(f, 'sine', 0.1, 0.25, i * 0.06));
-const sfxTimerWarn = () => playTone(330, 'triangle', 0.08, 0.12);
-const sfxLevelUp = () => [523, 659, 784, 1047].forEach((f, i) => playTone(f, 'sine', 0.18, 0.25, i * 0.12));
-const sfxClick = () => playTone(660, 'triangle', 0.06, 0.12);
+const sfxCorrect  = () => { playTone(880,'sine',0.12,0.25); playTone(1100,'sine',0.12,0.22,0.1); };
+const sfxWrong    = () => playTone(200,'sawtooth',0.22,0.25);
+const sfxCountdown= () => playTone(440,'square',0.1,0.18);
+const sfxGo       = () => [523,659,784].forEach((f,i) => playTone(f,'sine',0.1,0.25,i*0.06));
+const sfxTimerWarn= () => playTone(330,'triangle',0.08,0.12);
+const sfxLevelUp  = () => [523,659,784,1047].forEach((f,i) => playTone(f,'sine',0.18,0.25,i*0.12));
+const sfxClick    = () => playTone(660,'triangle',0.06,0.12);
 
 const JAZZ_CHORDS = [
-  [261, 330, 392, 494], [294, 370, 440, 554], [349, 440, 523, 659],
-  [392, 494, 587, 740], [330, 415, 494, 622], [261, 330, 392, 523]
+  [261,330,392,494],[294,370,440,554],[349,440,523,659],
+  [392,494,587,740],[330,415,494,622],[261,330,392,523]
 ];
-
 function playJazzChord() {
   if (!musicOn) return;
   const chord = JAZZ_CHORDS[jazzStep % JAZZ_CHORDS.length];
-  chord.forEach((f, i) => playTone(f / 2, 'sine', 0.5, 0.055, i * 0.04));
-  playTone(chord[0] / 4, 'triangle', 0.55, 0.09);
+  chord.forEach((f,i) => playTone(f/2,'sine',0.5,0.055,i*0.04));
+  playTone(chord[0]/4,'triangle',0.55,0.09);
   jazzStep++;
 }
-
-function startJazz() {
-  stopJazz();
-  if (!musicOn) return;
-  playJazzChord();
-  jazzInterval = setInterval(playJazzChord, 1400);
-}
-
-function stopJazz() {
-  if (jazzInterval) { clearInterval(jazzInterval); jazzInterval = null; }
-}
-
+function startJazz() { stopJazz(); if (!musicOn) return; playJazzChord(); jazzInterval = setInterval(playJazzChord,1400); }
+function stopJazz()  { if (jazzInterval) { clearInterval(jazzInterval); jazzInterval = null; } }
 function toggleMusic() {
   musicOn = !musicOn;
-  const btns = document.querySelectorAll('.btn-mute');
-  btns.forEach(b => b.textContent = musicOn ? '🎵' : '🔇');
+  document.querySelectorAll('.btn-mute').forEach(b => b.textContent = musicOn ? '🎵' : '🔇');
   if (musicOn) startJazz(); else stopJazz();
 }
 
@@ -86,29 +74,18 @@ let myUid = null;
 let myName = '';
 let roomCode = '';
 let isHost = false;
-let players = {};       // uid → { name, score, ready, color }
-let gameState = {};     // from Firebase
+let players = {};
+let gameState = {};
 let activeListeners = [];
 let localTimerId = null;
 let localTimerRemaining = 0;
-let l1CanClick = false;
-let l2CanClick = false;
-let l3CanHit = false;
-let l3Hits = 0;
-let l3Target = '';
-let l3NeedHits = 5;
-let fruitObjects = [];   // { el, x, y, vx, vy, emoji, tapped }
-let rafId = null;
-let lastTime = 0;
-let arenaW = 0, arenaH = 0;
-const FRUIT_SIZE = 36;
 
-// Level 4 — Memory Flash
-let l4Round = 0;
-let l4Sequence = [];
-let l4PlayerSeq = [];
-let l4CanInput = false;
-
+// Per-level state
+let l1Round = 0, l1CanClick = false;
+let l2Round = 0, l2CanClick = false;
+let l3Round = 0, l3CanClick = false;
+let l4Round = 0, l4Sequence = [], l4PlayerSeq = [], l4CanInput = false, l4DistractorInterval = null;
+let l5Round = 0, l5CanClick = false, l5DistractorRaf = null, l5DistractorObjects = [];
 
 // ============================================================
 // UTILS
@@ -117,18 +94,14 @@ function rand(min, max) { return Math.random() * (max - min) + min; }
 function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
 function shuffle(arr) {
   const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = randInt(0, i);
-    [a[i], a[j]] = [a[j], a[i]];
-  }
+  for (let i = a.length-1; i > 0; i--) { const j = randInt(0,i); [a[i],a[j]] = [a[j],a[i]]; }
   return a;
 }
+function pick(arr) { return arr[randInt(0, arr.length-1)]; }
 
-const AVATAR_COLORS = ['avatar-0', 'avatar-1', 'avatar-2', 'avatar-3'];
-function playerColor(idx) { return AVATAR_COLORS[idx % 4]; }
-function playerInitials(name) {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
-}
+const AVATAR_COLORS = ['avatar-0','avatar-1','avatar-2','avatar-3','avatar-4','avatar-5','avatar-6','avatar-7','avatar-8','avatar-9'];
+function playerColor(idx) { return AVATAR_COLORS[idx % AVATAR_COLORS.length]; }
+function playerInitials(name) { return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2) || '?'; }
 
 function showToast(msg, dur = 1800) {
   const t = document.getElementById('toast');
@@ -147,7 +120,7 @@ function showScreen(id) {
 
 function genRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from({ length: 4 }, () => chars[randInt(0, chars.length - 1)]).join('');
+  return Array.from({length:4}, () => chars[randInt(0,chars.length-1)]).join('');
 }
 
 function setConnected(ok) {
@@ -187,10 +160,6 @@ function stopLocalTimer() {
   if (localTimerId) { clearInterval(localTimerId); localTimerId = null; }
 }
 
-function stopFruitAnimation() {
-  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-}
-
 // ============================================================
 // AUTH
 // ============================================================
@@ -199,11 +168,7 @@ async function initAuth() {
   await signInAnonymously(auth);
   return new Promise(resolve => {
     const unsub = onAuthStateChanged(auth, user => {
-      if (user) {
-        myUid = user.uid;
-        unsub();
-        resolve();
-      }
+      if (user) { myUid = user.uid; unsub(); resolve(); }
     });
   });
 }
@@ -223,31 +188,18 @@ async function createRoom(hostName) {
   myName = hostName.trim();
   isHost = true;
   roomCode = genRoomCode();
-
   const roomRef = dbRef('rooms', roomCode);
   const snap = await get(roomRef);
-  if (snap.exists()) {
-    roomCode = genRoomCode(); // try once more
-  }
+  if (snap.exists()) roomCode = genRoomCode();
 
   const presenceRef = dbRef('rooms', roomCode, 'players', myUid);
   await onDisconnect(presenceRef).remove();
 
   await set(roomRef, {
-    host: myUid,
-    status: 'lobby',
-    created: serverTimestamp(),
-    players: {
-      [myUid]: { name: myName, score: 0, color: 0, ready: true }
-    },
-    game: {
-      level: 0,
-      round: 0,
-      roundSeed: 0,
-      phase: 'waiting'
-    }
+    host: myUid, status: 'lobby', created: serverTimestamp(),
+    players: { [myUid]: { name: myName, score: 0, color: 0, ready: true } },
+    game: { level: 0, round: 0, roundSeed: 0, phase: 'waiting' }
   });
-
   openLobby();
 }
 
@@ -257,28 +209,21 @@ async function createRoom(hostName) {
 async function joinRoom(name, code) {
   myName = name.trim();
   const upper = code.trim().toUpperCase();
-
   const roomSnap = await get(dbRef('rooms', upper));
-  if (!roomSnap.exists()) { return 'Room not found.'; }
-
+  if (!roomSnap.exists()) return 'Room not found.';
   const data = roomSnap.val();
-  if (data.status !== 'lobby') { return 'Game already started.'; }
-
+  if (data.status !== 'lobby') return 'Game already started.';
   const existingPlayers = data.players || {};
   const playerList = Object.keys(existingPlayers);
-  if (playerList.length >= 40) { return 'Room is full (max 40 players).'; }
-
+  if (playerList.length >= 40) return 'Room is full (max 40 players).';
   roomCode = upper;
   isHost = data.host === myUid;
-
   const playerIdx = playerList.length;
   const presenceRef = dbRef('rooms', roomCode, 'players', myUid);
   await onDisconnect(presenceRef).remove();
-
   await update(dbRef('rooms', roomCode, 'players'), {
     [myUid]: { name: myName, score: 0, color: playerIdx, ready: true }
   });
-
   openLobby();
   return null;
 }
@@ -306,31 +251,16 @@ function updateHostControls() {
 
 function listenLobby() {
   clearListeners();
-
   listenOn(`rooms/${roomCode}/players`, snap => {
     players = snap.val() || {};
     renderLobbyPlayers();
-
-    // If we were kicked or room removed
-    if (!players[myUid]) {
-      showToast('You were removed from the room.');
-      resetToMenu();
-    }
+    if (!players[myUid]) { showToast('You were removed from the room.'); resetToMenu(); }
   });
-
   listenOn(`rooms/${roomCode}/status`, snap => {
-    const status = snap.val();
-    if (status === 'playing') {
-      clearListeners();
-      startGame();
-    }
+    if (snap.val() === 'playing') { clearListeners(); startGame(); }
   });
-
   listenOn(`rooms/${roomCode}`, snap => {
-    if (!snap.exists()) {
-      showToast('Room closed.');
-      resetToMenu();
-    }
+    if (!snap.exists()) { showToast('Room closed.'); resetToMenu(); }
   });
 }
 
@@ -341,19 +271,14 @@ function renderLobbyPlayers() {
   entries.forEach(([uid, p], idx) => {
     const card = document.createElement('div');
     card.className = 'player-card';
-
     const avatar = document.createElement('div');
     avatar.className = `player-avatar ${playerColor(p.color ?? idx)}`;
     avatar.textContent = playerInitials(p.name);
-
     const nameEl = document.createElement('div');
     nameEl.className = 'player-name';
     nameEl.textContent = p.name;
-
     const badges = document.createElement('div');
     badges.style.display = 'flex'; badges.style.gap = '6px';
-
-    const roomData = { host: '' };
     get(dbRef('rooms', roomCode, 'host')).then(s => {
       if (s.val() === uid) {
         const hb = document.createElement('span');
@@ -361,23 +286,17 @@ function renderLobbyPlayers() {
         badges.appendChild(hb);
       }
     });
-
     if (uid === myUid) {
       const yb = document.createElement('span');
       yb.className = 'player-badge you'; yb.textContent = 'YOU';
       badges.appendChild(yb);
     }
-
-    card.appendChild(avatar);
-    card.appendChild(nameEl);
-    card.appendChild(badges);
+    card.appendChild(avatar); card.appendChild(nameEl); card.appendChild(badges);
     list.appendChild(card);
   });
-
   const count = entries.length;
   document.getElementById('lobby-status').textContent =
     count === 1 ? 'Waiting for more players... (1/40)' : `${count}/40 players connected`;
-
   if (isHost) {
     const startBtn = document.getElementById('btn-start-game');
     startBtn.disabled = count < 1;
@@ -388,11 +307,8 @@ function renderLobbyPlayers() {
 async function hostStartGame() {
   const startBtn = document.getElementById('btn-start-game');
   startBtn.disabled = true;
-
   await update(dbRef('rooms', roomCode), {
-    status: 'playing',
-    'game/level': 1,
-    'game/round': 0,
+    status: 'playing', 'game/level': 1, 'game/round': 0,
     'game/phase': 'countdown',
     'game/roundSeed': Math.floor(Math.random() * 100000),
     'game/roundStartTime': serverTimestamp()
@@ -409,9 +325,7 @@ function startGame() {
 }
 
 function updatePlayerCache() {
-  get(dbRef('rooms', roomCode, 'players')).then(s => {
-    if (s.exists()) players = s.val();
-  });
+  get(dbRef('rooms', roomCode, 'players')).then(s => { if (s.exists()) players = s.val(); });
 }
 
 // ============================================================
@@ -421,12 +335,10 @@ function doCountdown(cb) {
   const overlay = document.getElementById('countdown-overlay');
   const numEl = document.getElementById('countdown-num');
   let count = 3;
-
   overlay.classList.remove('hidden');
   numEl.textContent = count;
   animateCountdownNum(numEl);
   sfxCountdown();
-
   const tick = setInterval(() => {
     count--;
     if (count <= 0) {
@@ -434,10 +346,7 @@ function doCountdown(cb) {
       numEl.textContent = 'GO!';
       sfxGo();
       animateCountdownNum(numEl);
-      setTimeout(() => {
-        overlay.classList.add('hidden');
-        cb();
-      }, 700);
+      setTimeout(() => { overlay.classList.add('hidden'); cb(); }, 700);
     } else {
       numEl.textContent = count;
       sfxCountdown();
@@ -453,106 +362,135 @@ function animateCountdownNum(el) {
 }
 
 // ============================================================
-// LEVEL 1 — COLOR VISION
+// LEVEL 1 — SPOT THE DIFFERENCE 🎨
 // ============================================================
-const L1_ROUNDS = 7;
+const L1_ROUNDS = 6;
 const L1_CFG = [
-  { grid: 4, time: 14, hueDiff: 30 },
-  { grid: 4, time: 12, hueDiff: 24 },
-  { grid: 4, time: 11, hueDiff: 18 },
-  { grid: 5, time: 10, hueDiff: 14 },
-  { grid: 5, time: 9,  hueDiff: 10 },
-  { grid: 5, time: 8,  hueDiff: 8  },
-  { grid: 6, time: 7,  hueDiff: 6  }
+  { grid: 3, time: 12 },
+  { grid: 4, time: 10 },
+  { grid: 4, time: 9  },
+  { grid: 5, time: 8  },
+  { grid: 5, time: 7  },
+  { grid: 6, time: 6  }
 ];
 
-let l1Round = 0;
+// Pools of similar-looking emoji groups
+const SPOT_POOLS = [
+  { base: '🔵', odd: '🟣' },
+  { base: '🟥', odd: '🟧' },
+  { base: '⭐', odd: '🌟' },
+  { base: '🍎', odd: '🍅' },
+  { base: '🐶', odd: '🐱' },
+  { base: '🌙', odd: '☀️' },
+  { base: '💎', odd: '🔷' },
+  { base: '🎯', odd: '🎪' },
+  { base: '🌿', odd: '🌱' },
+  { base: '🔔', odd: '🔕' },
+  { base: '👁️', odd: '👀' },
+  { base: '🏠', odd: '🏡' },
+];
 
 function startLevel1() {
   l1Round = 0;
   showScreen('screen-level1');
   setupMuteButtons();
   syncScoresDisplay('l1-scores');
-  listenGameSync(() => {
-    // host drives rounds; all players listen
-  });
   nextL1Round();
 }
 
 function nextL1Round() {
   stopLocalTimer();
-  if (l1Round >= L1_ROUNDS) {
-    finishLevel(1);
-    return;
-  }
+  if (l1Round >= L1_ROUNDS) { finishLevel(1); return; }
   const cfg = L1_CFG[l1Round];
   document.getElementById('l1-round').textContent = `${l1Round + 1}/${L1_ROUNDS}`;
-  buildL1Grid(cfg, l1Round * 7777 + 1);
+  buildL1Grid(cfg);
   l1CanClick = true;
   startTimerLocal('l1-timer', 'l1-timer-bar', cfg.time, () => {
     l1CanClick = false;
+    // Briefly reveal the odd one
+    document.querySelectorAll('.spot-cell.odd-cell').forEach(c => c.classList.add('reveal'));
     l1Round++;
-    setTimeout(nextL1Round, 600);
+    setTimeout(nextL1Round, 900);
   });
 }
 
-function buildL1Grid(cfg, seed) {
-  const grid = document.getElementById('color-grid');
+function buildL1Grid(cfg) {
+  const grid = document.getElementById('spot-grid');
   grid.innerHTML = '';
   const n = cfg.grid;
   const total = n * n;
   grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
 
-  // deterministic odd index from seed
-  const oddIdx = seed % total;
-  const baseHue = (seed * 37) % 360;
-  const oddHue = (baseHue + cfg.hueDiff) % 360;
-  const sat = 55 + (seed % 20);
-  const lit = 50 + (seed % 15);
+  const pool = pick(SPOT_POOLS);
+  const oddIdx = randInt(0, total - 1);
+
+  // Occasionally flip the odd item instead of using different emoji
+  const useFlip = Math.random() < 0.3;
 
   for (let i = 0; i < total; i++) {
     const el = document.createElement('div');
-    el.className = 'color-cell';
-    const hue = i === oddIdx ? oddHue : baseHue;
-    el.style.background = `hsl(${hue},${sat}%,${lit}%)`;
-    el.addEventListener('click', () => handleL1Click(el, i === oddIdx));
+    el.className = 'spot-cell';
+    const isOdd = i === oddIdx;
+    if (isOdd) {
+      el.classList.add('odd-cell');
+      el.textContent = useFlip ? pool.base : pool.odd;
+      if (useFlip) el.style.transform = 'scaleX(-1)';
+    } else {
+      el.textContent = pool.base;
+    }
+    el.addEventListener('click', () => handleL1Click(el, isOdd));
     grid.appendChild(el);
   }
 }
 
-function handleL1Click(el, isCorrect) {
+function handleL1Click(el, isOdd) {
   if (!l1CanClick) return;
   l1CanClick = false;
   stopLocalTimer();
-
-  if (isCorrect) {
+  if (isOdd) {
     el.classList.add('correct');
     addMyScore(100);
     sfxCorrect();
     showToast('✅ +100 pts!');
   } else {
     el.classList.add('wrong');
+    document.querySelectorAll('.spot-cell.odd-cell').forEach(c => c.classList.add('reveal'));
     sfxWrong();
     showToast('❌ Wrong!');
   }
   l1Round++;
-  setTimeout(nextL1Round, 800);
+  setTimeout(nextL1Round, 900);
 }
 
 // ============================================================
-// LEVEL 2 — SPELLING
+// LEVEL 2 — HUMAN OR AI? 🤖
 // ============================================================
-const WORD_DATA = [
-  { correct: 'banana',    options: ['banana',    'bananna',   'bananah']   },
-  { correct: 'calendar',  options: ['calender',  'calendar',  'calandar']  },
-  { correct: 'receive',   options: ['recieve',   'receive',   'receeve']   },
-  { correct: 'necessary', options: ['necessary', 'neccessary','necessery'] },
-  { correct: 'separate',  options: ['seperate',  'separete',  'separate']  },
-  { correct: 'achieve',   options: ['acheive',   'achieve',   'acheeve']   },
-  { correct: 'occurred',  options: ['occured',   'occurred',  'ocurred']   }
+const L2_ROUNDS = 6;
+const L2_CFG = [
+  { time: 12 }, { time: 10 }, { time: 9 },
+  { time: 8  }, { time: 7  }, { time: 6 }
 ];
 
-let l2Round = 0;
+const L2_SAMPLES = [
+  // HUMAN samples
+  { text: "omg i literally dropped my coffee this morning and it went EVERYWHERE. mondays are not it 😭☕", label: 'human', hint: 'Casual slang, typo energy, relatable moment' },
+  { text: "just pulled an all-nighter for this presentation and honestly it's so mid. why do i do this to myself", label: 'human', hint: 'Authentic frustration, modern slang' },
+  { text: "ok but can we talk about how unhinged it is that birds exist. like... flying dinosaurs. just vibing.", label: 'human', hint: 'Stream of consciousness, humor' },
+  { text: "my dog looked me dead in the eyes and then knocked my phone off the table on purpose i KNOW it was on purpose", label: 'human', hint: 'Personal, emotional, storytelling' },
+  { text: "ngl i cried at that movie trailer. just the trailer. 30 seconds. i need help", label: 'human', hint: 'Vulnerability, abbreviations, humor' },
+  { text: "the wifi at my job is so bad that i genuinely downloaded 6 emails in the last 3 hours. this is not okay", label: 'human', hint: 'Specific complaint, frustration' },
+
+  // AI samples
+  { text: "As an AI language model, I understand that you may be experiencing some frustration. I want to assure you that your feelings are valid and there are many resources available to help you navigate this situation effectively.", label: 'ai', hint: 'Overly formal opener, generic validation' },
+  { text: "The intersection of technology and human experience presents fascinating opportunities for growth. By leveraging data-driven insights, we can optimize our daily routines for maximum productivity and wellbeing.", label: 'ai', hint: 'Buzzwords, vague, no personality' },
+  { text: "Greetings! I hope this message finds you in good health and high spirits. I am writing to express my enthusiasm regarding the topic you have raised, which I find to be quite thought-provoking indeed.", label: 'ai', hint: 'Stilted greeting, verbose formality' },
+  { text: "In conclusion, it is important to note that various factors contribute to this multifaceted phenomenon. Further research may be beneficial in order to gain a comprehensive understanding of all relevant variables.", label: 'ai', hint: 'Filler conclusion, no actual opinion' },
+  { text: "Certainly! I'd be happy to assist you with that. Here is a comprehensive overview of the subject matter that addresses your inquiry from multiple relevant perspectives:", label: 'ai', hint: 'Classic AI opener, hollow enthusiasm' },
+  { text: "It is worth considering that the aforementioned situation presents both challenges and opportunities. From a holistic standpoint, one must weigh the pros and cons in a balanced and measured manner.", label: 'ai', hint: 'No stance, hedging, corporate speak' },
+  // More tricky ones
+  { text: "I stayed up way too late last night reading about black holes and now im scared but also amazed?? space is terrifying honestly", label: 'human', hint: 'Emotional contradiction, late-night curiosity' },
+  { text: "Wow, what a fantastic question! There are actually several wonderful approaches you could take here. Each one has its own unique set of advantages that might suit different needs and preferences.", label: 'ai', hint: 'Hollow enthusiasm, non-committal answer' },
+];
 
 function startLevel2() {
   l2Round = 0;
@@ -564,65 +502,180 @@ function startLevel2() {
 
 function nextL2Round() {
   stopLocalTimer();
-  if (l2Round >= 5) {
-    finishLevel(2);
-    return;
-  }
-  const data = WORD_DATA[l2Round % WORD_DATA.length];
-  document.getElementById('l2-round').textContent = `${l2Round + 1}/5`;
-  document.getElementById('word-prompt').textContent = 'Which is spelled correctly?';
+  if (l2Round >= L2_ROUNDS) { finishLevel(2); return; }
+  const cfg = L2_CFG[l2Round];
+  const sample = L2_SAMPLES[l2Round % L2_SAMPLES.length];
+  document.getElementById('l2-round').textContent = `${l2Round + 1}/${L2_ROUNDS}`;
+  document.getElementById('l2-text-card').textContent = sample.text;
+  document.getElementById('l2-feedback').textContent = '';
+  document.getElementById('l2-feedback').className = 'l2-feedback';
 
-  const container = document.getElementById('word-options');
-  container.innerHTML = '';
-  shuffle(data.options).forEach(opt => {
-    const btn = document.createElement('button');
-    btn.className = 'word-btn';
-    btn.textContent = opt;
-    btn.onclick = () => handleL2Click(btn, opt === data.correct, data.correct);
-    container.appendChild(btn);
+  // Reset buttons
+  document.querySelectorAll('.hai-btn').forEach(b => {
+    b.disabled = false;
+    b.classList.remove('correct-pick', 'wrong-pick');
   });
 
   l2CanClick = true;
-  startTimerLocal('l2-timer', 'l2-timer-bar', 8, () => {
+  startTimerLocal('l2-timer', 'l2-timer-bar', cfg.time, () => {
     l2CanClick = false;
-    // reveal correct
-    document.querySelectorAll('.word-btn').forEach(b => {
-      if (b.textContent === data.correct) b.classList.add('correct-pick');
-      b.disabled = true;
-    });
+    document.querySelectorAll('.hai-btn').forEach(b => b.disabled = true);
+    showL2Feedback(null, sample);
     l2Round++;
-    setTimeout(nextL2Round, 1000);
+    setTimeout(nextL2Round, 1600);
   });
 }
 
-function handleL2Click(btn, isCorrect, correctWord) {
+function handleL2Click(chosen) {
   if (!l2CanClick) return;
   l2CanClick = false;
   stopLocalTimer();
-  document.querySelectorAll('.word-btn').forEach(b => b.disabled = true);
-
-  if (isCorrect) {
+  document.querySelectorAll('.hai-btn').forEach(b => b.disabled = true);
+  const sample = L2_SAMPLES[l2Round % L2_SAMPLES.length];
+  const correct = chosen === sample.label;
+  const btn = document.querySelector(`.hai-btn[data-val="${chosen}"]`);
+  if (correct) {
     btn.classList.add('correct-pick');
     addMyScore(100);
     sfxCorrect();
-    showToast('✅ +100 pts!');
   } else {
     btn.classList.add('wrong-pick');
-    document.querySelectorAll('.word-btn').forEach(b => {
-      if (b.textContent === correctWord) b.classList.add('correct-pick');
-    });
     sfxWrong();
-    showToast('❌ Wrong!');
   }
+  showL2Feedback(correct, sample);
   l2Round++;
-  setTimeout(nextL2Round, 1000);
+  setTimeout(nextL2Round, 1600);
+}
+
+function showL2Feedback(correct, sample) {
+  const fb = document.getElementById('l2-feedback');
+  const isAI = sample.label === 'ai';
+  if (correct === null) {
+    fb.textContent = `⏱ Time's up! It was ${isAI ? '🤖 AI' : '👤 Human'}. Clue: ${sample.hint}`;
+    fb.className = 'l2-feedback timeout';
+  } else if (correct) {
+    fb.textContent = `✅ Correct! It was ${isAI ? '🤖 AI' : '👤 Human'}. +100 pts`;
+    fb.className = 'l2-feedback correct';
+  } else {
+    fb.textContent = `❌ Wrong! It was ${isAI ? '🤖 AI' : '👤 Human'}. Clue: ${sample.hint}`;
+    fb.className = 'l2-feedback wrong';
+  }
 }
 
 // ============================================================
-// LEVEL 3 — MOVING FRUITS
+// LEVEL 3 — REAL OR AI IMAGE? 🖼️
 // ============================================================
-const ALL_FRUITS = ['🍎','🍌','🍇','🍓','🍍','🍊','🫐','🍑'];
-let l3Round = 0;
+const L3_ROUNDS = 6;
+const L3_CFG = [
+  { time: 12 }, { time: 10 }, { time: 9 },
+  { time: 8  }, { time: 7  }, { time: 6 }
+];
+
+// Visual "image cards" built entirely in CSS + emoji
+// gradient: CSS gradient string for background
+// elements: array of {emoji, style} positioned absolutely
+// caption: what the image supposedly shows
+// label: 'real' or 'ai'
+// tell: why it's real or AI
+const L3_IMAGES = [
+  {
+    gradient: 'linear-gradient(160deg, #ff7b3a 0%, #ffcc00 40%, #87ceeb 70%, #4a90d9 100%)',
+    elements: [
+      {emoji:'⛰️', style:'font-size:56px;bottom:10px;left:50%;transform:translateX(-50%)'},
+      {emoji:'🌅', style:'font-size:40px;top:18px;left:50%;transform:translateX(-50%)'},
+      {emoji:'🌲', style:'font-size:32px;bottom:8px;left:12%'},
+      {emoji:'🌲', style:'font-size:28px;bottom:8px;right:14%'},
+    ],
+    caption: '"Mountain sunset with pine trees"',
+    label: 'real',
+    tell: 'Natural color gradient, consistent lighting, real composition'
+  },
+  {
+    gradient: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+    elements: [
+      {emoji:'🌃', style:'font-size:52px;bottom:10px;left:50%;transform:translateX(-50%)'},
+      {emoji:'✨', style:'font-size:22px;top:20px;left:20%'},
+      {emoji:'✨', style:'font-size:16px;top:30px;right:25%'},
+      {emoji:'🌙', style:'font-size:30px;top:15px;right:15%'},
+    ],
+    caption: '"City skyline at midnight — buildings float 3cm above ground"',
+    label: 'ai',
+    tell: 'AI tell: floating buildings, impossible physics, subtle sky distortion'
+  },
+  {
+    gradient: 'linear-gradient(135deg, #f5e6c8 0%, #e8d5a3 40%, #c4a882 100%)',
+    elements: [
+      {emoji:'🐕', style:'font-size:58px;bottom:10px;left:50%;transform:translateX(-50%)'},
+      {emoji:'🍂', style:'font-size:24px;bottom:8px;left:15%'},
+      {emoji:'🍂', style:'font-size:20px;bottom:12px;right:18%'},
+      {emoji:'☀️', style:'font-size:24px;top:12px;right:12%'},
+    ],
+    caption: '"Golden retriever playing in autumn leaves"',
+    label: 'real',
+    tell: 'Warm authentic palette, natural dog pose, real outdoor scene'
+  },
+  {
+    gradient: 'linear-gradient(180deg, #2d5016 0%, #4a7c1f 35%, #7aaa3f 60%, #a8d060 100%)',
+    elements: [
+      {emoji:'👤', style:'font-size:50px;bottom:10px;left:50%;transform:translateX(-50%)'},
+      {emoji:'🖐️', style:'font-size:28px;bottom:28px;left:22%'},
+      {emoji:'🖐️', style:'font-size:32px;bottom:28px;right:18%;transform:scaleX(-1)'},
+      {emoji:'❓', style:'font-size:16px;bottom:42px;left:28%;color:red;font-weight:bold'},
+    ],
+    caption: '"Person waving in a park — has 7 fingers on left hand"',
+    label: 'ai',
+    tell: 'AI tell: wrong finger count, warped hand anatomy, classic AI failure'
+  },
+  {
+    gradient: 'linear-gradient(160deg, #87ceeb 0%, #b0e2ff 30%, #e8f4f8 60%, #d4e8c2 100%)',
+    elements: [
+      {emoji:'👶', style:'font-size:44px;bottom:18px;left:50%;transform:translateX(-50%)'},
+      {emoji:'🎂', style:'font-size:36px;bottom:10px;left:28%'},
+      {emoji:'🕯️', style:'font-size:22px;bottom:30px;left:35%'},
+      {emoji:'🎉', style:'font-size:24px;top:15px;left:18%'},
+      {emoji:'🎉', style:'font-size:24px;top:15px;right:18%'},
+    ],
+    caption: '"Child blowing out birthday candles, family in background"',
+    label: 'real',
+    tell: 'Warm indoor lighting, natural family moment, candid composition'
+  },
+  {
+    gradient: 'linear-gradient(180deg, #ff9a9e 0%, #fecfef 40%, #ffecd2 80%, #ffcc02 100%)',
+    elements: [
+      {emoji:'🦁', style:'font-size:52px;bottom:10px;left:50%;transform:translateX(-50%)'},
+      {emoji:'🦅', style:'font-size:28px;top:18px;left:20%'},
+      {emoji:'🐠', style:'font-size:24px;top:22px;right:22%'},
+      {emoji:'❓', style:'font-size:20px;top:10px;left:50%;color:red'},
+    ],
+    caption: '"Lion portrait — eagle and tropical fish visible in desert background"',
+    label: 'ai',
+    tell: 'AI tell: impossible ecosystem, unrelated animals in same scene'
+  },
+  {
+    gradient: 'linear-gradient(160deg, #a8e6cf 0%, #7fcdcd 40%, #5db8d5 70%, #3498db 100%)',
+    elements: [
+      {emoji:'🤿', style:'font-size:40px;bottom:15px;left:50%;transform:translateX(-50%)'},
+      {emoji:'🐠', style:'font-size:28px;bottom:20px;left:18%'},
+      {emoji:'🐙', style:'font-size:26px;bottom:12px;right:16%'},
+      {emoji:'🌊', style:'font-size:32px;top:18px;left:50%;transform:translateX(-50%)'},
+    ],
+    caption: '"Scuba diver exploring a coral reef"',
+    label: 'real',
+    tell: 'Natural underwater colors, coherent marine environment'
+  },
+  {
+    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+    elements: [
+      {emoji:'🏙️', style:'font-size:52px;bottom:8px;left:50%;transform:translateX(-50%)'},
+      {emoji:'🚗', style:'font-size:24px;bottom:10px;left:10%;transform:scaleY(-1)'},
+      {emoji:'🚗', style:'font-size:22px;top:20px;right:15%'},
+      {emoji:'❓', style:'font-size:18px;bottom:35px;right:12%;color:yellow'},
+    ],
+    caption: '"City street — cars driving on ceiling, reflections appear on wrong surfaces"',
+    label: 'ai',
+    tell: 'AI tell: gravity-defying cars, impossible reflections, warped perspective'
+  },
+];
 
 function startLevel3() {
   l3Round = 0;
@@ -634,216 +687,106 @@ function startLevel3() {
 
 function nextL3Round() {
   stopLocalTimer();
-  stopFruitAnimation();
-  fruitObjects = [];
+  if (l3Round >= L3_ROUNDS) { finishLevel(3); return; }
+  const cfg = L3_CFG[l3Round];
+  const img = L3_IMAGES[l3Round % L3_IMAGES.length];
+  document.getElementById('l3-round').textContent = `${l3Round + 1}/${L3_ROUNDS}`;
+  document.getElementById('l3-feedback').textContent = '';
+  document.getElementById('l3-feedback').className = 'l3-feedback';
+  buildL3Card(img);
 
-  if (l3Round >= 5) {
-    finishLevel(3);
-    return;
-  }
-
-  l3Hits = 0;
-  l3NeedHits = 5;
-  l3CanHit = true;
-  document.getElementById('l3-round').textContent = `${l3Round + 1}/5`;
-
-  l3Target = ALL_FRUITS[randInt(0, ALL_FRUITS.length - 1)];
-  document.getElementById('l3-target').textContent = l3Target;
-  document.getElementById('l3-hits').textContent = `0/${l3NeedHits}`;
-
-  const arena = document.getElementById('l3-arena');
-  arena.innerHTML = '';
-  arenaW = arena.offsetWidth || 360;
-  arenaH = arena.offsetHeight || 220;
-
-  const totalFruits = 14;
-  const targetCount = l3NeedHits;
-  const fruitList = [];
-  for (let i = 0; i < targetCount; i++) fruitList.push(l3Target);
-  while (fruitList.length < totalFruits) {
-    const f = ALL_FRUITS[randInt(0, ALL_FRUITS.length - 1)];
-    if (f !== l3Target) fruitList.push(f);
-  }
-  shuffle(fruitList);
-
-  fruitList.forEach((emoji, idx) => {
-    const el = document.createElement('div');
-    el.className = 'fruit';
-    el.textContent = emoji;
-    el.style.fontSize = FRUIT_SIZE + 'px';
-
-    const x = rand(4, arenaW - FRUIT_SIZE - 4);
-    const y = rand(4, arenaH - FRUIT_SIZE - 4);
-    const speed = rand(25, 60);
-    const angle = rand(0, Math.PI * 2);
-    const vx = Math.cos(angle) * speed;
-    const vy = Math.sin(angle) * speed;
-
-    el.style.left = x + 'px';
-    el.style.top = y + 'px';
-
-    const fObj = { el, x, y, vx, vy, emoji, tapped: false };
-    fruitObjects.push(fObj);
-    arena.appendChild(el);
-
-    el.addEventListener('click', () => handleL3Tap(fObj));
-    el.addEventListener('touchstart', e => { e.preventDefault(); handleL3Tap(fObj); }, { passive: false });
+  document.querySelectorAll('.rai-btn').forEach(b => {
+    b.disabled = false;
+    b.classList.remove('correct-pick', 'wrong-pick');
   });
 
-  lastTime = performance.now();
-  animateFruits();
-
-  startTimerLocal('l3-timer', 'l3-timer-bar', 14, () => {
-    l3CanHit = false;
-    stopFruitAnimation();
+  l3CanClick = true;
+  startTimerLocal('l3-timer', 'l3-timer-bar', cfg.time, () => {
+    l3CanClick = false;
+    document.querySelectorAll('.rai-btn').forEach(b => b.disabled = true);
+    showL3Feedback(null, img);
     l3Round++;
-    showToast(`⏱ Wave over! ${l3Hits}/${l3NeedHits} found`);
-    setTimeout(nextL3Round, 800);
+    setTimeout(nextL3Round, 1800);
   });
 }
 
-function animateFruits() {
-  rafId = requestAnimationFrame(now => {
-    const dt = Math.min((now - lastTime) / 1000, 0.05); // cap at 50ms
-    lastTime = now;
+function buildL3Card(img) {
+  const card = document.getElementById('l3-image-card');
+  card.style.background = img.gradient;
+  card.innerHTML = '';
 
-    for (let i = 0; i < fruitObjects.length; i++) {
-      const f = fruitObjects[i];
-      if (f.tapped) continue;
-
-      f.x += f.vx * dt;
-      f.y += f.vy * dt;
-
-      // Wall bounce
-      if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx); }
-      if (f.x > arenaW - FRUIT_SIZE) { f.x = arenaW - FRUIT_SIZE; f.vx = -Math.abs(f.vx); }
-      if (f.y < 0) { f.y = 0; f.vy = Math.abs(f.vy); }
-      if (f.y > arenaH - FRUIT_SIZE) { f.y = arenaH - FRUIT_SIZE; f.vy = -Math.abs(f.vy); }
-
-      // Simple circle collision
-      for (let j = i + 1; j < fruitObjects.length; j++) {
-        const g = fruitObjects[j];
-        if (g.tapped) continue;
-        const dx = (f.x + FRUIT_SIZE / 2) - (g.x + FRUIT_SIZE / 2);
-        const dy = (f.y + FRUIT_SIZE / 2) - (g.y + FRUIT_SIZE / 2);
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < FRUIT_SIZE && dist > 0) {
-          const nx = dx / dist, ny = dy / dist;
-          const relVx = f.vx - g.vx, relVy = f.vy - g.vy;
-          const dot = relVx * nx + relVy * ny;
-          if (dot < 0) {
-            f.vx -= dot * nx; f.vy -= dot * ny;
-            g.vx += dot * nx; g.vy += dot * ny;
-            const overlap = (FRUIT_SIZE - dist) / 2;
-            f.x += nx * overlap; f.y += ny * overlap;
-            g.x -= nx * overlap; g.y -= ny * overlap;
-          }
-        }
-      }
-
-      f.el.style.left = f.x + 'px';
-      f.el.style.top = f.y + 'px';
-    }
-
-    animateFruits();
+  img.elements.forEach(({emoji, style}) => {
+    const span = document.createElement('span');
+    span.className = 'img-element';
+    span.textContent = emoji;
+    span.style.cssText = `position:absolute;${style}`;
+    card.appendChild(span);
   });
+
+  const cap = document.createElement('div');
+  cap.className = 'img-caption';
+  cap.textContent = img.caption;
+  card.appendChild(cap);
 }
 
-function handleL3Tap(fObj) {
-  if (!l3CanHit || fObj.tapped) return;
-  if (fObj.emoji === l3Target) {
-    fObj.tapped = true;
-    fObj.el.classList.add('popped');
-    l3Hits++;
-    addMyScore(50);
+function handleL3Click(chosen) {
+  if (!l3CanClick) return;
+  l3CanClick = false;
+  stopLocalTimer();
+  document.querySelectorAll('.rai-btn').forEach(b => b.disabled = true);
+  const img = L3_IMAGES[l3Round % L3_IMAGES.length];
+  const correct = chosen === img.label;
+  const btn = document.querySelector(`.rai-btn[data-val="${chosen}"]`);
+  if (correct) {
+    btn.classList.add('correct-pick');
+    addMyScore(100);
     sfxCorrect();
-    document.getElementById('l3-hits').textContent = `${l3Hits}/${l3NeedHits}`;
-    showToast(`🎯 +50 pts!`);
-    setTimeout(() => fObj.el.remove(), 250);
-    if (l3Hits >= l3NeedHits) {
-      l3CanHit = false;
-      stopLocalTimer();
-      stopFruitAnimation();
-      sfxLevelUp();
-      l3Round++;
-      showToast('🔥 Wave clear!');
-      setTimeout(nextL3Round, 700);
-    }
   } else {
-    fObj.el.classList.add('wrong-tap');
-    setTimeout(() => fObj.el.classList.remove('wrong-tap'), 300);
+    btn.classList.add('wrong-pick');
     sfxWrong();
-    showToast('❌ Wrong fruit!');
+  }
+  showL3Feedback(correct, img);
+  l3Round++;
+  setTimeout(nextL3Round, 1800);
+}
+
+function showL3Feedback(correct, img) {
+  const fb = document.getElementById('l3-feedback');
+  const label = img.label === 'ai' ? '🤖 AI Generated' : '📷 Real Photo';
+  if (correct === null) {
+    fb.textContent = `⏱ Time's up! It was ${label}. ${img.tell}`;
+    fb.className = 'l3-feedback timeout';
+  } else if (correct) {
+    fb.textContent = `✅ Correct! ${label} — ${img.tell}. +100 pts`;
+    fb.className = 'l3-feedback correct';
+  } else {
+    fb.textContent = `❌ Wrong! It was ${label} — ${img.tell}`;
+    fb.className = 'l3-feedback wrong';
   }
 }
 
 // ============================================================
-// SCORE SYNC
-// ============================================================
-function addMyScore(pts) {
-  if (!myUid || !roomCode) return;
-  // Optimistic local update
-  if (!players[myUid]) players[myUid] = { score: 0 };
-  players[myUid].score = (players[myUid].score || 0) + pts;
-  updateAllScoreDisplays();
-
-  // Firebase update
-  get(dbRef('rooms', roomCode, 'players', myUid, 'score')).then(s => {
-    const cur = s.val() || 0;
-    update(dbRef('rooms', roomCode, 'players', myUid), { score: cur + pts });
-  });
-}
-
-function syncScoresDisplay(containerId) {
-  const cont = document.getElementById(containerId);
-  if (!cont) return;
-  // Listen to player scores live
-  const r = listenOn(`rooms/${roomCode}/players`, snap => {
-    players = snap.val() || {};
-    renderScoreChips(cont);
-  });
-}
-
-function updateAllScoreDisplays() {
-  ['l1-scores', 'l2-scores', 'l3-scores'].forEach(id => {
-    const cont = document.getElementById(id);
-    if (cont && cont.childElementCount > 0) renderScoreChips(cont);
-  });
-}
-
-function renderScoreChips(container) {
-  const sorted = Object.entries(players).sort((a, b) => (b[1].score || 0) - (a[1].score || 0));
-  container.innerHTML = '';
-  sorted.forEach(([uid, p], idx) => {
-    const chip = document.createElement('div');
-    chip.className = 'score-chip' + (idx === 0 ? ' leader' : '');
-    chip.innerHTML = `<span class="chip-name">${p.name}</span><span class="chip-score">${p.score || 0}</span>`;
-    container.appendChild(chip);
-  });
-}
-
-// ============================================================
-// GAME STATE LISTENER
-// ============================================================
-function listenGameSync(cb) {
-  const r = listenOn(`rooms/${roomCode}/game`, snap => {
-    if (!snap.exists()) return;
-    gameState = snap.val();
-    cb(gameState);
-  });
-}
-
-// ============================================================
-// LEVEL 4 — MEMORY FLASH CHALLENGE 🧠
+// LEVEL 4 — MEMORY & DISTRACTION PANIC 🧠
 // ============================================================
 const L4_ROUNDS = 5;
-const L4_EMOJIS = ['🍎','⭐','🎲','🍌','🔥','💎','🎯','🌙','🎪','🦋'];
+const L4_EMOJIS = ['🍎','⭐','🎲','🍌','🔥','💎','🎯','🌙','🎪','🦋','🚀','🎸'];
 const L4_CFG = [
-  { seqLen: 3, showTime: 6000 },
-  { seqLen: 4, showTime: 5000 },
-  { seqLen: 5, showTime: 4000 },
-  { seqLen: 5, showTime: 3000 },
-  { seqLen: 6, showTime: 2400 }
+  { seqLen: 3, showTime: 6000, distractors: 0 },
+  { seqLen: 4, showTime: 5000, distractors: 2 },
+  { seqLen: 5, showTime: 4000, distractors: 3 },
+  { seqLen: 5, showTime: 3000, distractors: 4 },
+  { seqLen: 6, showTime: 2400, distractors: 5 }
+];
+
+const FAKE_POPUPS = [
+  '🔔 YOU HAVE WON A PRIZE! Click here!',
+  '⚠️ VIRUS DETECTED! Tap to remove!',
+  '📱 New message from: Unknown',
+  '🎁 Free gift waiting for you!',
+  '❗ Your battery is critically low',
+  '💬 Someone is typing...',
+  '🔄 Update required immediately',
+  '📢 URGENT: Verify your account',
 ];
 
 function startLevel4() {
@@ -856,34 +799,29 @@ function startLevel4() {
 
 function nextL4Round() {
   stopLocalTimer();
-  if (l4Round >= L4_ROUNDS) {
-    finishLevel(4);
-    return;
-  }
+  clearL4Distractors();
+  if (l4Round >= L4_ROUNDS) { finishLevel(4); return; }
   const cfg = L4_CFG[l4Round];
   document.getElementById('l4-round').textContent = `${l4Round + 1}/${L4_ROUNDS}`;
   l4Sequence = [];
   l4PlayerSeq = [];
   l4CanInput = false;
 
-  // Build random sequence
-  for (let i = 0; i < cfg.seqLen; i++) {
-    l4Sequence.push(L4_EMOJIS[randInt(0, L4_EMOJIS.length - 1)]);
-  }
+  for (let i = 0; i < cfg.seqLen; i++) l4Sequence.push(pick(L4_EMOJIS));
 
-  // Show phase
   const display = document.getElementById('l4-sequence-display');
   const prompt = document.getElementById('l4-prompt');
   const inputArea = document.getElementById('l4-input-area');
   const feedback = document.getElementById('l4-feedback');
+  const distractorLayer = document.getElementById('l4-distractor-layer');
 
   feedback.textContent = '';
   inputArea.innerHTML = '';
+  distractorLayer.innerHTML = '';
   display.innerHTML = l4Sequence.map(e => `<span class="mem-emoji">${e}</span>`).join('');
-  prompt.textContent = `Memorise this sequence!`;
+  prompt.textContent = 'Memorise the sequence!';
   display.classList.remove('hidden');
 
-  // Flash countdown bar
   const bar = document.getElementById('l4-flash-bar');
   bar.style.transition = 'none';
   bar.style.width = '100%';
@@ -892,36 +830,63 @@ function nextL4Round() {
     bar.style.width = '0%';
   }, 50);
 
+  // Spawn distractors during flash phase
+  if (cfg.distractors > 0) {
+    let spawnCount = 0;
+    const interval = cfg.showTime / (cfg.distractors + 1);
+    l4DistractorInterval = setInterval(() => {
+      spawnCount++;
+      spawnFakePopup(distractorLayer);
+      if (spawnCount >= cfg.distractors) {
+        clearInterval(l4DistractorInterval);
+        l4DistractorInterval = null;
+      }
+    }, interval);
+  }
+
   setTimeout(() => {
-    // Hide sequence, show input
+    clearL4Distractors();
     display.classList.add('hidden');
     prompt.textContent = 'Recreate the sequence!';
     bar.style.transition = 'none';
     bar.style.width = '0%';
-    buildL4Input(cfg);
+    buildL4Input();
     l4CanInput = true;
-    startTimerLocal('l4-timer', 'l4-timer-bar', 10, () => {
+    startTimerLocal('l4-timer', 'l4-timer-bar', 12, () => {
       l4CanInput = false;
       showL4Result(false);
     });
   }, cfg.showTime);
 }
 
-function buildL4Input(cfg) {
+function spawnFakePopup(container) {
+  const popup = document.createElement('div');
+  popup.className = 'fake-popup';
+  popup.textContent = pick(FAKE_POPUPS);
+  popup.style.left = `${randInt(5, 65)}%`;
+  popup.style.top  = `${randInt(10, 70)}%`;
+  popup.onclick = () => popup.remove(); // clicking it dismisses (no penalty)
+  container.appendChild(popup);
+  setTimeout(() => { if (popup.parentNode) popup.remove(); }, 2000);
+}
+
+function clearL4Distractors() {
+  if (l4DistractorInterval) { clearInterval(l4DistractorInterval); l4DistractorInterval = null; }
+  const layer = document.getElementById('l4-distractor-layer');
+  if (layer) layer.innerHTML = '';
+}
+
+function buildL4Input() {
   const inputArea = document.getElementById('l4-input-area');
   const slotArea = document.getElementById('l4-slots');
   inputArea.innerHTML = '';
   slotArea.innerHTML = '';
 
-  // Count how many times each emoji appears in the sequence
   const seqCounts = {};
   l4Sequence.forEach(e => { seqCounts[e] = (seqCounts[e] || 0) + 1; });
-
-  // Build pool: one button per unique emoji, but each button tracks remaining uses
   const pool = Object.keys(seqCounts);
-  // Pad with distractors
   while (pool.length < Math.min(L4_EMOJIS.length, l4Sequence.length + 3)) {
-    const e = L4_EMOJIS[randInt(0, L4_EMOJIS.length - 1)];
+    const e = pick(L4_EMOJIS);
     if (!pool.includes(e)) pool.push(e);
   }
 
@@ -931,12 +896,9 @@ function buildL4Input(cfg) {
     const btn = document.createElement('button');
     btn.className = 'mem-btn';
     btn.textContent = emoji;
-    // Show count badge if this emoji appears more than once
     const updateBadge = () => {
       btn.dataset.uses = usesLeft;
-      if (maxUses > 1) {
-        btn.setAttribute('data-count', usesLeft > 0 ? `×${usesLeft}` : '');
-      }
+      if (maxUses > 1) btn.setAttribute('data-count', usesLeft > 0 ? `×${usesLeft}` : '');
       btn.disabled = usesLeft <= 0;
     };
     updateBadge();
@@ -949,7 +911,6 @@ function buildL4Input(cfg) {
     inputArea.appendChild(btn);
   });
 
-  // Answer slots
   for (let i = 0; i < l4Sequence.length; i++) {
     const slot = document.createElement('div');
     slot.className = 'mem-slot';
@@ -962,58 +923,278 @@ function handleL4Pick(emoji) {
   if (!l4CanInput) return;
   const idx = l4PlayerSeq.length;
   if (idx >= l4Sequence.length) return;
-
   l4PlayerSeq.push(emoji);
   const slots = document.querySelectorAll('.mem-slot');
-  if (slots[idx]) {
-    slots[idx].textContent = emoji;
-    slots[idx].classList.add('filled');
-  }
-
+  if (slots[idx]) { slots[idx].textContent = emoji; slots[idx].classList.add('filled'); }
   if (l4PlayerSeq.length === l4Sequence.length) {
     l4CanInput = false;
     stopLocalTimer();
-    const correct = l4PlayerSeq.every((e, i) => e === l4Sequence[i]);
-    showL4Result(correct);
+    showL4Result(l4PlayerSeq.every((e, i) => e === l4Sequence[i]));
   }
 }
 
 function showL4Result(correct) {
   const feedback = document.getElementById('l4-feedback');
-  // Reveal correct sequence
   const display = document.getElementById('l4-sequence-display');
   display.innerHTML = l4Sequence.map((e, i) => {
-    const playerE = l4PlayerSeq[i];
-    const ok = playerE === e;
-    return `<span class="mem-emoji ${correct ? 'correct' : (playerE ? (ok ? 'correct' : 'wrong') : 'missing')}">${e}</span>`;
+    const pe = l4PlayerSeq[i];
+    const ok = pe === e;
+    return `<span class="mem-emoji ${correct ? 'correct' : (pe ? (ok ? 'correct' : 'wrong') : 'missing')}">${e}</span>`;
   }).join('');
   display.classList.remove('hidden');
-
   if (correct) {
-    const pts = 150;
-    addMyScore(pts);
-    sfxCorrect();
-    feedback.textContent = `✅ Perfect! +${pts} pts`;
+    addMyScore(150); sfxCorrect();
+    feedback.textContent = '✅ Perfect memory! +150 pts';
     feedback.className = 'l4-feedback correct';
   } else {
     sfxWrong();
-    feedback.textContent = '❌ Wrong order!';
+    feedback.textContent = '❌ Wrong order! Focus harder next time.';
     feedback.className = 'l4-feedback wrong';
   }
   l4Round++;
   setTimeout(nextL4Round, 1600);
 }
 
+// ============================================================
+// LEVEL 5 — CROWDED SCREEN EXTREME 👀
+// ============================================================
+const L5_ROUNDS = 6;
+const L5_CFG = [
+  { time: 10, distractors: 4  },
+  { time: 9,  distractors: 6  },
+  { time: 8,  distractors: 8  },
+  { time: 7,  distractors: 10 },
+  { time: 6,  distractors: 12 },
+  { time: 5,  distractors: 14 }
+];
+
+const CHAOS_EMOJIS = ['🔔','💬','⚠️','📱','🎁','❗','🔄','📢','💥','🌀','⭐','🔥','💎','🎯','🎪'];
+
+// Mini-challenge types for chaos mode
+const L5_CHALLENGES = [
+  () => ({
+    type: 'spot',
+    pool: pick(SPOT_POOLS),
+    generate(el) {
+      const items = 9;
+      el.innerHTML = '';
+      const p = this.pool;
+      const oddIdx = randInt(0, items - 1);
+      el.style.display = 'grid';
+      el.style.gridTemplateColumns = 'repeat(3,1fr)';
+      el.style.gap = '6px';
+      this.oddEl = null;
+      for (let i = 0; i < items; i++) {
+        const c = document.createElement('button');
+        c.className = 'chaos-spot-cell';
+        c.textContent = i === oddIdx ? p.odd : p.base;
+        if (i === oddIdx) { this.oddEl = c; this.isOdd = true; }
+        el.appendChild(c);
+        c.onclick = () => this.onPick(i === oddIdx);
+      }
+    },
+    prompt: 'Find the ODD ONE OUT! 🔍',
+    onPick(correct) { this._resolve(correct); }
+  }),
+  () => ({
+    type: 'hai',
+    sample: pick(L2_SAMPLES),
+    generate(el) {
+      el.style.display = 'block';
+      el.innerHTML = '';
+      const card = document.createElement('div');
+      card.className = 'chaos-text-card';
+      card.textContent = this.sample.text;
+      el.appendChild(card);
+      const btns = document.createElement('div');
+      btns.className = 'chaos-btns';
+      ['human','ai'].forEach(v => {
+        const b = document.createElement('button');
+        b.className = 'hai-btn chaos-hai';
+        b.dataset.val = v;
+        b.textContent = v === 'human' ? '👤 Human' : '🤖 AI';
+        b.onclick = () => this.onPick(v === this.sample.label);
+        btns.appendChild(b);
+      });
+      el.appendChild(btns);
+    },
+    prompt: 'Human or AI? 🤖',
+    onPick(correct) { this._resolve(correct); }
+  }),
+  () => {
+    const target = pick(CHAOS_EMOJIS);
+    const pool = shuffle([...CHAOS_EMOJIS]).slice(0, 6);
+    if (!pool.includes(target)) pool[0] = target;
+    return {
+      type: 'find',
+      target, pool: shuffle(pool),
+      generate(el) {
+        el.style.display = 'flex';
+        el.style.flexWrap = 'wrap';
+        el.style.gap = '8px';
+        el.innerHTML = '';
+        this.pool.forEach(e => {
+          const b = document.createElement('button');
+          b.className = 'chaos-find-btn';
+          b.textContent = e;
+          b.onclick = () => this.onPick(e === this.target);
+          el.appendChild(b);
+        });
+      },
+      prompt: `Tap: ${target}`,
+      onPick(correct) { this._resolve(correct); }
+    };
+  }
+];
+
+function startLevel5() {
+  l5Round = 0;
+  showScreen('screen-level5');
+  setupMuteButtons();
+  syncScoresDisplay('l5-scores');
+  nextL5Round();
+}
+
+function nextL5Round() {
+  stopLocalTimer();
+  stopL5Distractors();
+  if (l5Round >= L5_ROUNDS) { finishLevel(5); return; }
+
+  const cfg = L5_CFG[l5Round];
+  document.getElementById('l5-round').textContent = `${l5Round + 1}/${L5_ROUNDS}`;
+  document.getElementById('l5-feedback').textContent = '';
+
+  // Pick and build a random mini-challenge
+  const factory = pick(L5_CHALLENGES);
+  const challenge = factory();
+  challenge._resolve = null;
+  l5CanClick = true;
+
+  const arena = document.getElementById('l5-arena');
+  const prompt = document.getElementById('l5-prompt');
+  prompt.textContent = challenge.prompt;
+  challenge.generate(arena);
+
+  // Wire resolve
+  challenge._resolve = (correct) => {
+    if (!l5CanClick) return;
+    l5CanClick = false;
+    stopLocalTimer();
+    stopL5Distractors();
+    const fb = document.getElementById('l5-feedback');
+    if (correct) {
+      addMyScore(120); sfxCorrect();
+      fb.textContent = '✅ +120 pts!';
+      fb.className = 'l5-feedback correct';
+    } else {
+      sfxWrong();
+      fb.textContent = '❌ Wrong!';
+      fb.className = 'l5-feedback wrong';
+    }
+    // Disable all buttons
+    arena.querySelectorAll('button').forEach(b => b.disabled = true);
+    l5Round++;
+    setTimeout(nextL5Round, 900);
+  };
+
+  // Spawn background chaos
+  spawnL5Distractors(cfg.distractors);
+
+  startTimerLocal('l5-timer', 'l5-timer-bar', cfg.time, () => {
+    if (!l5CanClick) return;
+    l5CanClick = false;
+    stopL5Distractors();
+    sfxWrong();
+    const fb = document.getElementById('l5-feedback');
+    fb.textContent = '⏱ Too slow!';
+    fb.className = 'l5-feedback timeout';
+    arena.querySelectorAll('button').forEach(b => b.disabled = true);
+    l5Round++;
+    setTimeout(nextL5Round, 900);
+  });
+}
+
+function spawnL5Distractors(count) {
+  const bg = document.getElementById('l5-distractor-bg');
+  bg.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'chaos-distractor';
+    el.textContent = pick(CHAOS_EMOJIS);
+    const x = randInt(0, 85);
+    const y = randInt(0, 85);
+    const dur = rand(2, 5).toFixed(1);
+    const delay = rand(0, 2).toFixed(1);
+    el.style.cssText = `left:${x}%;top:${y}%;animation:chaosFloat ${dur}s ${delay}s ease-in-out infinite alternate;`;
+    bg.appendChild(el);
+  }
+}
+
+function stopL5Distractors() {
+  const bg = document.getElementById('l5-distractor-bg');
+  if (bg) bg.innerHTML = '';
+}
+
+// ============================================================
+// SCORE SYNC
+// ============================================================
+function addMyScore(pts) {
+  if (!myUid || !roomCode) return;
+  if (!players[myUid]) players[myUid] = { score: 0 };
+  players[myUid].score = (players[myUid].score || 0) + pts;
+  updateAllScoreDisplays();
+  get(dbRef('rooms', roomCode, 'players', myUid, 'score')).then(s => {
+    const cur = s.val() || 0;
+    update(dbRef('rooms', roomCode, 'players', myUid), { score: cur + pts });
+  });
+}
+
+function syncScoresDisplay(containerId) {
+  const cont = document.getElementById(containerId);
+  if (!cont) return;
+  listenOn(`rooms/${roomCode}/players`, snap => {
+    players = snap.val() || {};
+    renderScoreChips(cont);
+  });
+}
+
+function updateAllScoreDisplays() {
+  ['l1-scores','l2-scores','l3-scores','l4-scores','l5-scores'].forEach(id => {
+    const cont = document.getElementById(id);
+    if (cont && cont.childElementCount > 0) renderScoreChips(cont);
+  });
+}
+
+function renderScoreChips(container) {
+  const sorted = Object.entries(players).sort((a,b) => (b[1].score||0)-(a[1].score||0));
+  container.innerHTML = '';
+  sorted.forEach(([uid,p], idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'score-chip' + (idx===0 ? ' leader' : '');
+    chip.innerHTML = `<span class="chip-name">${p.name}</span><span class="chip-score">${p.score||0}</span>`;
+    container.appendChild(chip);
+  });
+}
+
+// ============================================================
+// GAME STATE LISTENER
+// ============================================================
+function listenGameSync(cb) {
+  listenOn(`rooms/${roomCode}/game`, snap => {
+    if (!snap.exists()) return;
+    gameState = snap.val();
+    cb(gameState);
+  });
+}
 
 // ============================================================
 // BETWEEN LEVELS / LEADERBOARD
 // ============================================================
 function finishLevel(levelNum) {
   stopLocalTimer();
-  stopFruitAnimation();
+  clearL4Distractors();
+  stopL5Distractors();
   sfxLevelUp();
-
-  // Fetch latest scores from Firebase
   get(dbRef('rooms', roomCode, 'players')).then(snap => {
     players = snap.val() || {};
     showBetweenScreen(levelNum);
@@ -1023,9 +1204,8 @@ function finishLevel(levelNum) {
 function showBetweenScreen(levelNum) {
   const nextLevel = levelNum + 1;
   document.getElementById('between-title').textContent =
-    levelNum < 4 ? `Level ${levelNum} Complete! 🎉` : 'Final Level Done! 🏆';
+    levelNum < 5 ? `Level ${levelNum} Complete! 🎉` : 'Final Level Done! 🏆';
   document.getElementById('between-sub').textContent = `Leaderboard after Level ${levelNum}`;
-
   renderLeaderboard('leaderboard-between', players);
   showScreen('screen-between');
 
@@ -1035,16 +1215,17 @@ function showBetweenScreen(levelNum) {
   if (isHost) {
     nextBtn.classList.remove('hidden');
     nextBtn.disabled = false;
-    nextBtn.textContent = nextLevel <= 4 ? `Next Level →` : 'See Results →';
+    nextBtn.textContent = nextLevel <= 5 ? `Next Level →` : 'See Results →';
     nextBtn.onclick = () => {
       nextBtn.disabled = true;
       sfxClick();
-      const nextLvl = levelNum < 4 ? levelNum + 1 : 'results';
+      const nextLvl = levelNum < 5 ? levelNum + 1 : 'results';
       update(dbRef('rooms', roomCode), { 'game/level': nextLvl });
       doCountdown(() => {
         if (levelNum === 1) startLevel2();
         else if (levelNum === 2) startLevel3();
         else if (levelNum === 3) startLevel4();
+        else if (levelNum === 4) startLevel5();
         else showFinalResults();
       });
     };
@@ -1055,17 +1236,14 @@ function showBetweenScreen(levelNum) {
     clearListeners();
     listenOn(`rooms/${roomCode}/game/level`, snap => {
       const lvl = snap.val();
-      if (lvl === 'results') {
-        clearListeners();
-        showFinalResults();
-        return;
-      }
+      if (lvl === 'results') { clearListeners(); showFinalResults(); return; }
       if (lvl > levelNum) {
         clearListeners();
         doCountdown(() => {
           if (lvl === 2) startLevel2();
           else if (lvl === 3) startLevel3();
           else if (lvl === 4) startLevel4();
+          else if (lvl === 5) startLevel5();
         });
       }
     });
@@ -1077,9 +1255,9 @@ function showBetweenScreen(levelNum) {
 // ============================================================
 function showFinalResults() {
   stopLocalTimer();
-  stopFruitAnimation();
+  clearL4Distractors();
+  stopL5Distractors();
   stopJazz();
-
   get(dbRef('rooms', roomCode, 'players')).then(snap => {
     players = snap.val() || {};
     renderResults();
@@ -1088,110 +1266,81 @@ function showFinalResults() {
 
 function renderResults() {
   const sorted = Object.entries(players)
-    .sort((a, b) => (b[1].score || 0) - (a[1].score || 0))
-    .map(([uid, p], i) => ({ uid, ...p, rank: i + 1 }));
+    .sort((a,b) => (b[1].score||0)-(a[1].score||0))
+    .map(([uid,p],i) => ({uid,...p,rank:i+1}));
 
-  // Podium
   const podium = document.getElementById('podium');
   podium.innerHTML = '';
   const podiumOrder = sorted.length >= 2
-    ? [sorted[1], sorted[0], sorted[2]].filter(Boolean)
+    ? [sorted[1], sorted[0], sorted[2], sorted[3], sorted[4]].filter(Boolean)
     : sorted;
+  const medals = ['🥈','🥇','🥉','4️⃣','5️⃣'];
+  const heights = ['70px','90px','55px','45px','40px'];
 
-  const medals = ['🥈', '🥇', '🥉'];
-  const rankClasses = ['rank-2', 'rank-1', 'rank-3'];
-  const heights = ['70px', '90px', '55px'];
-
-  podiumOrder.forEach((p, i) => {
+  podiumOrder.forEach((p,i) => {
     const realRank = sorted.findIndex(s => s.uid === p.uid) + 1;
     const block = document.createElement('div');
     block.className = `podium-block rank-${realRank}`;
     block.innerHTML = `
-      <div class="podium-name">${p.name}${p.uid === myUid ? ' (you)' : ''}</div>
-      <div class="podium-score">${p.score || 0} pts</div>
+      <div class="podium-name">${p.name}${p.uid===myUid?' (you)':''}</div>
+      <div class="podium-score">${p.score||0} pts</div>
       <div class="podium-platform" style="min-height:${heights[i]}">
         <div class="podium-medal">${medals[i]}</div>
         <div class="podium-pos">#${realRank}</div>
-      </div>
-    `;
+      </div>`;
     podium.appendChild(block);
   });
 
-  // Full list
   renderLeaderboard('full-leaderboard', players, true);
 
-  // Host gets play again button
   const paBtn = document.getElementById('btn-play-again');
   if (isHost) {
     paBtn.classList.remove('hidden');
-    paBtn.onclick = () => {
-      sfxClick();
-      resetGame();
-    };
+    paBtn.onclick = () => { sfxClick(); resetGame(); };
   } else {
     paBtn.classList.add('hidden');
   }
-
   showScreen('screen-results');
-
-  // Confetti for winner
-  if (sorted[0]?.uid === myUid) {
-    spawnConfetti();
-  }
+  if (sorted[0]?.uid === myUid) spawnConfetti();
 }
 
 function renderLeaderboard(containerId, playerData, isFinal = false) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
-  const sorted = Object.entries(playerData)
-    .sort((a, b) => (b[1].score || 0) - (a[1].score || 0));
-
-  const medals = ['🥇', '🥈', '🥉', '4️⃣'];
-  sorted.forEach(([uid, p], i) => {
+  const sorted = Object.entries(playerData).sort((a,b) => (b[1].score||0)-(a[1].score||0));
+  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',
+    ...Array.from({length:30},(_,i)=>`${i+11}`)];
+  sorted.forEach(([uid,p],i) => {
     const row = document.createElement('div');
-    row.className = `lb-row rank-${i + 1}`;
-    const nameEl = `<span class="lb-name${uid === myUid ? ' you-tag' : ''}">${p.name}</span>`;
-    row.innerHTML = `
-      <span class="lb-rank">${medals[i] || (i + 1)}</span>
-      ${nameEl}
-      <span class="lb-score">${p.score || 0}</span>
-    `;
+    row.className = `lb-row rank-${i+1}`;
+    const nameEl = `<span class="lb-name${uid===myUid?' you-tag':''}">${p.name}</span>`;
+    row.innerHTML = `<span class="lb-rank">${medals[i]||i+1}</span>${nameEl}<span class="lb-score">${p.score||0}</span>`;
     container.appendChild(row);
   });
 }
 
 // ============================================================
-// TIMER (local, visual only — each player runs their own)
+// TIMER
 // ============================================================
 function startTimerLocal(timerId, barId, seconds, onEnd) {
   stopLocalTimer();
   let remaining = seconds;
   const timerEl = document.getElementById(timerId);
-  const barEl = document.getElementById(barId);
-
+  const barEl   = document.getElementById(barId);
   if (timerEl) { timerEl.textContent = remaining; timerEl.classList.remove('warn'); }
-  if (barEl) { barEl.style.width = '100%'; barEl.classList.remove('warn'); }
-
+  if (barEl)   { barEl.style.width = '100%'; barEl.classList.remove('warn'); }
   localTimerId = setInterval(() => {
     remaining--;
     if (timerEl) {
       timerEl.textContent = remaining;
-      if (remaining <= 3) {
-        timerEl.classList.add('warn');
-        sfxTimerWarn();
-      }
+      if (remaining <= 3) { timerEl.classList.add('warn'); sfxTimerWarn(); }
     }
     if (barEl) {
-      const pct = Math.max(0, (remaining / seconds) * 100);
-      barEl.style.width = pct + '%';
+      barEl.style.width = Math.max(0,(remaining/seconds)*100) + '%';
       if (remaining <= 3) barEl.classList.add('warn');
     }
-    if (remaining <= 0) {
-      stopLocalTimer();
-      onEnd();
-    }
+    if (remaining <= 0) { stopLocalTimer(); onEnd(); }
   }, 1000);
-
   localTimerRemaining = seconds;
 }
 
@@ -1209,31 +1358,20 @@ function setupMuteButtons() {
 // CONFETTI
 // ============================================================
 function spawnConfetti() {
-  const colors = ['#e94560', '#4f8ef7', '#4ade80', '#fbbf24', '#c084fc'];
+  const colors = ['#e94560','#4f8ef7','#4ade80','#fbbf24','#c084fc'];
   for (let i = 0; i < 60; i++) {
     setTimeout(() => {
       const el = document.createElement('div');
       el.className = 'confetti';
-      el.style.cssText = `
-        left:${rand(10, 90)}vw; top:-10px;
-        width:${rand(6, 12)}px; height:${rand(6, 12)}px;
-        background:${colors[randInt(0, colors.length - 1)]};
-        border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
-        animation: confettiFall ${rand(1.5, 3)}s linear forwards;
-      `;
+      el.style.cssText = `left:${rand(10,90)}vw;top:-10px;width:${rand(6,12)}px;height:${rand(6,12)}px;background:${pick(colors)};border-radius:${Math.random()>0.5?'50%':'2px'};animation:confettiFall ${rand(1.5,3)}s linear forwards;`;
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 3200);
     }, i * 40);
   }
-
-  // Inject confetti keyframes once
   if (!document.getElementById('confetti-style')) {
     const s = document.createElement('style');
     s.id = 'confetti-style';
-    s.textContent = `@keyframes confettiFall {
-      from { transform: translateY(0) rotate(0deg); opacity: 1; }
-      to { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-    }`;
+    s.textContent = `@keyframes confettiFall{from{transform:translateY(0) rotate(0deg);opacity:1}to{transform:translateY(100vh) rotate(720deg);opacity:0}}`;
     document.head.appendChild(s);
   }
 }
@@ -1243,35 +1381,22 @@ function spawnConfetti() {
 // ============================================================
 async function resetGame() {
   if (isHost && roomCode) {
-    // Reset all player scores
     const updates = {};
-    Object.keys(players).forEach(uid => {
-      updates[`players/${uid}/score`] = 0;
-    });
-    updates['game/level'] = 1;
-    updates['game/round'] = 0;
+    Object.keys(players).forEach(uid => { updates[`players/${uid}/score`] = 0; });
+    updates['game/level'] = 1; updates['game/round'] = 0;
     updates['game/phase'] = 'countdown';
     updates['game/roundSeed'] = Math.floor(Math.random() * 100000);
     updates['status'] = 'lobby';
     await update(dbRef('rooms', roomCode), updates);
   }
-  clearListeners();
-  stopLocalTimer();
-  stopFruitAnimation();
-  Object.keys(players).forEach(uid => {
-    if (players[uid]) players[uid].score = 0;
-  });
+  clearListeners(); stopLocalTimer(); clearL4Distractors(); stopL5Distractors();
+  Object.keys(players).forEach(uid => { if (players[uid]) players[uid].score = 0; });
   openLobby();
 }
 
 function resetToMenu() {
-  clearListeners();
-  stopLocalTimer();
-  stopFruitAnimation();
-  stopJazz();
-  players = {};
-  roomCode = '';
-  isHost = false;
+  clearListeners(); stopLocalTimer(); clearL4Distractors(); stopL5Distractors(); stopJazz();
+  players = {}; roomCode = ''; isHost = false;
   showScreen('screen-menu');
 }
 
@@ -1283,41 +1408,36 @@ document.getElementById('btn-create').addEventListener('click', () => {
   document.getElementById('modal-create').classList.remove('hidden');
   document.getElementById('input-host-name').focus();
 });
-
 document.getElementById('btn-create-cancel').addEventListener('click', () => {
   document.getElementById('modal-create').classList.add('hidden');
 });
-
 document.getElementById('btn-create-confirm').addEventListener('click', async () => {
   const name = document.getElementById('input-host-name').value.trim();
-  if (!name) { showError('create-error', 'Please enter your name.'); return; }
+  if (!name) { showError('create-error','Please enter your name.'); return; }
   document.getElementById('btn-create-confirm').disabled = true;
   sfxClick();
   try {
     await createRoom(name);
     document.getElementById('modal-create').classList.add('hidden');
-  } catch (e) {
-    showError('create-error', 'Failed to create room. Check Firebase config.');
+  } catch(e) {
+    showError('create-error','Failed to create room. Check Firebase config.');
     console.error(e);
   }
   document.getElementById('btn-create-confirm').disabled = false;
 });
-
 document.getElementById('btn-join-open').addEventListener('click', () => {
   sfxClick();
   document.getElementById('modal-join').classList.remove('hidden');
   document.getElementById('input-name').focus();
 });
-
 document.getElementById('btn-join-cancel').addEventListener('click', () => {
   document.getElementById('modal-join').classList.add('hidden');
 });
-
 document.getElementById('btn-join-confirm').addEventListener('click', async () => {
   const name = document.getElementById('input-name').value.trim();
   const code = document.getElementById('input-code').value.trim().toUpperCase();
-  if (!name) { showError('join-error', 'Enter your name.'); return; }
-  if (code.length < 4) { showError('join-error', 'Enter the 4-character room code.'); return; }
+  if (!name) { showError('join-error','Enter your name.'); return; }
+  if (code.length < 4) { showError('join-error','Enter the 4-character room code.'); return; }
   document.getElementById('btn-join-confirm').disabled = true;
   sfxClick();
   const err = await joinRoom(name, code);
@@ -1325,12 +1445,10 @@ document.getElementById('btn-join-confirm').addEventListener('click', async () =
   else { document.getElementById('modal-join').classList.add('hidden'); }
   document.getElementById('btn-join-confirm').disabled = false;
 });
-
 document.getElementById('btn-copy-code').addEventListener('click', () => {
   navigator.clipboard?.writeText(roomCode).catch(() => {});
   showToast('Room code copied!');
 });
-
 document.getElementById('btn-leave-lobby').addEventListener('click', async () => {
   sfxClick();
   if (roomCode && myUid) {
@@ -1339,52 +1457,31 @@ document.getElementById('btn-leave-lobby').addEventListener('click', async () =>
   }
   resetToMenu();
 });
-
-document.getElementById('btn-main-menu').addEventListener('click', () => {
-  sfxClick();
-  resetToMenu();
-});
-
-document.getElementById('btn-gameover-menu').addEventListener('click', () => {
-  sfxClick();
-  resetToMenu();
-});
-
-document.getElementById('btn-gameover-again').addEventListener('click', () => {
-  sfxClick();
-  resetGame();
-});
+document.getElementById('btn-main-menu').addEventListener('click', () => { sfxClick(); resetToMenu(); });
+document.getElementById('btn-gameover-menu').addEventListener('click', () => { sfxClick(); resetToMenu(); });
+document.getElementById('btn-gameover-again').addEventListener('click', () => { sfxClick(); resetGame(); });
 
 // ============================================================
 // KEYBOARD SUPPORT
 // ============================================================
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
-    const createModal = document.getElementById('modal-create');
-    const joinModal = document.getElementById('modal-join');
-    if (!createModal.classList.contains('hidden')) {
-      document.getElementById('btn-create-confirm').click();
-    } else if (!joinModal.classList.contains('hidden')) {
-      document.getElementById('btn-join-confirm').click();
-    }
+    const cm = document.getElementById('modal-create');
+    const jm = document.getElementById('modal-join');
+    if (!cm.classList.contains('hidden')) document.getElementById('btn-create-confirm').click();
+    else if (!jm.classList.contains('hidden')) document.getElementById('btn-join-confirm').click();
   }
   if (e.key === 'Escape') {
     document.getElementById('modal-create').classList.add('hidden');
     document.getElementById('modal-join').classList.add('hidden');
   }
 });
-
-// Uppercase room code input
-document.getElementById('input-code').addEventListener('input', e => {
-  e.target.value = e.target.value.toUpperCase();
-});
+document.getElementById('input-code').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 
 // ============================================================
 // AUTOPLAY FIX
 // ============================================================
-document.addEventListener('click', () => {
-  if (musicOn && !jazzInterval) startJazz();
-}, { once: true });
+document.addEventListener('click', () => { if (musicOn && !jazzInterval) startJazz(); }, { once: true });
 
 // ============================================================
 // BOOT
@@ -1392,18 +1489,20 @@ document.addEventListener('click', () => {
 async function boot() {
   document.getElementById('loading-msg').textContent = 'Connecting...';
   showScreen('screen-loading');
-
   try {
     await initAuth();
     initConnectionMonitor();
     document.getElementById('loading-msg').textContent = 'Ready!';
     await new Promise(r => setTimeout(r, 600));
     showScreen('screen-menu');
-  } catch (e) {
-    document.getElementById('loading-msg').textContent =
-      'Firebase connection failed. Check your config in firebase.js';
+  } catch(e) {
+    document.getElementById('loading-msg').textContent = 'Firebase connection failed. Check your config in firebase.js';
     console.error('Boot error:', e);
   }
 }
 
 boot();
+
+// ===== EXPOSE CLICK HANDLERS (module scope fix) =====
+window.handleL2Click = handleL2Click;
+window.handleL3Click = handleL3Click;
