@@ -25,6 +25,10 @@
     <button class="btn-main" id="btn-create">🏠 Create Room</button>
     <button class="btn-secondary" id="btn-join-open">🔗 Join Room</button>
     <div class="menu-foot">Up to 40 players • 3 levels • Real-time</div>
+    <div class="qr-wrap">
+      <div class="qr-label">Scan to join</div>
+      <div id="qr-code"></div>
+    </div>
   </div>
 </div>
 
@@ -186,6 +190,17 @@
   <span class="conn-label" id="conn-label">Connected</span>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  new QRCode(document.getElementById('qr-code'), {
+    text: 'https://fast-access-challenge-m3n6.vercel.app/',
+    width: 140,
+    height: 140,
+    colorDark: '#ffffff',
+    colorLight: '#12122a',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>
