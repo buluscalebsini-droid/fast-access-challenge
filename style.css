@@ -484,7 +484,111 @@ html, body {
 .podium-block.rank-4 .podium-platform { background: rgba(192,84,247,0.10); border: 1px solid #c054f7; min-height: 45px; }
 .podium-block.rank-5 .podium-platform { background: rgba(84,247,230,0.10); border: 1px solid #54f7e6; min-height: 40px; }
 
-/* ===== UTILITY ===== */
+/* ===== LEVEL 4 — MEMORY FLASH ===== */
+.flash-bar-wrap {
+  width: 100%; max-width: 400px; height: 6px;
+  background: var(--bg3); border-radius: 4px;
+  margin: 0 auto 8px; overflow: hidden;
+}
+.flash-bar {
+  height: 100%; width: 100%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  border-radius: 4px;
+}
+.mem-sequence {
+  display: flex; justify-content: center; flex-wrap: wrap;
+  gap: 8px; min-height: 52px; margin-bottom: 10px;
+}
+.mem-sequence.hidden { visibility: hidden; }
+.mem-emoji {
+  font-size: 34px; line-height: 1;
+  padding: 4px 6px;
+  background: var(--bg3);
+  border: 2px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s;
+}
+.mem-emoji.correct { border-color: var(--accent3); background: rgba(74,222,128,0.12); }
+.mem-emoji.wrong   { border-color: var(--accent);  background: rgba(233,69,96,0.12); }
+.mem-emoji.missing { border-color: var(--text-muted); opacity: 0.5; }
+
+.mem-slots {
+  display: flex; justify-content: center; gap: 8px;
+  flex-wrap: wrap; min-height: 52px; margin-bottom: 10px;
+}
+.mem-slot {
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  background: var(--bg3);
+  border: 2px dashed var(--card-border);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s, background 0.2s;
+}
+.mem-slot.filled { border-style: solid; border-color: var(--accent2); background: rgba(79,142,247,0.1); }
+
+.mem-input {
+  display: flex; justify-content: center; flex-wrap: wrap; gap: 8px;
+  max-width: 360px; margin: 0 auto;
+}
+.mem-btn {
+  font-size: 28px; padding: 8px 10px;
+  background: var(--bg3);
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s, opacity 0.2s;
+}
+.mem-btn:hover { background: rgba(255,255,255,0.08); transform: scale(1.1); }
+.mem-btn:active { transform: scale(0.95); }
+.mem-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+.l4-feedback {
+  font-size: 16px; font-weight: 700; text-align: center;
+  min-height: 24px; margin-top: 4px;
+}
+.l4-feedback.correct { color: var(--accent3); }
+.l4-feedback.wrong   { color: var(--accent); }
+
+/* ===== LEVEL 5 — REVERSE CONTROLS ===== */
+.l5-warning {
+  background: rgba(233,69,96,0.15);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px; font-weight: 700;
+  text-align: center;
+  margin-bottom: 8px;
+  animation: warningPulse 0.6s ease;
+}
+@keyframes warningPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+.reverse-tag {
+  font-size: 12px; color: var(--accent);
+  font-weight: 700; margin-left: 6px;
+}
+.reverse-options {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 10px; max-width: 380px; margin: 0 auto;
+}
+.reverse-btn {
+  min-width: 70px; padding: 14px 18px;
+  background: var(--bg3);
+  color: var(--text);
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  font-size: 20px; font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.12s, border-color 0.15s;
+  font-family: 'Courier New', monospace;
+}
+.reverse-btn:hover { background: rgba(255,255,255,0.07); transform: scale(1.05); border-color: var(--accent2); }
+.reverse-btn:active { transform: scale(0.96); }
+.reverse-btn:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+.reverse-btn.correct-pick { background: rgba(74,222,128,0.15); border-color: var(--accent3); color: var(--accent3); }
+.reverse-btn.wrong-pick   { background: rgba(233,69,96,0.15);  border-color: var(--accent);  color: var(--accent); }
+
+
 .hidden { display: none !important; }
 
 /* ===== RESPONSIVE ===== */
