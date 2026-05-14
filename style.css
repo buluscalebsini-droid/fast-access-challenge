@@ -76,6 +76,18 @@ html, body {
 }
 .menu-subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 36px; letter-spacing: 2px; text-transform: uppercase; }
 .menu-foot { font-size: 12px; color: var(--text-muted); margin-top: 20px; }
+.qr-wrap {
+  margin-top: 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.qr-label { font-size: 12px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
+#qr-code {
+  padding: 10px;
+  background: #12122a;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+}
+#qr-code img, #qr-code canvas { display: block; border-radius: 4px; }
 
 /* ===== BUTTONS ===== */
 .btn-main {
