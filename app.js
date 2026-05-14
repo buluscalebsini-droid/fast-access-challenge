@@ -855,6 +855,7 @@ function showBetweenScreen(levelNum) {
 
   if (isHost) {
     nextBtn.classList.remove('hidden');
+    nextBtn.disabled = false;
     nextBtn.textContent = nextLevel <= 3 ? `Next Level →` : 'See Results →';
     nextBtn.onclick = () => {
       nextBtn.disabled = true;
