@@ -147,9 +147,9 @@ function updateComboDisplay() {
     }
   });
 }
-function showScorePopup(text) {
+function showScorePopup(text, penalty=false) {
   const el=document.createElement('div');
-  el.className='score-popup'; el.textContent=text;
+  el.className='score-popup'+(penalty?' penalty':''); el.textContent=text;
   document.body.appendChild(el);
   setTimeout(()=>el.remove(),900);
 }
@@ -332,19 +332,41 @@ function animateCN(el){el.style.animation='none';void el.offsetWidth;el.style.an
 // LEVEL 1 — WORD CHAOS 📝
 // ============================================================
 const WORD_POOL=[
-  {correct:'receive',    variants:['recieve','receeve','recevie','recive','reciive','receivve','receiev','receeive']},
-  {correct:'separate',   variants:['seperate','seperete','separete','saparate','seperatee','saparete','separeate','seperatte']},
-  {correct:'necessary',  variants:['neccessary','necessery','nesessary','necesary','neccesary','necessarry','necesery','nessecary']},
-  {correct:'calendar',   variants:['calender','calandar','calander','callender','calandir','calenddar','calanderr','callander']},
-  {correct:'achieve',    variants:['acheive','acheeve','achiive','achivee','achive','achiev','acheevee','achiieve']},
-  {correct:'occurred',   variants:['occured','ocurred','occuried','ocurreed','occureed','occurrred','ocured','occuride']},
-  {correct:'definitely', variants:['definately','definitly','definitley','defenitely','definiteley','deffinitely','definitley','definetly']},
-  {correct:'beginning',  variants:['begining','begginning','beggining','beginig','beginninng','begginig','begening','beginninng']},
-  {correct:'embarrass',  variants:['embarass','embarres','embarras','embarasss','embarress','embarrase','embaresse','embaras']},
-  {correct:'conscience', variants:['concience','consience','consicence','conscence','consciense','conssience','consciece','consciance']},
-  {correct:'privilege',  variants:['privilage','privelege','privelige','privelage','priviledge','privillege','privlege','privelege']},
-  {correct:'immediately',variants:['imediately','immediatley','imediatly','immeditaly','immediatly','imediately','immidiatly','immeditly']},
+  // Simple everyday words with visually confusing misspellings
+  {correct:'table',    variants:['tabel','tabble','tabele','tablle','taable','tble','talbe','tablee']},
+  {correct:'truck',    variants:['truk','trucck','trucc','trcuk','turck','trruck','truuck','trucke']},
+  {correct:'simple',   variants:['simpple','simpel','simble','simpol','simlpe','simppe','symple','simplee']},
+  {correct:'bottle',   variants:['bottel','botle','botttle','botlle','botte','bottele','bottel','botle']},
+  {correct:'banana',   variants:['bananna','bananah','bannana','banane','banaana','bannanna','banaan','bananna']},
+  {correct:'school',   variants:['scool','sckool','schol','scholl','skoool','shkool','scohol','scoool']},
+  {correct:'paper',    variants:['papar','papeer','papper','paeper','paprr','papre','pappre','ppaper']},
+  {correct:'yellow',   variants:['yello','yellov','yelllow','yollow','yelow','yellov','yelolw','yelllow']},
+  {correct:'market',   variants:['markket','markit','markt','markeet','mareket','markete','marrket','marktt']},
+  {correct:'window',   variants:['windov','windowe','winddo','windwow','windlow','windwo','winndow','wondow']},
+  {correct:'garden',   variants:['gardan','garrden','garde','gareden','gardn','gareden','gardeen','gaarden']},
+  {correct:'orange',   variants:['orenge','oraneg','orrange','orannge','orangge','orannge','oranfe','oraneg']},
+  {correct:'little',   variants:['littel','litlle','litle','litttle','litlee','littlee','leittle','litle']},
+  {correct:'people',   variants:['peaple','peeople','peple','peopel','pepole','peeoplee','peoople','peoplee']},
 ];
+
+// Short confusing sentences — one correct, rest have subtle errors
+const SENTENCE_POOL=[
+  {correct:'The blue truck is fast.',
+   variants:['The blew truck is fast.','The blue truk is fast.','The blue truck are fast.','The blue truck is fase.','The bleu truck is fast.','The blue truck is faste.']},
+  {correct:'I saw the yellow table.',
+   variants:['I saw the yello table.','I seen the yellow table.','I saw the yelllow table.','I saw the yellow tabel.','I saw the yellov table.','I saw a yellow tables.']},
+  {correct:'The small bottle fell.',
+   variants:['The small botle fell.','The small bottle fall.','The smalle bottle fell.','The small bottle felled.','The smal bottle fell.','The small botttle fell.']},
+  {correct:'People like orange juice.',
+   variants:['Peaple like orange juice.','People likes orange juice.','People like oraneg juice.','People like orange juise.','People liike orange juice.','Peepole like orange juice.']},
+  {correct:'The garden is very nice.',
+   variants:['The garden are very nice.','The gardan is very nice.','The garden is verry nice.','The garden is very nise.','The gareden is very nice.','The garden is vary nice.']},
+  {correct:'She opened the window.',
+   variants:['She opend the window.','She opened the windov.','She openned the window.','She opened the windowe.','She opene the window.','She opened the wondow.']},
+  {correct:'The market opens at nine.',
+   variants:['The market open at nine.','The markket opens at nine.','The market openes at nine.','The market opens at nines.','The markit opens at nine.','The market opens at nein.']},
+];
+
 
 const L1_ROUNDS=7;
 const L1_CFG=[
@@ -361,14 +383,21 @@ function nextL1Round() {
   stopLocalTimer();
   if(l1Round>=L1_ROUNDS){finishLevel(1);return;}
   const cfg=L1_CFG[l1Round];
-  const wordSet=WORD_POOL[l1Round%WORD_POOL.length];
+  // Alternate: even rounds = words, odd rounds = sentences
+  const useSentence = l1Round % 2 === 1;
+  const pool = useSentence ? SENTENCE_POOL : WORD_POOL;
+  const wordSet = pool[Math.floor(l1Round / 2) % pool.length];
   document.getElementById('l1-round').textContent=`${l1Round+1}/${L1_ROUNDS}`;
   document.getElementById('l1-feedback').textContent='';
+  document.getElementById('l1-desc').textContent = useSentence
+    ? 'Find the correctly written sentence!'
+    : 'Find the correctly spelled word!';
 
-  // Build option list: correct + (count-1) variants, shuffled
   const opts=shuffle([wordSet.correct,...shuffle(wordSet.variants).slice(0,cfg.count-1)]);
   const grid=document.getElementById('l1-word-grid');
   grid.innerHTML='';
+  // Sentences use a column layout, words use a wrap grid
+  grid.className = useSentence ? 'word-chaos-grid sentence-mode' : 'word-chaos-grid';
   opts.forEach(word=>{
     const btn=document.createElement('button');
     btn.className='word-option-btn';
@@ -508,7 +537,24 @@ function handleL2Tap(obj,target,hitsNeeded) {
     obj.el.classList.add('item-wrong');
     setTimeout(()=>obj.el.classList.remove('item-wrong'),300);
     sfxWrong(); missCombo();
-    showToast('❌ Wrong target!');
+    // Deduct 25 points (floor at 0)
+    if(players[myUid]){
+      const deduct=25;
+      const cur=players[myUid].score||0;
+      const newScore=Math.max(0,cur-deduct);
+      players[myUid].score=newScore;
+      updateAllScoreDisplays();
+      get(dbRef('rooms',roomCode,'players',myUid,'score')).then(s=>{
+        const fb=Math.max(0,(s.val()||0)-deduct);
+        update(dbRef('rooms',roomCode,'players',myUid),{score:fb});
+      });
+      showScorePopup(`−${deduct}`, true);
+    }
+    // Red screen flash
+    const flash=document.createElement('div');
+    flash.className='wrong-flash'; document.body.appendChild(flash);
+    setTimeout(()=>flash.remove(),400);
+    showToast('❌ Wrong! −25 pts');
   }
 }
 
@@ -641,29 +687,20 @@ function showL3Result(correct) {
 // REVERSE LOGIC UTILITY — reusable across L4 and L5
 // ============================================================
 const reverseLogic = {
-  // Solve: given a rule and values array, return the correct answer
-  // reversed=true returns the logical OPPOSITE
   solve(rule, values, reversed) {
-    const nums = values.map(Number);
+    const nums = values.map(Number).filter(n => !isNaN(n));
     switch(rule) {
       case 'smallest': return reversed ? Math.max(...nums) : Math.min(...nums);
       case 'biggest':  return reversed ? Math.min(...nums) : Math.max(...nums);
-      case 'odd': {
-        const odds  = nums.filter(n => n % 2 !== 0);
-        const evens = nums.filter(n => n % 2 === 0);
-        return reversed ? evens[0] : odds[0];
-      }
-      case 'even': {
-        const evens = nums.filter(n => n % 2 === 0);
-        const odds  = nums.filter(n => n % 2 !== 0);
-        return reversed ? odds[0] : evens[0];
-      }
+      // Choice-based rules: values are strings, correct is index 0, reversed is index 1
+      case 'choice':   return reversed ? values[1] : values[0];
     }
   },
-  // Human-readable explanation of what the reversal means
-  explain(rule) {
-    return { smallest:'→ Click BIGGEST!', biggest:'→ Click SMALLEST!',
-             odd:'→ Click EVEN!', even:'→ Click ODD!' }[rule] || '';
+  explain(rule, values) {
+    if(rule==='smallest') return '→ Click BIGGEST!';
+    if(rule==='biggest')  return '→ Click SMALLEST!';
+    if(rule==='choice')   return `→ Pick "${values[1]}"!`;
+    return '';
   }
 };
 
@@ -680,17 +717,25 @@ const L4_CFG = [
   {time:4,  reversed:true}
 ];
 
-// Tasks only define the prompt, rule, and values — NO hardcoded correct/flipped.
-// reverseLogic.solve() computes the correct answer dynamically.
+// Tasks use two rule types:
+//   'biggest'/'smallest' → numeric, reverseLogic picks max/min
+//   'choice'             → string buttons, values[0]=normal correct, values[1]=reversed correct
 const L4_TASKS = [
-  {prompt:'Click the SMALLEST number', rule:'smallest', values:[3,7,1,9,5]},
-  {prompt:'Click the BIGGEST number',  rule:'biggest',  values:[4,8,2,6,10]},
-  {prompt:'Click the ODD number',      rule:'odd',      values:[2,4,7,6,8]},
-  {prompt:'Click the EVEN number',     rule:'even',     values:[3,5,8,1,9]},
-  {prompt:'Click the SMALLEST number', rule:'smallest', values:[11,5,23,3,17]},
-  {prompt:'Click the BIGGEST number',  rule:'biggest',  values:[6,14,2,19,8]},
-  {prompt:'Click the ODD number',      rule:'odd',      values:[10,4,6,13,8]},
-  {prompt:'Click the EVEN number',     rule:'even',     values:[7,3,12,5,9]},
+  {prompt:'Click LEFT',            rule:'choice',   values:['LEFT','RIGHT']},
+  {prompt:'Click RIGHT',           rule:'choice',   values:['RIGHT','LEFT']},
+  {prompt:'Press YES',             rule:'choice',   values:['YES','NO']},
+  {prompt:'Press NO',              rule:'choice',   values:['NO','YES']},
+  {prompt:'Choose BIGGEST number', rule:'biggest',  values:[3,7,1,9,5]},
+  {prompt:'Choose SMALLEST number',rule:'smallest', values:[4,8,2,6,10]},
+  {prompt:'Press START',           rule:'choice',   values:['START','STOP']},
+  {prompt:'Press STOP',            rule:'choice',   values:['STOP','START']},
+  {prompt:'Choose TRUE',           rule:'choice',   values:['TRUE','FALSE']},
+  {prompt:'Choose FALSE',          rule:'choice',   values:['FALSE','TRUE']},
+  {prompt:'Choose OPEN',           rule:'choice',   values:['OPEN','CLOSE']},
+  {prompt:'Choose BIGGEST number', rule:'biggest',  values:[11,5,23,3,17]},
+  {prompt:'Choose SMALLEST number',rule:'smallest', values:[6,14,2,19,8]},
+  {prompt:'Click UP',              rule:'choice',   values:['UP','DOWN']},
+  {prompt:'Click DOWN',            rule:'choice',   values:['DOWN','UP']},
 ];
 
 function startLevel4() {
@@ -711,15 +756,12 @@ function nextL4Round() {
   const container = document.getElementById('l4-options');
   container.innerHTML = '';
 
-  // Dynamically compute the correct answer using reverseLogic
   const correctAnswer = reverseLogic.solve(task.rule, task.values, cfg.reversed);
 
   if(cfg.reversed) {
-    // Show the ORIGINAL instruction — the correct answer is the OPPOSITE
-    // This is intentional: "Click SMALLEST" but BIGGEST wins
     promptEl.textContent = task.prompt;
     warn.classList.remove('hidden');
-    warn.innerHTML = `⚠️ Rules are REVERSED! &nbsp; ${reverseLogic.explain(task.rule)}`;
+    warn.innerHTML = `⚠️ Rules are REVERSED!   ${reverseLogic.explain(task.rule, task.values)}`;
   } else {
     promptEl.textContent = task.prompt;
     warn.classList.add('hidden');
@@ -729,7 +771,7 @@ function nextL4Round() {
     const btn = document.createElement('button');
     btn.className = 'reverse-option-btn';
     btn.textContent = val;
-    btn.onclick = () => handleL4Click(btn, val, correctAnswer, task.rule, cfg.reversed);
+    btn.onclick = () => handleL4Click(btn, val, correctAnswer, task.rule, task.values, cfg.reversed);
     container.appendChild(btn);
   });
 
@@ -738,33 +780,33 @@ function nextL4Round() {
     l4CanClick = false;
     container.querySelectorAll('button').forEach(b=>{
       b.disabled = true;
-      if(Number(b.textContent)===correctAnswer) b.classList.add('correct-reveal');
+      if(String(b.textContent)===String(correctAnswer)) b.classList.add('correct-reveal');
     });
     missCombo(); sfxWrong();
     const fb = document.getElementById('l4-feedback');
-    fb.textContent = `⏱ Time's up! Answer was ${correctAnswer}`;
+    fb.textContent = `⏱ Time's up! Answer: "${correctAnswer}"`;
     fb.className = 'level-feedback timeout';
     l4Round++; setTimeout(nextL4Round,1200);
   });
 }
-function handleL4Click(btn, val, correctAnswer, rule, reversed) {
+function handleL4Click(btn, val, correctAnswer, rule, values, reversed) {
   if(!l4CanClick) return;
   l4CanClick = false; stopLocalTimer();
   document.getElementById('l4-options').querySelectorAll('button').forEach(b=>{
     b.disabled = true;
-    if(Number(b.textContent)===correctAnswer) b.classList.add('correct-reveal');
+    if(String(b.textContent)===String(correctAnswer)) b.classList.add('correct-reveal');
   });
-  const isCorrect = Number(val) === correctAnswer;
+  const isCorrect = String(val) === String(correctAnswer);
   const fb = document.getElementById('l4-feedback');
   if(isCorrect){
     btn.classList.add('correct-pick'); hitCombo(100); sfxCorrect();
-    fb.textContent = reversed ? `✅ Correct! You knew the reversal!` : '✅ Correct!';
+    fb.textContent = reversed ? `✅ Nailed the reversal!` : '✅ Correct!';
     fb.className = 'level-feedback correct';
   } else {
     btn.classList.add('wrong-pick'); missCombo(); sfxWrong();
     fb.textContent = reversed
-      ? `❌ Wrong! ${reverseLogic.explain(rule)} Answer: ${correctAnswer}`
-      : `❌ Wrong! Answer: ${correctAnswer}`;
+      ? `❌ Reversed! ${reverseLogic.explain(rule, values)} Answer: "${correctAnswer}"`
+      : `❌ Wrong! Answer: "${correctAnswer}"`;
     fb.className = 'level-feedback wrong';
   }
   l4Round++; setTimeout(nextL4Round,1000);
@@ -774,7 +816,9 @@ function handleL4Click(btn, val, correctAnswer, rule, reversed) {
 // LEVEL 5 — MIND MAZE EXTREME ⚠️
 // ============================================================
 const L5_EVENTS=8;
-const L5_EVENT_TIME=6;
+const L5_EVENT_TIME=4;  // word + find events: 4s
+const L5_MEM_SHOW=1800; // memory flash show time: 1.8s
+const L5_MEM_ANS=5;     // memory answer time: 5s
 const L5_DISTRACTOR_EMOJIS=['🔔','📱','💬','⚠️','🎁','❗','🔄','📢','💥','🌀','🎪','🎲','🎵','🍕','🎮'];
 
 function startLevel5() {
@@ -854,15 +898,21 @@ function buildL5MemoryEvent() {
   const seq=[pick(L3_EMOJIS),pick(L3_EMOJIS),pick(L3_EMOJIS)];
   const arena=document.getElementById('l5-arena');
   arena.innerHTML='';
-  document.getElementById('l5-prompt').textContent='🧠 Memorise & Tap in order!';
-  // Show sequence briefly
+  document.getElementById('l5-prompt').textContent='🧠 Remember & tap in order!';
   const seqDisplay=document.createElement('div'); seqDisplay.className='l5-seq-display';
   seqDisplay.textContent=seq.join(' ');
   arena.appendChild(seqDisplay);
   l5CanClick=false;
+  startTimerLocal('l5-timer','l5-timer-bar', L5_MEM_SHOW/1000 + L5_MEM_ANS, ()=>{
+    if(!l5CanClick) return;
+    l5CanClick=false; missCombo(); l5Round++;
+    document.getElementById('l5-feedback').textContent='⏱ Too slow!';
+    document.getElementById('l5-feedback').className='level-feedback timeout';
+    arena.querySelectorAll('button').forEach(b=>b.disabled=true);
+    setTimeout(nextL5Event,600);
+  });
   setTimeout(()=>{
     seqDisplay.textContent='???';
-    // Build tap buttons
     const pool=shuffle([...new Set([...seq,...shuffle(L3_EMOJIS).slice(0,3)])]);
     const picked=[];
     pool.forEach(e=>{
@@ -870,30 +920,23 @@ function buildL5MemoryEvent() {
       btn.textContent=e;
       btn.onclick=()=>{
         if(!l5CanClick)return;
-        picked.push(e);
-        btn.classList.add('picked');
-        btn.disabled=true;
-        if(picked.length===seq.length){
-          l5Resolve(picked.every((v,i)=>v===seq[i]));
-        }
+        picked.push(e); btn.classList.add('picked'); btn.disabled=true;
+        if(picked.length===seq.length){ l5Resolve(picked.every((v,i)=>v===seq[i])); }
       };
       arena.appendChild(btn);
     });
     l5CanClick=true;
-    startTimerLocal('l5-timer','l5-timer-bar',7,()=>{ if(l5CanClick){l5CanClick=false;missCombo();l5Round++;document.getElementById('l5-feedback').textContent='⏱ Too slow!';document.getElementById('l5-feedback').className='level-feedback timeout';document.getElementById('l5-arena').querySelectorAll('button').forEach(b=>b.disabled=true);setTimeout(nextL5Event,700);} });
-  },2500);
-  startTimerLocal('l5-timer','l5-timer-bar',9,()=>{});// placeholder replaced above
+  }, L5_MEM_SHOW);
 }
 function buildL5ReverseEvent() {
   const task = pick(L4_TASKS);
   const arena = document.getElementById('l5-arena');
   arena.innerHTML = '';
 
-  // Always reversed in L5 — use reverseLogic to compute the correct answer
   const correctAnswer = reverseLogic.solve(task.rule, task.values, true);
 
   document.getElementById('l5-prompt').innerHTML =
-    `🔀 ${task.prompt} <span class="l5-reversed-tag">⚠️ REVERSED! ${reverseLogic.explain(task.rule)}</span>`;
+    `🔀 ${task.prompt} <span class="l5-reversed-tag">⚠️ REVERSED! ${reverseLogic.explain(task.rule, task.values)}</span>`;
 
   shuffle([...task.values]).forEach(val => {
     const btn = document.createElement('button');
@@ -901,10 +944,10 @@ function buildL5ReverseEvent() {
     btn.textContent = val;
     btn.onclick = () => {
       if(!l5CanClick) return;
-      const isCorrect = Number(val) === correctAnswer;
-      // Highlight correct before resolving
+      const isCorrect = String(val) === String(correctAnswer);
       arena.querySelectorAll('button').forEach(b => {
-        if(Number(b.textContent) === correctAnswer) b.classList.add('correct-reveal');
+        b.disabled = true;
+        if(String(b.textContent) === String(correctAnswer)) b.classList.add('correct-reveal');
       });
       l5Resolve(isCorrect);
     };
@@ -912,17 +955,17 @@ function buildL5ReverseEvent() {
   });
 
   l5CanClick = true;
-  startTimerLocal('l5-timer','l5-timer-bar',5,()=>{
+  startTimerLocal('l5-timer','l5-timer-bar',4,()=>{
     if(!l5CanClick) return;
     l5CanClick = false; missCombo();
     arena.querySelectorAll('button').forEach(b=>{
       b.disabled = true;
-      if(Number(b.textContent) === correctAnswer) b.classList.add('correct-reveal');
+      if(String(b.textContent) === String(correctAnswer)) b.classList.add('correct-reveal');
     });
     l5Round++;
-    document.getElementById('l5-feedback').textContent = `⏱ Too slow! Answer: ${correctAnswer}`;
+    document.getElementById('l5-feedback').textContent = `⏱ Answer: "${correctAnswer}"`;
     document.getElementById('l5-feedback').className = 'level-feedback timeout';
-    setTimeout(nextL5Event, 900);
+    setTimeout(nextL5Event, 700);
   });
 }
 
