@@ -916,18 +916,39 @@ function buildL4Input(cfg) {
   inputArea.innerHTML = '';
   slotArea.innerHTML = '';
 
-  // Shuffled emoji buttons
-  const pool = [...new Set(l4Sequence)];
-  // pad pool with extras so it's not trivially obvious
+  // Count how many times each emoji appears in the sequence
+  const seqCounts = {};
+  l4Sequence.forEach(e => { seqCounts[e] = (seqCounts[e] || 0) + 1; });
+
+  // Build pool: one button per unique emoji, but each button tracks remaining uses
+  const pool = Object.keys(seqCounts);
+  // Pad with distractors
   while (pool.length < Math.min(L4_EMOJIS.length, l4Sequence.length + 3)) {
     const e = L4_EMOJIS[randInt(0, L4_EMOJIS.length - 1)];
     if (!pool.includes(e)) pool.push(e);
   }
+
   shuffle(pool).forEach(emoji => {
+    const maxUses = seqCounts[emoji] || 0;
+    let usesLeft = maxUses;
     const btn = document.createElement('button');
     btn.className = 'mem-btn';
     btn.textContent = emoji;
-    btn.onclick = () => handleL4Pick(emoji, btn);
+    // Show count badge if this emoji appears more than once
+    const updateBadge = () => {
+      btn.dataset.uses = usesLeft;
+      if (maxUses > 1) {
+        btn.setAttribute('data-count', usesLeft > 0 ? `×${usesLeft}` : '');
+      }
+      btn.disabled = usesLeft <= 0;
+    };
+    updateBadge();
+    btn.onclick = () => {
+      if (!l4CanInput || usesLeft <= 0) return;
+      usesLeft--;
+      updateBadge();
+      handleL4Pick(emoji);
+    };
     inputArea.appendChild(btn);
   });
 
@@ -940,7 +961,7 @@ function buildL4Input(cfg) {
   }
 }
 
-function handleL4Pick(emoji, btn) {
+function handleL4Pick(emoji) {
   if (!l4CanInput) return;
   const idx = l4PlayerSeq.length;
   if (idx >= l4Sequence.length) return;
@@ -951,7 +972,6 @@ function handleL4Pick(emoji, btn) {
     slots[idx].textContent = emoji;
     slots[idx].classList.add('filled');
   }
-  btn.disabled = true;
 
   if (l4PlayerSeq.length === l4Sequence.length) {
     l4CanInput = false;
