@@ -1021,14 +1021,14 @@ const L5_CFG = [
 ];
 
 const L5_QUESTIONS = [
-  { prompt: 'Click the HIGHEST number', values: [3, 7, 1, 9, 4], correct: 9 },
-  { prompt: 'Click the LOWEST number',  values: [8, 2, 6, 1, 5], correct: 1 },
-  { prompt: 'Click the LARGEST fruit',  values: ['🍇','🍉','🍓','🍑','🍋'], correct: '🍉' },
-  { prompt: 'Click the ODD number',     values: [2, 4, 7, 6, 8], correct: 7 },
-  { prompt: 'Click the EVEN number',    values: [3, 5, 8, 1, 9], correct: 8 },
-  { prompt: 'Click the HIGHEST number', values: [11, 5, 23, 17, 3], correct: 23 },
-  { prompt: 'Click the LOWEST number',  values: [14, 6, 19, 3, 22], correct: 3 },
-  { prompt: 'Click the ODD number',     values: [10, 4, 6, 13, 8], correct: 13 },
+  { prompt: 'Click the HIGHEST number', values: [3, 7, 1, 9, 4],          correct: 9,    flippedCorrect: 1  },
+  { prompt: 'Click the LOWEST number',  values: [8, 2, 6, 1, 5],          correct: 1,    flippedCorrect: 8  },
+  { prompt: 'Click the LARGEST fruit',  values: ['🍇','🍉','🍓','🍑','🍋'], correct: '🍉', flippedCorrect: '🍓' },
+  { prompt: 'Click the ODD number',     values: [2, 4, 7, 6, 8],          correct: 7,    flippedCorrect: 2  },
+  { prompt: 'Click the EVEN number',    values: [3, 5, 8, 1, 9],          correct: 8,    flippedCorrect: 3  },
+  { prompt: 'Click the HIGHEST number', values: [11, 5, 23, 17, 3],       correct: 23,   flippedCorrect: 3  },
+  { prompt: 'Click the LOWEST number',  values: [14, 6, 19, 3, 22],       correct: 3,    flippedCorrect: 22 },
+  { prompt: 'Click the ODD number',     values: [10, 4, 6, 13, 8],        correct: 13,   flippedCorrect: 10 },
 ];
 
 function startLevel5() {
@@ -1081,11 +1081,13 @@ function nextL5Round() {
   let values = [...q.values];
   if (cfg.reverseOrder) values = values.reverse();
 
+  const effectiveCorrect = cfg.reverseLabels ? q.flippedCorrect : q.correct;
+
   values.forEach(val => {
     const btn = document.createElement('button');
     btn.className = 'reverse-btn';
     btn.textContent = val;
-    btn.onclick = () => handleL5Click(btn, val, q.correct, cfg);
+    btn.onclick = () => handleL5Click(btn, val, effectiveCorrect, cfg);
     container.appendChild(btn);
   });
 
@@ -1093,9 +1095,8 @@ function nextL5Round() {
   startTimerLocal('l5-timer', 'l5-timer-bar', cfg.time, () => {
     l5CanClick = false;
     document.querySelectorAll('.reverse-btn').forEach(b => b.disabled = true);
-    // highlight correct
     document.querySelectorAll('.reverse-btn').forEach(b => {
-      if (String(b.textContent) === String(q.correct)) b.classList.add('correct-pick');
+      if (String(b.textContent) === String(effectiveCorrect)) b.classList.add('correct-pick');
     });
     sfxWrong();
     showToast('⏱ Time\'s up!');
@@ -1110,9 +1111,6 @@ function handleL5Click(btn, val, correct, cfg) {
   stopLocalTimer();
   document.querySelectorAll('.reverse-btn').forEach(b => b.disabled = true);
 
-  // The "correct" answer to click: if reverseLabels, the player must click
-  // the OPPOSITE of what the prompt says, which is actually `correct` as defined
-  // (we already swapped the prompt text, so clicking `correct` is right)
   const isCorrect = String(val) === String(correct);
   if (isCorrect) {
     btn.classList.add('correct-pick');
