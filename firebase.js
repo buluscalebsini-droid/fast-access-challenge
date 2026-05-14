@@ -23,8 +23,13 @@ from firebase_admin import credentials
 //   appId: "YOUR_APP_ID"
 // };
 
-cred = credentials.Certificate("secret.json")
-firebase_admin.initialize_app(cred)
+var admin = require("firebase-admin");
+var serviceAccount = require("secret.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://poland-26-default-rtdb.europe-west1.firebasedatabase.app"
+});
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
