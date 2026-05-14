@@ -842,11 +842,11 @@ function listenGameSync(cb) {
 const L4_ROUNDS = 5;
 const L4_EMOJIS = ['🍎','⭐','🎲','🍌','🔥','💎','🎯','🌙','🎪','🦋'];
 const L4_CFG = [
-  { seqLen: 3, showTime: 3000 },
-  { seqLen: 4, showTime: 2500 },
-  { seqLen: 5, showTime: 2000 },
-  { seqLen: 5, showTime: 1500 },
-  { seqLen: 6, showTime: 1200 }
+  { seqLen: 3, showTime: 6000 },
+  { seqLen: 4, showTime: 5000 },
+  { seqLen: 5, showTime: 4000 },
+  { seqLen: 5, showTime: 3000 },
+  { seqLen: 6, showTime: 2400 }
 ];
 
 function startLevel4() {
