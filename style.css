@@ -457,10 +457,20 @@ html, body {
 @keyframes connPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 /* ===== PLAYER AVATAR COLORS ===== */
-.avatar-0 { background: rgba(233,69,96,0.2); color: #e94560; }
-.avatar-1 { background: rgba(79,142,247,0.2); color: #4f8ef7; }
-.avatar-2 { background: rgba(74,222,128,0.2); color: #4ade80; }
-.avatar-3 { background: rgba(251,191,36,0.2); color: #fbbc24; }
+.avatar-0 { background: rgba(233,69,96,0.2);   color: #e94560; }
+.avatar-1 { background: rgba(79,142,247,0.2);  color: #4f8ef7; }
+.avatar-2 { background: rgba(74,222,128,0.2);  color: #4ade80; }
+.avatar-3 { background: rgba(251,191,36,0.2);  color: #fbbc24; }
+.avatar-4 { background: rgba(192,84,247,0.2);  color: #c054f7; }
+.avatar-5 { background: rgba(247,84,139,0.2);  color: #f7548b; }
+.avatar-6 { background: rgba(84,247,230,0.2);  color: #54f7e6; }
+.avatar-7 { background: rgba(247,160,84,0.2);  color: #f7a054; }
+.avatar-8 { background: rgba(84,180,247,0.2);  color: #54b4f7; }
+.avatar-9 { background: rgba(180,247,84,0.2);  color: #b4f754; }
+
+/* ===== PODIUM RANKS 4-5 ===== */
+.podium-block.rank-4 .podium-platform { background: rgba(192,84,247,0.10); border: 1px solid #c054f7; min-height: 45px; }
+.podium-block.rank-5 .podium-platform { background: rgba(84,247,230,0.10); border: 1px solid #54f7e6; min-height: 40px; }
 
 /* ===== UTILITY ===== */
 .hidden { display: none !important; }
