@@ -86,6 +86,96 @@ function shuffle(arr) {
   return a;
 }
 function pick(arr) { return arr[randInt(0,arr.length-1)]; }
+// ============================================================
+// TOUCH INPUT SYSTEM
+// Eliminates 300ms tap delay, prevents scroll during gameplay,
+// adds ripple + vibration, prevents click double-fire.
+// ============================================================
+const TouchInput = (() => {
+  const RIPPLE_DURATION = 380;
+  let _blockScroll = false;
+
+  // Vibrate briefly if supported
+  function vibrate(ms = 18) {
+    try { navigator.vibrate?.(ms); } catch(e) {}
+  }
+
+  // Spawn a ripple on a button element
+  function spawnRipple(el, touch) {
+    const rect = el.getBoundingClientRect();
+    const x = (touch?.clientX ?? rect.left + rect.width/2) - rect.left;
+    const y = (touch?.clientY ?? rect.top  + rect.height/2) - rect.top;
+    const r = document.createElement('span');
+    r.className = 'touch-ripple';
+    r.style.cssText = `left:${x}px;top:${y}px`;
+    el.appendChild(r);
+    setTimeout(() => r.remove(), RIPPLE_DURATION);
+  }
+
+  // Attach fast touch to a button — fires cb immediately on touchstart,
+  // then suppresses the subsequent click event to prevent double-fire.
+  function on(el, cb) {
+    if (!el) return;
+    let _touched = false;
+    el.addEventListener('touchstart', e => {
+      e.preventDefault();       // kill scroll & 300ms delay
+      _touched = true;
+      spawnRipple(el, e.touches[0]);
+      vibrate(12);
+      el.classList.add('touch-active');
+      cb(e);
+    }, { passive: false });
+    el.addEventListener('touchend', () => {
+      setTimeout(() => { _touched = false; el.classList.remove('touch-active'); }, 60);
+    }, { passive: true });
+    el.addEventListener('click', e => {
+      if (_touched) { e.stopImmediatePropagation(); return; }
+      spawnRipple(el);
+      cb(e);
+    });
+  }
+
+  // Apply to every button inside a container (called after building dynamic grids)
+  function bindContainer(container, selector = 'button') {
+    container.querySelectorAll(selector).forEach(btn => {
+      if (btn.dataset.touchBound) return;
+      btn.dataset.touchBound = '1';
+      let _touched = false;
+      btn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        _touched = true;
+        spawnRipple(btn, e.touches[0]);
+        vibrate(12);
+        btn.classList.add('touch-active');
+        btn.click();            // trigger existing onclick
+      }, { passive: false });
+      btn.addEventListener('touchend', () => {
+        setTimeout(() => { _touched = false; btn.classList.remove('touch-active'); }, 60);
+      }, { passive: true });
+      btn.addEventListener('click', e => {
+        if (_touched) { _touched = false; }
+      });
+    });
+  }
+
+  // Block page scroll/zoom while gameplay is active
+  function blockScroll(active) {
+    _blockScroll = active;
+  }
+
+  // Prevent scroll and pinch-zoom globally during gameplay
+  document.addEventListener('touchmove', e => {
+    if (_blockScroll) e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('gesturestart', e => {
+    if (_blockScroll) e.preventDefault();
+  }, { passive: false });
+
+  return { on, bindContainer, blockScroll, spawnRipple, vibrate };
+})();
+
+
 
 const AVATAR_COLORS=['avatar-0','avatar-1','avatar-2','avatar-3','avatar-4','avatar-5','avatar-6','avatar-7','avatar-8','avatar-9'];
 function playerColor(idx) { return AVATAR_COLORS[idx%AVATAR_COLORS.length]; }
@@ -241,7 +331,7 @@ async function joinRoom(name,code) {
 // LOBBY
 // ============================================================
 function openLobby() {
-  showScreen('screen-lobby');
+  TouchInput.blockScroll(false); showScreen('screen-lobby');
   document.getElementById('lobby-room-code').textContent=roomCode;
   updateHostControls(); listenLobby(); startJazz();
 }
@@ -375,7 +465,7 @@ const L1_CFG=[
 ];
 
 function startLevel1() {
-  l1Round=0; resetCombo();
+  l1Round=0; resetCombo(); TouchInput.blockScroll(true);
   showScreen('screen-level1'); setupMuteButtons(); syncScoresDisplay('l1-scores');
   nextL1Round();
 }
@@ -405,6 +495,7 @@ function nextL1Round() {
     btn.onclick=()=>handleL1Click(btn,word===wordSet.correct,wordSet.correct);
     grid.appendChild(btn);
   });
+  TouchInput.bindContainer(grid);
   l1CanClick=true;
   startTimerLocal('l1-timer','l1-timer-bar',cfg.time,()=>{
     l1CanClick=false;
@@ -448,7 +539,7 @@ const L2_CFG=[
 const FRUIT_SIZE=40;
 
 function startLevel2() {
-  l2Round=0; resetCombo();
+  l2Round=0; resetCombo(); TouchInput.blockScroll(true);
   showScreen('screen-level2'); setupMuteButtons(); syncScoresDisplay('l2-scores');
   nextL2Round();
 }
@@ -510,9 +601,10 @@ function nextL2Round() {
   // Store for tap handler
   l2Arena={hitsNeeded, hitsGot:()=>l2Objects.filter(o=>o.hit&&o.emoji===target).length};
 
+  TouchInput.blockScroll(true);
   l2CanClick=true;
   startTimerLocal('l2-timer','l2-timer-bar',cfg.time,()=>{
-    l2CanClick=false; stopL2Anim(); missCombo();
+    l2CanClick=false; stopL2Anim(); missCombo(); TouchInput.blockScroll(false);
     const found=l2Objects.filter(o=>o.hit&&o.emoji===target).length;
     document.getElementById('l2-feedback').textContent=`⏱ Time's up! Found ${found}/${hitsNeeded}`;
     document.getElementById('l2-feedback').className='level-feedback timeout';
@@ -528,7 +620,7 @@ function handleL2Tap(obj,target,hitsNeeded) {
     hitCombo(80);
     setTimeout(()=>obj.el.remove(),250);
     if(found>=hitsNeeded){
-      l2CanClick=false; stopLocalTimer(); stopL2Anim();
+      l2CanClick=false; stopLocalTimer(); stopL2Anim(); TouchInput.blockScroll(false);
       document.getElementById('l2-feedback').textContent='🎯 All found!';
       document.getElementById('l2-feedback').className='level-feedback correct';
       l2Round++; setTimeout(nextL2Round,700);
@@ -576,7 +668,7 @@ const L3_FAKE_POPUPS=[
 ];
 
 function startLevel3() {
-  l3Round=0; resetCombo();
+  l3Round=0; resetCombo(); TouchInput.blockScroll(true);
   showScreen('screen-level3'); setupMuteButtons(); syncScoresDisplay('l3-scores');
   nextL3Round();
 }
@@ -644,7 +736,7 @@ function buildL3Input() {
   }
   shuffle(pool).forEach(emoji=>{
     const max=counts[emoji]||0; let left=max;
-    const btn=document.createElement('button'); btn.className='mem-btn'; btn.textContent=emoji;
+    const btn=document.createElement('button'); btn.className='mem-btn'; btn.textContent=emoji; btn.dataset.touchBound='skip';
     const upd=()=>{
       btn.dataset.uses=left;
       if(max>1)btn.setAttribute('data-count',left>0?`×${left}`:'');
@@ -658,6 +750,10 @@ function buildL3Input() {
     const s=document.createElement('div'); s.className='mem-slot'; s.dataset.idx=i;
     slotArea.appendChild(s);
   }
+  // Touch: add ripple to mem buttons (onclick already set above)
+  inputArea.querySelectorAll('.mem-btn').forEach(btn=>{
+    btn.addEventListener('touchstart',e=>{e.preventDefault();TouchInput.spawnRipple(btn,e.touches[0]);TouchInput.vibrate(12);btn.click();},{passive:false});
+  });
 }
 function handleL3Pick(emoji) {
   if(!l3CanInput)return;
@@ -739,7 +835,7 @@ const L4_TASKS = [
 ];
 
 function startLevel4() {
-  l4Round=0; resetCombo();
+  l4Round=0; resetCombo(); TouchInput.blockScroll(true);
   showScreen('screen-level4'); setupMuteButtons(); syncScoresDisplay('l4-scores');
   nextL4Round();
 }
@@ -775,6 +871,7 @@ function nextL4Round() {
     container.appendChild(btn);
   });
 
+  TouchInput.bindContainer(container);
   l4CanClick = true;
   startTimerLocal('l4-timer','l4-timer-bar',cfg.time,()=>{
     l4CanClick = false;
@@ -886,6 +983,7 @@ function buildL5WordEvent() {
       btn.onclick=()=>l5Resolve(w===wordSet.correct);
       arena.appendChild(btn);
     });
+    TouchInput.bindContainer(arena);
     l5CanClick=true;
     startTimerLocal('l5-timer','l5-timer-bar',L5_EVENT_TIME,()=>{ if(l5CanClick){l5CanClick=false;missCombo();l5Round++;document.getElementById('l5-feedback').textContent='⏱ Too slow!';document.getElementById('l5-feedback').className='level-feedback timeout';document.getElementById('l5-arena').querySelectorAll('button').forEach(b=>b.disabled=true);setTimeout(nextL5Event,700);} });
   });
@@ -902,6 +1000,7 @@ function buildL5FindEvent() {
       btn.onclick=()=>l5Resolve(e===target);
       arena.appendChild(btn);
     });
+    TouchInput.bindContainer(arena);
     l5CanClick=true;
     startTimerLocal('l5-timer','l5-timer-bar',L5_EVENT_TIME,()=>{ if(l5CanClick){l5CanClick=false;missCombo();l5Round++;document.getElementById('l5-feedback').textContent='⏱ Too slow!';document.getElementById('l5-feedback').className='level-feedback timeout';document.getElementById('l5-arena').querySelectorAll('button').forEach(b=>b.disabled=true);setTimeout(nextL5Event,700);} });
   });
@@ -937,6 +1036,7 @@ function buildL5MemoryEvent() {
         };
         arena.appendChild(btn);
       });
+      TouchInput.bindContainer(arena);
       l5CanClick=true;
     }, L5_MEM_SHOW);
   });
@@ -962,6 +1062,7 @@ function buildL5ReverseEvent() {
       };
       arena.appendChild(btn);
     });
+    TouchInput.bindContainer(arena);
     l5CanClick = true;
     startTimerLocal('l5-timer','l5-timer-bar',4,()=>{
       if(!l5CanClick) return;
@@ -1198,7 +1299,7 @@ async function resetGame() {
   clearListeners(); openLobby();
 }
 function resetToMenu() {
-  stopAllLevelCleanup(); stopJazz(); resetCombo();
+  TouchInput.blockScroll(false); stopAllLevelCleanup(); stopJazz(); resetCombo();
   clearListeners(); players={}; roomCode=''; isHost=false;
   showScreen('screen-menu');
 }
@@ -1265,4 +1366,25 @@ async function boot() {
     console.error('Boot error:',e);
   }
 }
+// Bind touch to static UI buttons at startup
+['btn-create','btn-create-confirm','btn-create-cancel',
+ 'btn-join-open','btn-join-confirm','btn-join-cancel',
+ 'btn-copy-code','btn-leave-lobby','btn-start-game',
+ 'btn-main-menu','btn-gameover-menu','btn-gameover-again',
+ 'btn-next-level','btn-play-again','intro-start-btn'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    TouchInput.spawnRipple(el,e.touches[0]);
+    TouchInput.vibrate(15);
+    el.classList.add('touch-active');
+    el.click();
+  },{passive:false});
+  el.addEventListener('touchend',()=>setTimeout(()=>el.classList.remove('touch-active'),80),{passive:true});
+});
+
+// AudioContext unlock on first touch
+document.addEventListener('touchstart',()=>{if(musicOn&&!jazzInterval)startJazz();},{once:true});
+
 boot();
