@@ -78,6 +78,10 @@
       </div>
     </div>
     <div class="lobby-hint" id="lobby-hint">Share the room code with your travel partner!</div>
+    <div class="lobby-qr-wrap">
+      <div class="lobby-qr-label">Scan to join</div>
+      <div id="lobby-qr"></div>
+    </div>
     <div class="lobby-actions">
       <button class="btn-main hidden" id="btn-start-game">▶ Begin Journey</button>
       <button class="btn-ghost" id="btn-leave-lobby">Leave</button>
@@ -184,6 +188,21 @@
   <span class="conn-label" id="conn-label">Connected</span>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  // Auto-fill room code if arriving via QR scan link
+  const _qp = new URLSearchParams(location.search).get('code');
+  if (_qp) {
+    window.addEventListener('DOMContentLoaded', () => {
+      const ci = document.getElementById('input-code');
+      const ni = document.getElementById('input-name');
+      const mo = document.getElementById('modal-join');
+      if (ci) ci.value = _qp.toUpperCase();
+      if (mo) mo.classList.remove('hidden');
+      if (ni) ni.focus();
+    });
+  }
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>
