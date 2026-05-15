@@ -205,6 +205,17 @@ async function joinRoom(name,code){
 function openLobby(){
   showScreen('screen-lobby');
   document.getElementById('lobby-room-code').textContent=roomCode;
+
+  // Generate QR code pointing to this page with the room code pre-filled
+  const qrEl = document.getElementById('lobby-qr');
+  qrEl.innerHTML = '';
+  const joinUrl = `${location.origin}${location.pathname}?code=${roomCode}`;
+  new QRCode(qrEl, {
+    text: joinUrl,
+    width: 120, height: 120,
+    colorDark: '#ffffff', colorLight: '#10102a',
+    correctLevel: QRCode.CorrectLevel.M
+  });
   clearListeners();
   listenOn(`rooms/${roomCode}/players`,snap=>{
     const pl=snap.val()||{};
