@@ -281,15 +281,96 @@ html,body { width:100%;height:100%;background:var(--bg);color:var(--text);font-f
 
 .hidden { display:none !important; }
 
-/* ===== RESPONSIVE ===== */
+/* ===== TOUCH RIPPLE ===== */
+.touch-ripple {
+  position:absolute; border-radius:50%; pointer-events:none;
+  width:60px; height:60px; margin:-30px 0 0 -30px;
+  background:rgba(255,255,255,0.28);
+  animation:rippleExpand 0.38s ease-out forwards;
+  z-index:10;
+}
+@keyframes rippleExpand {
+  from { transform:scale(0); opacity:1; }
+  to   { transform:scale(3); opacity:0; }
+}
+
+/* Ensure buttons can host ripple */
+.btn-main, .btn-secondary, .btn-ghost,
+.word-option-btn, .reverse-option-btn,
+.mem-btn, .l5-word-btn, .l5-emoji-btn,
+.hai-btn, .rai-btn, .chaos-spot-cell, .chaos-find-btn,
+.chaos-hai { position:relative; overflow:hidden; }
+
+/* Touch active state — brightens on press */
+.touch-active {
+  filter: brightness(1.25) !important;
+  transform: scale(0.96) !important;
+}
+
+/* ===== RESPONSIVE — PHONE ===== */
 @media (max-width:480px) {
-  .game-title{font-size:30px} .hud-timer{font-size:24px}
-  .word-option-btn{font-size:13px;padding:8px 11px}
-  .frenzy-arena{height:190px}
-  .podium-block{max-width:80px} .podium-name{font-size:11px}
+  .game-title { font-size:30px; }
+  .hud-timer  { font-size:24px; }
+
+  /* Word chaos — bigger tap targets */
+  .word-option-btn {
+    font-size:14px; padding:12px 14px;
+    min-height:48px;
+  }
+  .word-chaos-grid { gap:10px; }
+  .word-chaos-grid.sentence-mode .word-option-btn {
+    font-size:13px; padding:12px 14px; min-height:48px;
+  }
+
+  /* Frenzy arena */
+  .frenzy-arena { height:200px; }
+  .frenzy-item  { font-size:34px; } /* bigger tap target */
+
+  /* Memory slots & buttons */
+  .mem-btn  { font-size:28px; padding:10px 12px; min-width:52px; min-height:52px; }
+  .mem-slot { width:52px; height:52px; font-size:28px; }
+
+  /* Reverse options */
+  .reverse-option-btn { min-width:80px; min-height:52px; font-size:19px; padding:14px 16px; }
+
+  /* L5 chaos buttons */
+  .l5-emoji-btn { font-size:30px; padding:12px; min-width:52px; min-height:52px; }
+  .l5-word-btn  { font-size:14px; padding:12px 14px; min-height:48px; }
+
+  /* HUD — more compact */
+  .game-hud { padding:8px 10px; }
+  .hud-level { font-size:12px; }
+
+  /* Podium */
+  .podium-block { max-width:80px; }
+  .podium-name  { font-size:11px; }
+
+  /* Main action buttons */
+  .btn-main { padding:16px 28px; font-size:17px; }
 }
+
+/* ===== RESPONSIVE — LANDSCAPE PHONE ===== */
+@media (max-height:500px) and (orientation:landscape) {
+  .game-screen-inner { gap:4px; }
+  .frenzy-arena      { height:140px; }
+  .chaos-arena       { min-height:80px; }
+  .mem-sequence      { min-height:44px; }
+  .mem-slots         { min-height:44px; }
+  .mem-btn           { font-size:22px; padding:6px 8px; }
+  .intro-inner       { gap:8px; }
+  .intro-emoji       { font-size:36px; }
+  .intro-title       { font-size:22px; }
+  .intro-card        { padding:10px 14px; }
+  .hud-timer         { font-size:22px; }
+}
+
+/* ===== RESPONSIVE — SHORT SCREENS ===== */
 @media (max-height:680px) {
-  .game-screen-inner{gap:5px}
-  .frenzy-arena{height:170px}
-  .chaos-arena{min-height:90px}
+  .game-screen-inner { gap:5px; }
+  .frenzy-arena      { height:170px; }
+  .chaos-arena       { min-height:90px; }
 }
+
+/* ===== TOUCH — PREVENT TAP HIGHLIGHT ===== */
+* { -webkit-tap-highlight-color: transparent; }
+button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
