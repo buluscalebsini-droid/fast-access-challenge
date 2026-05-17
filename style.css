@@ -348,3 +348,136 @@ html,body { width:100%;height:100%;background:var(--bg);color:var(--text);font-f
 
 /* ── Level 5 arena fruit-mode needs position:relative ── */
 #l5-arena[style*="block"] { position: relative; }
+
+/* ============================================================
+   v3.2 ADDITIONS — L1 wobble, L2 word-mode, L4 floaters
+   ============================================================ */
+
+/* ── Level 1 wobble — cells animate gently in late stages ── */
+.color-cell { transition: none; } /* disable CSS transition so JS hue updates are immediate */
+
+/* ── Level 2 word-mode — compact grid for single-word options ── */
+.word-options.word-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  max-width: 400px;
+  margin: 0 auto;
+}
+.word-options.word-mode .word-btn {
+  font-family: 'Courier New', monospace !important;
+  font-size: 17px !important;
+  letter-spacing: 1px !important;
+  text-align: center !important;
+  padding: 14px 20px !important;
+  min-height: 52px !important;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* ── Level 4 floating distractor icons ── */
+.l4-floater {
+  position: absolute;
+  font-size: 28px;
+  opacity: 0.75;
+  pointer-events: none;
+  z-index: 6;
+  top: 50%;
+  animation: l4Float 2s linear forwards;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.4));
+}
+@keyframes l4Float {
+  0%   { transform: translateX(0)   translateY(0)    scale(0.8); opacity: 0;    }
+  10%  { opacity: 0.85; }
+  50%  { transform: translateX(55vw) translateY(var(--drift, -20px)) scale(1.1); }
+  90%  { opacity: 0.7; }
+  100% { transform: translateX(115vw) translateY(0)  scale(0.8); opacity: 0;    }
+}
+
+/* ── Keep existing l4-distractor-flash for backwards compat ── */
+.l4-distractor-flash {
+  position: absolute;
+  width: 55px; height: 55px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 5;
+  animation: l4FlashAnim 0.5s ease forwards;
+}
+@keyframes l4FlashAnim {
+  0%   { opacity: 0.9; transform: scale(0.5); }
+  50%  { opacity: 0.7; transform: scale(1.5); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* ============================================================
+   v3.3 — Results build-up, champion-who, champ-flash, L3 arena
+   ============================================================ */
+
+/* ── Tighter L3 fruit arena ── */
+.fruit-arena {
+  height: 200px !important;
+  max-width: 340px !important;
+}
+
+/* ── "WHO IS THE CHAMPION?" build-up text ── */
+.champion-who {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--gold);
+  text-align: center;
+  text-shadow: 0 0 30px rgba(255,215,0,0.9);
+  animation: whoFlash 0.6s ease infinite alternate;
+  padding: 0 12px;
+}
+@keyframes whoFlash {
+  from { opacity: 1; transform: scale(1);    text-shadow: 0 0 20px rgba(255,215,0,0.6); }
+  to   { opacity: 0.7; transform: scale(1.06); text-shadow: 0 0 50px rgba(255,215,0,1);   }
+}
+
+/* ── champion-building state (before reveal) ── */
+.champion-building { background: radial-gradient(ellipse at center, #0a0500 0%, #0d0d1a 80%) !important; }
+.champion-building .champion-suspense { display: none; }
+.champion-building .champion-trophy,
+.champion-building .champion-crown,
+.champion-building .champion-title,
+.champion-building .champion-name,
+.champion-building .champion-score,
+.champion-building .champion-close-btn { opacity: 0 !important; }
+
+/* ── Full-screen flash element ── */
+.champ-flash {
+  position: fixed; inset: 0;
+  background: rgba(255,215,0,0.18);
+  pointer-events: none; z-index: 900;
+  animation: champFlashAnim 0.3s ease forwards;
+}
+@keyframes champFlashAnim {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── L2 word-mode — make sure grid centers nicely for 4 options ── */
+.word-options.word-mode {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+  max-width: 380px !important;
+  margin: 0 auto !important;
+}
+.word-options.word-mode .word-btn {
+  font-family: 'Courier New', monospace !important;
+  font-size: 16px !important;
+  letter-spacing: 0.5px !important;
+  text-align: center !important;
+  padding: 14px 10px !important;
+  min-height: 52px !important;
+  white-space: normal !important;
+}
+
+/* ── Between screen — host hint text ── */
+.between-countdown { line-height: 1.5; }
+
+/* ── Ensure hidden works for champion-who ── */
+.champion-who.hidden { display: none !important; }
