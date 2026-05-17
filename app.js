@@ -322,7 +322,7 @@ function animateCN(el) { el.style.animation = 'none'; void el.offsetWidth; el.st
 // ============================================================
 const LEVEL_INTROS = {
   1: { emoji:'🎨', title:'Colour Vision', sub:'Find the one circle with a different shade!',
-       tip:'Later stages add gentle colour drift — stay sharp!', badge:'15 Stages' },
+       tip:'Later stages add gentle colour drift — stay sharp!', badge:'10 Stages' },
   2: { emoji:'📝', title:'Mixed Spelling', sub:'Words AND sentences — find the only correct spelling!',
        tip:'Words get short timers; sentences get more time to read.', badge:'10 Rounds' },
   3: { emoji:'🍎', title:'Fruit Frenzy', sub:'Tap every target fruit — speed increases each wave!',
@@ -412,27 +412,21 @@ function setupMuteButtons() {
 }
 
 // ============================================================
-// LEVEL 1 — COLOUR VISION 🎨  (15 stages)
-// wobble:true = cells gently drift during viewing (stages 11-15)
+// LEVEL 1 — COLOUR VISION 🎨  (10 stages)
+// wobble:true = cells gently drift in hue (stages 7-10)
 // ============================================================
-const L1_ROUNDS = 15;
+const L1_ROUNDS = 10;
 const L1_CFG = [
-  { grid:3, time:16, hueDiff:40, wobble:false, wobbleSpeed:0 }, // Stage 1  — very easy warm-up
-  { grid:4, time:15, hueDiff:34, wobble:false, wobbleSpeed:0 }, // Stage 2
-  { grid:4, time:14, hueDiff:28, wobble:false, wobbleSpeed:0 }, // Stage 3
-  { grid:4, time:13, hueDiff:22, wobble:false, wobbleSpeed:0 }, // Stage 4
-  { grid:4, time:12, hueDiff:17, wobble:false, wobbleSpeed:0 }, // Stage 5
-  { grid:5, time:12, hueDiff:13, wobble:false, wobbleSpeed:0 }, // Stage 6
-  { grid:5, time:11, hueDiff:10, wobble:false, wobbleSpeed:0 }, // Stage 7
-  { grid:5, time:10, hueDiff: 8, wobble:false, wobbleSpeed:0 }, // Stage 8
-  { grid:5, time: 9, hueDiff: 6, wobble:false, wobbleSpeed:0 }, // Stage 9
-  { grid:6, time: 9, hueDiff: 5, wobble:false, wobbleSpeed:0 }, // Stage 10 — hard
-  { grid:6, time: 8, hueDiff: 4, wobble:true,  wobbleSpeed:1.0 }, // Stage 11 — wobble begins
-  { grid:6, time: 7, hueDiff: 4, wobble:true,  wobbleSpeed:1.2 }, // Stage 12
-  // ── FINAL 3 STAGES — noticeably harder ──────────────────────
-  { grid:7, time: 6, hueDiff: 3, wobble:true,  wobbleSpeed:1.8 }, // Stage 13 — bigger grid, faster drift
-  { grid:7, time: 5, hueDiff: 2, wobble:true,  wobbleSpeed:2.4 }, // Stage 14 — extreme speed + tiny diff
-  { grid:7, time: 4, hueDiff: 2, wobble:true,  wobbleSpeed:3.0 }, // Stage 15 — maximum pressure
+  { grid:3, time:16, hueDiff:40, wobble:false, wobbleSpeed:0.0 }, // Stage 1  — very easy
+  { grid:4, time:14, hueDiff:30, wobble:false, wobbleSpeed:0.0 }, // Stage 2  — easy
+  { grid:4, time:13, hueDiff:22, wobble:false, wobbleSpeed:0.0 }, // Stage 3
+  { grid:5, time:12, hueDiff:16, wobble:false, wobbleSpeed:0.0 }, // Stage 4
+  { grid:5, time:11, hueDiff:11, wobble:false, wobbleSpeed:0.0 }, // Stage 5  — medium
+  { grid:5, time:10, hueDiff: 8, wobble:false, wobbleSpeed:0.0 }, // Stage 6
+  { grid:6, time: 9, hueDiff: 6, wobble:true,  wobbleSpeed:1.0 }, // Stage 7  — wobble starts
+  { grid:6, time: 8, hueDiff: 4, wobble:true,  wobbleSpeed:1.6 }, // Stage 8  — hard
+  { grid:7, time: 6, hueDiff: 3, wobble:true,  wobbleSpeed:2.4 }, // Stage 9  — very hard
+  { grid:7, time: 5, hueDiff: 2, wobble:true,  wobbleSpeed:3.2 }, // Stage 10 — extreme
 ];
 
 let l1WobbleRafId = null;
@@ -894,17 +888,28 @@ function showL4Result(correct) {
 
 // ============================================================
 // LEVEL 5 — GRAND FINALE 🏆  (12 events, combo system)
-// Combines ALL four level mechanics with speed + combo rewards
+// Memory events are now the centrepiece — harder sequences,
+// faster flash times, floating distractors during memorise phase
 // ============================================================
 const L5_ROUNDS = 12;
-// Sequence: col,word,fruit,mem,col,fruit,word,mem,col,fruit,word,mem
-const L5_TYPES = ['color','word','fruit','memory','color','fruit','word','memory','color','fruit','word','memory'];
+// Sequence weighted toward memory: mem appears 4 times
+const L5_TYPES = ['color','word','memory','fruit','color','memory','word','fruit','memory','color','memory','fruit'];
 const L5_COLOR_CFG = [
   {grid:3,time:9,hueDiff:24},{grid:4,time:8,hueDiff:18},
   {grid:4,time:7,hueDiff:13},{grid:5,time:7,hueDiff:9},
   {grid:5,time:6,hueDiff:7},{grid:5,time:5,hueDiff:5},
 ];
-const L5_WORD_TIME = [13,12,11,10,9,8];  // Generous — sentences need reading time
+const L5_WORD_TIME = [13,12,11,10,9,8];
+
+// Progressive memory config for L5 — harder than L4
+const L5_MEM_CFG = [
+  { seqLen:3, showMs:4000, answerTime:10, floaters:2, distractEmoji:true },  // Event 1 — manageable
+  { seqLen:4, showMs:3500, answerTime: 9, floaters:4, distractEmoji:true },  // Event 2 — harder
+  { seqLen:4, showMs:2800, answerTime: 9, floaters:6, distractEmoji:true },  // Event 3 — fast flash
+  { seqLen:5, showMs:2500, answerTime: 8, floaters:8, distractEmoji:true },  // Event 4 — max pressure
+];
+let l5MemEventIdx = 0;  // tracks which memory event we're on (0-3)
+
 let l5ColorSeed = 0;
 let l5Combo = 0, l5ComboMultiplier = 1;
 
@@ -932,7 +937,7 @@ function l5BreakCombo() {
 }
 
 function startLevel5() {
-  l5Round = 0; l5Combo = 0; l5ComboMultiplier = 1;
+  l5Round = 0; l5Combo = 0; l5ComboMultiplier = 1; l5MemEventIdx = 0;
   showScreen('screen-level5'); setupMuteButtons(); syncScoresDisplay('l5-scores');
   const cb2 = document.getElementById('l5-combo');
   if (cb2) { cb2.textContent = ''; cb2.className = 'l5-combo'; }
@@ -1080,53 +1085,147 @@ function buildL5Fruit() {
   });
 }
 function buildL5Memory() {
-  const showMs = Math.max(1400, 3800 - l5Round*280);
-  const arena  = document.getElementById('l5-arena');
+  // Pick the progressive cfg — harder each time memory appears
+  const memCfg = L5_MEM_CFG[Math.min(l5MemEventIdx, L5_MEM_CFG.length - 1)];
+  l5MemEventIdx++;
+
+  const arena = document.getElementById('l5-arena');
   document.getElementById('l5-type-label').textContent = '🧠 Memorise & recreate!';
-  arena.style.display='flex'; arena.style.flexWrap='wrap'; arena.style.gap='8px';
-  const seqLen = 3;
-  l5MemSeq=[]; l5MemPlayerSeq=[]; l5MemCanInput=false;
-  for(let i=0;i<seqLen;i++) l5MemSeq.push(L4_EMOJIS[randInt(0,L4_EMOJIS.length-1)]);
-  arena.innerHTML=`<div class="l5-mem-display">${l5MemSeq.map(e=>`<span class="mem-emoji">${e}</span>`).join('')}</div>`;
-  l5CanAct=false;
-  setTimeout(()=>{
-    arena.innerHTML=''; arena.style.flexWrap='wrap';
-    const slotRow=document.createElement('div'); slotRow.className='mem-slots'; slotRow.style.marginBottom='8px';
-    for(let i=0;i<l5MemSeq.length;i++){const s=document.createElement('div');s.className='mem-slot';slotRow.appendChild(s);}
-    arena.appendChild(slotRow);
-    const counts={}; l5MemSeq.forEach(e=>{counts[e]=(counts[e]||0)+1;});
-    const pool=Object.keys(counts);
-    while(pool.length<Math.min(L4_EMOJIS.length,l5MemSeq.length+2)){const e=L4_EMOJIS[randInt(0,L4_EMOJIS.length-1)];if(!pool.includes(e))pool.push(e);}
-    const btnRow=document.createElement('div'); btnRow.className='mem-input';
-    shuffle(pool).forEach(emoji=>{
-      const max=counts[emoji]||0; let left=max;
-      const btn=document.createElement('button'); btn.className='mem-btn'; btn.textContent=emoji;
-      const upd=()=>{btn.dataset.uses=left;if(max>1)btn.setAttribute('data-count',left>0?`×${left}`:'');btn.disabled=left<=0;};
-      upd();
-      btn.onclick=()=>{
-        if(!l5MemCanInput||left<=0)return; left--; upd();
-        l5MemPlayerSeq.push(emoji);
-        const slots=slotRow.querySelectorAll('.mem-slot'); const idx=l5MemPlayerSeq.length-1;
-        if(slots[idx]){slots[idx].textContent=emoji;slots[idx].classList.add('filled');}
-        if(l5MemPlayerSeq.length===l5MemSeq.length){
-          l5MemCanInput=false; stopLocalTimer();
-          const ok=l5MemPlayerSeq.every((e2,i)=>e2===l5MemSeq[i]);
-          const fb=document.getElementById('l5-feedback');
-          if(ok){l5AddScore(150);sfxCorrect();fb.textContent='✅ Perfect memory!';fb.className='l5-fb correct';}
-          else{sfxWrong();l5BreakCombo();deductScore(20);fb.textContent='❌ Wrong order! −20';fb.className='l5-fb wrong';}
-          l5Round++; setTimeout(nextL5Round,1200);
-        }
-      };
-      btnRow.appendChild(btn);
+  arena.style.display = 'flex'; arena.style.flexWrap = 'wrap'; arena.style.gap = '8px';
+
+  l5MemSeq = []; l5MemPlayerSeq = []; l5MemCanInput = false;
+  for (let i = 0; i < memCfg.seqLen; i++) {
+    l5MemSeq.push(L4_EMOJIS[randInt(0, L4_EMOJIS.length - 1)]);
+  }
+
+  // ── SHOW PHASE — display sequence with flash bar ──────────
+  const seqDisplay = document.createElement('div');
+  seqDisplay.className = 'l5-mem-display';
+  seqDisplay.innerHTML = l5MemSeq.map(e => `<span class="mem-emoji mem-reveal">${e}</span>`).join('');
+
+  // Flash progress bar
+  const flashWrap = document.createElement('div'); flashWrap.className = 'flash-bar-wrap';
+  const flashBar  = document.createElement('div'); flashBar.className = 'flash-bar';
+  flashWrap.appendChild(flashBar); arena.appendChild(flashWrap); arena.appendChild(seqDisplay);
+  l5CanAct = false;
+
+  // Animate flash bar draining
+  setTimeout(() => {
+    flashBar.style.transition = `width ${memCfg.showMs}ms linear`;
+    flashBar.style.width = '0%';
+  }, 50);
+
+  // Spawn floating emoji distractors during memorise phase
+  const screen5  = document.getElementById('screen-level5');
+  const floatIds = [];
+  if (memCfg.distractEmoji && memCfg.floaters > 0) {
+    const spawnInterval = Math.max(250, memCfg.showMs / (memCfg.floaters + 1));
+    for (let d = 0; d < memCfg.floaters; d++) {
+      const tid = setTimeout(() => {
+        const fl = document.createElement('div');
+        fl.className = 'l5-mem-floater';
+        fl.textContent = L4_DISTRACT_ICONS[randInt(0, L4_DISTRACT_ICONS.length - 1)];
+        const fromLeft = Math.random() < 0.5;
+        fl.style.cssText = `top:${randInt(10,80)}%;left:${fromLeft?'-8%':'108%'};` +
+          `animation:l4Float ${rand(0.9,1.8).toFixed(2)}s linear forwards;` +
+          `animation-direction:${fromLeft?'normal':'reverse'};font-size:26px;opacity:0.7;pointer-events:none;`;
+        screen5.appendChild(fl);
+        setTimeout(() => fl.remove(), 2000);
+      }, spawnInterval * (d + 1));
+      floatIds.push(tid);
+    }
+  }
+
+  // ── INPUT PHASE — after showMs, hide sequence and show buttons ──
+  setTimeout(() => {
+    // Clear distractors
+    floatIds.forEach(id => clearTimeout(id));
+    document.querySelectorAll('.l5-mem-floater').forEach(el => el.remove());
+
+    // Animate sequence hiding
+    seqDisplay.querySelectorAll('.mem-emoji').forEach((el, i) => {
+      setTimeout(() => {
+        el.classList.add('mem-hide');
+      }, i * 60);
     });
-    arena.appendChild(btnRow);
-    l5MemCanInput=true; l5CanAct=true;
-    startTimerLocal('l5-timer','l5-timer-bar',10,()=>{
-      l5MemCanInput=false; l5CanAct=false;
-      const fb=document.getElementById('l5-feedback'); fb.textContent="⏱ Time's up!"; fb.className='l5-fb timeout';
-      l5Round++; setTimeout(nextL5Round,800);
-    });
-  }, showMs);
+
+    setTimeout(() => {
+      arena.innerHTML = ''; arena.style.flexWrap = 'wrap';
+
+      // Slot row
+      const slotRow = document.createElement('div');
+      slotRow.className = 'mem-slots'; slotRow.style.marginBottom = '8px';
+      for (let i = 0; i < l5MemSeq.length; i++) {
+        const s = document.createElement('div'); s.className = 'mem-slot'; slotRow.appendChild(s);
+      }
+      arena.appendChild(slotRow);
+
+      // Button pool — include distractors (more than L4)
+      const counts = {};
+      l5MemSeq.forEach(e => { counts[e] = (counts[e] || 0) + 1; });
+      const pool = Object.keys(counts);
+      const extraPad = memCfg.seqLen <= 3 ? 3 : 4; // more distractors for longer seqs
+      while (pool.length < Math.min(L4_EMOJIS.length, l5MemSeq.length + extraPad)) {
+        const e = L4_EMOJIS[randInt(0, L4_EMOJIS.length - 1)];
+        if (!pool.includes(e)) pool.push(e);
+      }
+
+      const btnRow = document.createElement('div'); btnRow.className = 'mem-input';
+      shuffle(pool).forEach(emoji => {
+        const max = counts[emoji] || 0; let left = max;
+        const btn = document.createElement('button');
+        btn.className = 'mem-btn'; btn.textContent = emoji;
+        const upd = () => {
+          btn.dataset.uses = left;
+          if (max > 1) btn.setAttribute('data-count', left > 0 ? `×${left}` : '');
+          btn.disabled = left <= 0;
+        };
+        upd();
+        btn.onclick = () => {
+          if (!l5MemCanInput || left <= 0) return;
+          left--; upd();
+          l5MemPlayerSeq.push(emoji);
+          const slots = slotRow.querySelectorAll('.mem-slot');
+          const idx = l5MemPlayerSeq.length - 1;
+          if (slots[idx]) {
+            slots[idx].textContent = emoji;
+            slots[idx].classList.add('filled');
+            // Pulse animation on fill
+            slots[idx].style.animation = 'slotFill 0.25s ease';
+            setTimeout(() => slots[idx].style.animation = '', 250);
+          }
+          if (l5MemPlayerSeq.length === l5MemSeq.length) {
+            l5MemCanInput = false; stopLocalTimer();
+            const ok = l5MemPlayerSeq.every((e2, i) => e2 === l5MemSeq[i]);
+            // Reveal correct sequence with colour coding
+            slotRow.querySelectorAll('.mem-slot').forEach((sl, i) => {
+              const correct = sl.textContent === l5MemSeq[i];
+              sl.style.borderColor = correct ? 'var(--accent3)' : 'var(--accent)';
+              sl.style.background  = correct ? 'rgba(74,222,128,0.15)' : 'rgba(233,69,96,0.15)';
+            });
+            const fb = document.getElementById('l5-feedback');
+            if (ok) {
+              l5AddScore(150); sfxCorrect();
+              fb.textContent = '✅ Perfect memory!'; fb.className = 'l5-fb correct';
+            } else {
+              sfxWrong(); l5BreakCombo(); deductScore(20);
+              fb.textContent = '❌ Wrong order! −20'; fb.className = 'l5-fb wrong';
+            }
+            l5Round++; setTimeout(nextL5Round, 1400);
+          }
+        };
+        btnRow.appendChild(btn);
+      });
+      arena.appendChild(btnRow);
+      l5MemCanInput = true; l5CanAct = true;
+      startTimerLocal('l5-timer', 'l5-timer-bar', memCfg.answerTime, () => {
+        l5MemCanInput = false; l5CanAct = false; l5BreakCombo();
+        const fb = document.getElementById('l5-feedback');
+        fb.textContent = "⏱ Time's up!"; fb.className = 'l5-fb timeout';
+        l5Round++; setTimeout(nextL5Round, 800);
+      });
+    }, memCfg.seqLen * 60 + 150); // wait for hide animation
+  }, memCfg.showMs);
 }
 
 // ============================================================
