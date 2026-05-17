@@ -40,6 +40,16 @@ const sfxGo        = () => [523,659,784].forEach((f,i) => playTone(f,'sine',0.1,
 const sfxTimerWarn = () => playTone(330,'triangle',0.08,0.12);
 const sfxLevelUp   = () => [523,659,784,1047].forEach((f,i) => playTone(f,'sine',0.18,0.25,i*0.12));
 const sfxClick     = () => playTone(660,'triangle',0.06,0.12);
+const sfxDrumroll  = () => {
+  // Rapid snare hits that speed up
+  const times=[0,0.12,0.22,0.30,0.37,0.43,0.48,0.52,0.55,0.575,0.595,0.61];
+  times.forEach(t=>playTone(rand(180,220),'sawtooth',0.04,0.18,t));
+};
+const sfxChampion  = () => {
+  [523,659,784,880,1047].forEach((f,i)=>playTone(f,'sine',0.3,0.3,i*0.12));
+  setTimeout(()=>[784,880,1047].forEach((f,i)=>playTone(f,'sine',0.4,0.35,i*0.1)),800);
+};
+const sfxReveal    = () => { playTone(440,'sine',0.08,0.2); playTone(660,'sine',0.12,0.25,0.08); };
 
 const JAZZ_CHORDS = [[261,330,392,494],[294,370,440,554],[349,440,523,659],[392,494,587,740],[330,415,494,622],[261,330,392,523]];
 function playJazzChord() {
@@ -248,7 +258,7 @@ async function hostStartGame() {
 function startGame() {
   clearListeners();
   get(dbRef('rooms', roomCode, 'players')).then(s => { if (s.exists()) players = s.val(); });
-  doCountdown(() => startLevel1());
+  showLevelIntro(1, () => startLevel1());
 }
 function doCountdown(cb) {
   const overlay = document.getElementById('countdown-overlay');
@@ -265,6 +275,68 @@ function doCountdown(cb) {
   }, 900);
 }
 function animateCN(el) { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'popIn 0.5s ease'; }
+
+// ============================================================
+// LEVEL INTRO SYSTEM
+// ============================================================
+const LEVEL_INTROS = [
+  null, // no entry for index 0
+  { num:1, emoji:'🎨', title:'Colour Vision', sub:'Find the odd colour as fast as you can!',
+    tip:'Look carefully — one circle has a slightly different shade.' },
+  { num:2, emoji:'📝', title:'Dyslexia Challenge', sub:'Pick the correctly spelled word!',
+    tip:'Words get trickier each round — more options, less time.' },
+  { num:3, emoji:'🍎', title:'Fruit Frenzy', sub:'Tap all of the target fruit before time runs out!',
+    tip:'Fruits bounce off each other — track your target carefully.' },
+  { num:4, emoji:'🧠', title:'Memory Flash', sub:'Memorise the sequence, then recreate it!',
+    tip:'The sequence gets longer and shows faster each round.' },
+  { num:5, emoji:'🌀', title:'Mix Madness', sub:'All levels combined — anything can happen!',
+    tip:'Cycles through Colour, Spelling, Fruits and Memory. Stay sharp!' },
+];
+
+function showLevelIntro(levelNum, cb) {
+  const info = LEVEL_INTROS[levelNum];
+  if (!info) { cb(); return; }
+
+  const overlay = document.getElementById('level-intro-overlay');
+  const oEmoji  = document.getElementById('intro-level-emoji');
+  const oNum    = document.getElementById('intro-level-num');
+  const oTitle  = document.getElementById('intro-level-title');
+  const oSub    = document.getElementById('intro-level-sub');
+  const oTip    = document.getElementById('intro-level-tip');
+  const oCount  = document.getElementById('intro-countdown');
+
+  oEmoji.textContent  = info.emoji;
+  oNum.textContent    = `Level ${info.num}`;
+  oTitle.textContent  = info.title;
+  oSub.textContent    = info.sub;
+  oTip.textContent    = `💡 ${info.tip}`;
+  oCount.textContent  = '';
+  overlay.classList.remove('hidden');
+  overlay.classList.add('intro-in');
+
+  // Show info for 2.2 s then count down 3-2-1-GO
+  setTimeout(() => {
+    let c = 3;
+    oCount.textContent = c;
+    sfxCountdown();
+    const tick = setInterval(() => {
+      c--;
+      if (c <= 0) {
+        clearInterval(tick);
+        oCount.textContent = 'GO!';
+        sfxGo();
+        setTimeout(() => {
+          overlay.classList.add('hidden');
+          overlay.classList.remove('intro-in');
+          cb();
+        }, 550);
+      } else {
+        oCount.textContent = c;
+        sfxCountdown();
+      }
+    }, 800);
+  }, 2200);
+}
 
 // ============================================================
 // LEVEL 1 — COLOUR SORTING 🎨
@@ -950,12 +1022,13 @@ function showBetweenScreen(levelNum) {
       if (lvl === 'results') { clearListeners(); showFinalResults(); return; }
       if (lvl > levelNum) {
         clearListeners();
-        doCountdown(() => {
+        const goLvl = () => {
           if      (lvl === 2) startLevel2();
           else if (lvl === 3) startLevel3();
           else if (lvl === 4) startLevel4();
           else if (lvl === 5) startLevel5();
-        });
+        };
+        showLevelIntro(lvl, goLvl);
       }
     });
   }
@@ -969,26 +1042,66 @@ function showFinalResults() {
   get(dbRef('rooms', roomCode, 'players')).then(snap => { players = snap.val() || {}; renderResults(); });
 }
 function renderResults() {
-  const sorted = Object.entries(players).sort((a,b) => (b[1].score||0)-(a[1].score||0)).map(([uid,p],i) => ({uid,...p,rank:i+1}));
-  const podium = document.getElementById('podium'); podium.innerHTML = '';
-  const po = sorted.length >= 2 ? [sorted[1],sorted[0],sorted[2],sorted[3],sorted[4]].filter(Boolean) : sorted;
-  const medals = ['🥈','🥇','🥉','4️⃣','5️⃣'];
-  const heights = ['70px','90px','55px','45px','40px'];
-  po.forEach((p,i) => {
-    const realRank = sorted.findIndex(s => s.uid === p.uid) + 1;
-    const block = document.createElement('div'); block.className = `podium-block rank-${realRank}`;
-    block.innerHTML = `<div class="podium-name">${p.name}${p.uid===myUid?' (you)':''}</div>
-      <div class="podium-score">${p.score||0} pts</div>
-      <div class="podium-platform" style="min-height:${heights[i]}">
-        <div class="podium-medal">${medals[i]}</div><div class="podium-pos">#${realRank}</div></div>`;
-    podium.appendChild(block);
-  });
-  renderLeaderboard('full-leaderboard', players, true);
-  const paBtn = document.getElementById('btn-play-again');
-  if (isHost) { paBtn.classList.remove('hidden'); paBtn.onclick = () => { sfxClick(); resetGame(); }; }
-  else paBtn.classList.add('hidden');
+  const sorted = Object.entries(players)
+    .sort((a,b) => (b[1].score||0)-(a[1].score||0))
+    .map(([uid,p],i) => ({uid,...p,rank:i+1}));
+
   showScreen('screen-results');
-  if (sorted[0]?.uid === myUid) spawnConfetti();
+  document.getElementById('podium').innerHTML = '';
+  document.getElementById('full-leaderboard').innerHTML = '';
+  document.getElementById('results-actions').innerHTML = '';
+
+  // Dramatic sequential reveal: 5th → 4th → 3rd → 2nd → 1st
+  const toReveal = sorted.slice(0, 5).reverse(); // worst first
+  const revealContainer = document.getElementById('podium');
+  let delay = 800;
+
+  toReveal.forEach((p, revIdx) => {
+    const isFirst = p.rank === 1;
+    const rankLabels = {1:'🥇 CHAMPION',2:'🥈 2nd Place',3:'🥉 3rd Place',4:'4th Place',5:'5th Place'};
+    setTimeout(() => {
+      if (isFirst) {
+        // Dramatic champion reveal
+        const overlay = document.getElementById('champion-overlay');
+        overlay.classList.remove('hidden');
+        sfxDrumroll();
+        setTimeout(() => {
+          document.getElementById('champion-name').textContent = p.name + (p.uid===myUid?' 🎉':'');
+          document.getElementById('champion-score').textContent = (p.score||0) + ' pts';
+          overlay.classList.add('champion-reveal');
+          sfxChampion();
+          if (p.uid === myUid) spawnConfetti();
+          setTimeout(() => spawnConfetti(), 400);
+          setTimeout(() => spawnConfetti(), 800);
+        }, 2200);
+      } else {
+        sfxReveal();
+        const card = document.createElement('div');
+        card.className = 'reveal-card rank-' + p.rank;
+        card.innerHTML = `<span class="reveal-rank">${rankLabels[p.rank]||('#'+p.rank)}</span>
+          <span class="reveal-name">${p.name}${p.uid===myUid?' (you)':''}</span>
+          <span class="reveal-score">${p.score||0} pts</span>`;
+        card.style.animation = 'revealSlide 0.5s ease forwards';
+        revealContainer.appendChild(card);
+      }
+    }, delay);
+    delay += isFirst ? 3500 : 4000;
+  });
+
+  // Show buttons after all reveals
+  const totalDelay = delay + 1500;
+  setTimeout(() => {
+    renderLeaderboard('full-leaderboard', players);
+    const paBtn = document.createElement('button');
+    paBtn.className = 'btn-main'; paBtn.style.marginBottom='10px';
+    if (isHost) { paBtn.textContent='🔁 Play Again'; paBtn.onclick=()=>{sfxClick();resetGame();}; }
+    else { paBtn.textContent='🔁 Play Again'; paBtn.style.opacity='0.4'; paBtn.disabled=true; }
+    const mmBtn = document.createElement('button');
+    mmBtn.className='btn-ghost'; mmBtn.textContent='Main Menu'; mmBtn.onclick=()=>{sfxClick();resetToMenu();};
+    const ra = document.getElementById('results-actions');
+    if (isHost) ra.appendChild(paBtn);
+    ra.appendChild(mmBtn);
+  }, totalDelay);
 }
 function renderLeaderboard(containerId, playerData) {
   const container = document.getElementById(containerId); container.innerHTML = '';
