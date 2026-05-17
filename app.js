@@ -417,21 +417,22 @@ function setupMuteButtons() {
 // ============================================================
 const L1_ROUNDS = 15;
 const L1_CFG = [
-  { grid:3, time:16, hueDiff:40, wobble:false }, // Stage 1  — very easy warm-up
-  { grid:4, time:15, hueDiff:34, wobble:false }, // Stage 2
-  { grid:4, time:14, hueDiff:28, wobble:false }, // Stage 3
-  { grid:4, time:13, hueDiff:22, wobble:false }, // Stage 4
-  { grid:4, time:12, hueDiff:17, wobble:false }, // Stage 5
-  { grid:5, time:12, hueDiff:13, wobble:false }, // Stage 6
-  { grid:5, time:11, hueDiff:10, wobble:false }, // Stage 7
-  { grid:5, time:10, hueDiff: 8, wobble:false }, // Stage 8
-  { grid:5, time: 9, hueDiff: 6, wobble:false }, // Stage 9
-  { grid:6, time: 9, hueDiff: 5, wobble:false }, // Stage 10 — hard
-  { grid:6, time: 8, hueDiff: 4, wobble:true  }, // Stage 11 — cells wobble
-  { grid:6, time: 7, hueDiff: 4, wobble:true  }, // Stage 12
-  { grid:6, time: 7, hueDiff: 3, wobble:true  }, // Stage 13
-  { grid:7, time: 6, hueDiff: 3, wobble:true  }, // Stage 14
-  { grid:7, time: 5, hueDiff: 2, wobble:true  }, // Stage 15 — extreme
+  { grid:3, time:16, hueDiff:40, wobble:false, wobbleSpeed:0 }, // Stage 1  — very easy warm-up
+  { grid:4, time:15, hueDiff:34, wobble:false, wobbleSpeed:0 }, // Stage 2
+  { grid:4, time:14, hueDiff:28, wobble:false, wobbleSpeed:0 }, // Stage 3
+  { grid:4, time:13, hueDiff:22, wobble:false, wobbleSpeed:0 }, // Stage 4
+  { grid:4, time:12, hueDiff:17, wobble:false, wobbleSpeed:0 }, // Stage 5
+  { grid:5, time:12, hueDiff:13, wobble:false, wobbleSpeed:0 }, // Stage 6
+  { grid:5, time:11, hueDiff:10, wobble:false, wobbleSpeed:0 }, // Stage 7
+  { grid:5, time:10, hueDiff: 8, wobble:false, wobbleSpeed:0 }, // Stage 8
+  { grid:5, time: 9, hueDiff: 6, wobble:false, wobbleSpeed:0 }, // Stage 9
+  { grid:6, time: 9, hueDiff: 5, wobble:false, wobbleSpeed:0 }, // Stage 10 — hard
+  { grid:6, time: 8, hueDiff: 4, wobble:true,  wobbleSpeed:1.0 }, // Stage 11 — wobble begins
+  { grid:6, time: 7, hueDiff: 4, wobble:true,  wobbleSpeed:1.2 }, // Stage 12
+  // ── FINAL 3 STAGES — noticeably harder ──────────────────────
+  { grid:7, time: 6, hueDiff: 3, wobble:true,  wobbleSpeed:1.8 }, // Stage 13 — bigger grid, faster drift
+  { grid:7, time: 5, hueDiff: 2, wobble:true,  wobbleSpeed:2.4 }, // Stage 14 — extreme speed + tiny diff
+  { grid:7, time: 4, hueDiff: 2, wobble:true,  wobbleSpeed:3.0 }, // Stage 15 — maximum pressure
 ];
 
 let l1WobbleRafId = null;
@@ -479,14 +480,15 @@ function buildL1Grid(cfg, seed) {
   // Gentle drift animation for late stages — cells shift their hue ±1 to add visual noise
   if (cfg.wobble) {
     const startT = performance.now();
+    const speed  = cfg.wobbleSpeed || 1.2;   // faster in final stages
     const animate = (now) => {
       const t = (now - startT) / 1000;
       cells.forEach((cell, i) => {
         if (cell.classList.contains('correct') || cell.classList.contains('wrong')) return;
         const isOdd = cell.classList.contains('odd-cell');
         const hue = isOdd ? oddHue : baseHue;
-        const drift = Math.sin(t * 1.2 + i * 0.7) * 1.5; // max ±1.5° hue drift
-        cell.style.background = `hsl(${hue + drift},${sat}%,${lit + Math.sin(t + i) * 1.5}%)`;
+        const drift = Math.sin(t * speed + i * 0.7) * 1.8; // ±1.8° hue drift, speed-scaled
+        cell.style.background = `hsl(${hue + drift},${sat}%,${lit + Math.sin(t * speed + i) * 1.8}%)`;
       });
       l1WobbleRafId = requestAnimationFrame(animate);
     };
@@ -744,16 +746,17 @@ function handleL3Tap(fObj, penalty) {
 // ============================================================
 // LEVEL 4 — MEMORY FLASH 🧠  (7 rounds, floating distractors)
 // ============================================================
-const L4_ROUNDS = 5;
 const L4_EMOJIS = ['🍎','⭐','🎲','🍌','🔥','💎','🎯','🌙','🎪','🦋'];
 const L4_CFG    = [
-  { seqLen:3, showTime:6000, answerTime:12, floaters:3,  flashing:false }, // Round 1 — light
-  { seqLen:3, showTime:5000, answerTime:11, floaters:6,  flashing:false }, // Round 2
-  { seqLen:4, showTime:4500, answerTime:10, floaters:9,  flashing:true  }, // Round 3 — flashing added
-  { seqLen:4, showTime:3500, answerTime: 9, floaters:12, flashing:true  }, // Round 4
-  { seqLen:4, showTime:2800, answerTime: 8, floaters:16, flashing:true  }, // Round 5 — extreme
+  { seqLen:3, showTime:6000, answerTime:12, floaters: 3, flashing:false, shake:false }, // Round 1 — calm start
+  { seqLen:3, showTime:5200, answerTime:11, floaters: 6, flashing:false, shake:false }, // Round 2
+  { seqLen:4, showTime:4500, answerTime:10, floaters: 9, flashing:true,  shake:false }, // Round 3 — flashing
+  { seqLen:4, showTime:4000, answerTime:10, floaters:12, flashing:true,  shake:false }, // Round 4
+  { seqLen:4, showTime:3200, answerTime: 9, floaters:15, flashing:true,  shake:false }, // Round 5
+  { seqLen:4, showTime:2800, answerTime: 8, floaters:18, flashing:true,  shake:true  }, // Round 6 — screen shake
+  { seqLen:4, showTime:2400, answerTime: 7, floaters:22, flashing:true,  shake:true  }, // Round 7 — extreme
 ];
-// L4_ROUNDS is 5 (reset from 7)
+const L4_ROUNDS = 7;
 const L4_DISTRACT_ICONS  = ['💥','🎉','⚡','🌈','🎭','🔔','🌀','💫','🎪','🎯','🔥','💎','🚀','🎸','🌟','🔴','🟡','🟢','🔵','🟣'];
 const L4_DISTRACT_COLORS = ['#e94560','#4f8ef7','#fbbf24','#4ade80','#c084fc','#ff8c42'];
 
@@ -819,6 +822,18 @@ function nextL4Round() {
     const interval = Math.max(180, cfg.showTime / (cfg.floaters * 1.8));
     l4FloaterInterval = setInterval(spawnFloater, interval);
     spawnFloater(); // immediate first spawn
+  }
+
+  // Periodic screen shake for hardest rounds
+  if (cfg.shake) {
+    const shakeCount = Math.floor(cfg.showTime / 800);
+    for (let s = 1; s <= shakeCount; s++) {
+      setTimeout(() => {
+        const sc = document.getElementById('screen-level4');
+        sc.classList.add('screen-shake');
+        setTimeout(() => sc.classList.remove('screen-shake'), 350);
+      }, (cfg.showTime / (shakeCount + 1)) * s);
+    }
   }
 
   setTimeout(() => {
