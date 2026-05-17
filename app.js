@@ -424,9 +424,9 @@ const L1_CFG = [
   { grid:5, time:11, hueDiff:12, wobble:false, wobbleSpeed:0.0 }, // Stage 5  — medium
   { grid:5, time:10, hueDiff: 9, wobble:false, wobbleSpeed:0.0 }, // Stage 6
   { grid:6, time: 9, hueDiff: 7, wobble:false, wobbleSpeed:0.0 }, // Stage 7
-  { grid:6, time: 8, hueDiff: 6, wobble:true,  wobbleSpeed:1.0 }, // Stage 8  — hard, wobble starts
-  { grid:6, time: 7, hueDiff: 5, wobble:true,  wobbleSpeed:1.6 }, // Stage 9  — hard
-  { grid:7, time: 6, hueDiff: 4, wobble:true,  wobbleSpeed:2.2 }, // Stage 10 — very hard but fair
+  { grid:6, time: 9, hueDiff:12, wobble:true,  wobbleSpeed:0.8 }, // Stage 8  — wobble starts, diff stays visible
+  { grid:6, time: 8, hueDiff:10, wobble:true,  wobbleSpeed:1.2 }, // Stage 9  — moderately hard
+  { grid:6, time: 7, hueDiff: 8, wobble:true,  wobbleSpeed:1.6 }, // Stage 10 — hard but clearly fair
 ];
 
 let l1WobbleRafId = null;
