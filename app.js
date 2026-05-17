@@ -323,14 +323,14 @@ function animateCN(el) { el.style.animation = 'none'; void el.offsetWidth; el.st
 const LEVEL_INTROS = {
   1: { emoji:'🎨', title:'Colour Vision', sub:'Find the one circle with a different shade!',
        tip:'Difficulty rises every round — hues get closer together.', badge:'7 Rounds' },
-  2: { emoji:'📝', title:'Text Challenge', sub:'Pick the correctly spelled word or the true statement!',
-       tip:'Half the rounds use sentences — read carefully.', badge:'10 Rounds' },
-  3: { emoji:'🍎', title:'Fruit Frenzy', sub:'Tap every target fruit before time runs out!',
-       tip:'Wrong taps cost you points. Fruits bounce — never overlap!', badge:'5 Waves' },
-  4: { emoji:'🧠', title:'Memory Flash', sub:'Memorise the sequence then recreate it!',
-       tip:'Max 4 items — but viewing time shrinks each round.', badge:'5 Rounds' },
-  5: { emoji:'🌀', title:'Mix Madness', sub:'All challenges combined — anything goes!',
-       tip:'Cycles through Colour → Text → Fruits → Memory. Stay alert!', badge:'8 Events' },
+  2: { emoji:'📝', title:'Sentence Spelling', sub:'Only ONE sentence is correctly spelled — find it!',
+       tip:'Look for tiny misspellings hidden in natural sentences.', badge:'10 Rounds' },
+  3: { emoji:'🍎', title:'Fruit Frenzy', sub:'Tap every target fruit — speed increases each wave!',
+       tip:'Wrong taps cost you points. Fruits bounce and speed up!', badge:'5 Waves' },
+  4: { emoji:'🧠', title:'Memory Flash', sub:'Memorise the sequence through distractions — then recreate it!',
+       tip:'Distracting colours flash while you memorise. Stay focused!', badge:'5 Rounds' },
+  5: { emoji:'🏆', title:'Grand Finale', sub:'Every mechanic combined — the ultimate championship round!',
+       tip:'Speed, memory, spelling and physics — all at once. Combos rewarded!', badge:'12 Events' },
 };
 function showLevelIntro(lvl, cb) {
   const info = LEVEL_INTROS[lvl];
@@ -474,54 +474,49 @@ function handleL1Click(el, isCorrect) {
 }
 
 // ============================================================
-// LEVEL 2 — TEXT CHALLENGE 📝  (10 rounds: 5 words + 5 sentences)
+// LEVEL 2 — SENTENCE SPELLING CHALLENGE 📝  (10 rounds)
+// Each round shows 4 similar sentences; only ONE is correctly spelled.
 // ============================================================
-// Word rounds: pick the correctly spelled word
-const WORD_ITEMS = [
-  { type:'word', correct:'banana',    options:['banana','bananna','bananah','bannana','banaana','banane','banannah'] },
-  { type:'word', correct:'calendar',  options:['calender','calendar','calandar','callender','calandir','calenddar','callendar'] },
-  { type:'word', correct:'receive',   options:['recieve','receive','receeve','recevie','recive','reciive','receivve'] },
-  { type:'word', correct:'necessary', options:['necessary','neccessary','necessery','nesessary','necesary','neccesary','necessarry'] },
-  { type:'word', correct:'separate',  options:['seperate','separete','separate','saparate','seperatee','saparete','separrate'] },
-  { type:'word', correct:'achieve',   options:['acheive','achieve','acheeve','achiive','achivee','achive','achiev'] },
-  { type:'word', correct:'occurred',  options:['occured','ocurred','occurred','occuried','ocurreed','occureed','occurrred'] },
-  { type:'word', correct:'believe',   options:['beleive','beleave','believe','beleve','beliieve','beleeve','believve'] },
-  { type:'word', correct:'beautiful', options:['beatiful','beutiful','beautiful','beautyful','beatyful','beautifull','beauttiful'] },
-  { type:'word', correct:'tomorrow',  options:['tommorow','tomorow','tomorrow','tommorrow','tomorrrow','tomoorrow','tomorrrow'] },
-];
-// Statement rounds: pick the correct (true/accurate) statement
-const STMT_ITEMS = [
-  { type:'stmt', prompt:'Which statement is TRUE?',
-    correct:'Paris is the capital of France.',
-    options:['Paris is the capital of Spain.','Paris is the capital of France.','London is the capital of France.','Berlin is the capital of France.'] },
-  { type:'stmt', prompt:'Which sentence is CORRECTLY written?',
-    correct:'She goes to school every day.',
-    options:['She go to school every day.','She gone to school every day.','She goes to school every day.','She going to school every day.'] },
-  { type:'stmt', prompt:'Choose the CORRECT statement:',
-    correct:'The sun rises in the east.',
-    options:['The sun rises in the west.','The sun rises in the south.','The sun rises in the east.','The sun rises at midnight.'] },
-  { type:'stmt', prompt:'Pick the sentence that makes SENSE:',
-    correct:'The cat sat quietly on the mat.',
-    options:['The cat sat quietly on the mat.','The mat sat on the cat quietly.','Quietly on the mat the sat cat.','The sat mat cat on quietly the.'] },
-  { type:'stmt', prompt:'Which sentence uses the word CORRECTLY?',
-    correct:'She was affected by the cold weather.',
-    options:['She was effected by the cold weather.','She was affected by the cold weather.','She was affacted by the cold weather.','She was afected by the cold weather.'] },
-];
-// Build 10-round sequence: alternating word/statement, scaled difficulty
 const L2_DATA = [
-  WORD_ITEMS[0], STMT_ITEMS[0],
-  WORD_ITEMS[1], STMT_ITEMS[1],
-  WORD_ITEMS[2], STMT_ITEMS[2],
-  WORD_ITEMS[3], STMT_ITEMS[3],
-  WORD_ITEMS[4], STMT_ITEMS[4],
+  // Stage 1 — easy, single obvious error
+  { correct:'The children are playing outside.',
+    options:['The childern are playing outside.','The children are plaing outside.','The children are playng outside.'] },
+  // Stage 2 — easy
+  { correct:'She opened the window carefully.',
+    options:['She opend the window carefully.','She opened the windoe carefully.','She opened the window carfully.'] },
+  // Stage 3 — slightly trickier
+  { correct:'The students finished their homework.',
+    options:['The studants finished their homework.','The students finishd their homework.','The students finished thier homework.'] },
+  // Stage 4
+  { correct:'He quickly ran across the bridge.',
+    options:['He quikly ran across the bridge.','He quickly ran accross the bridge.','He quickly ran across the brdige.'] },
+  // Stage 5 — two plausible errors each
+  { correct:'The weather was beautiful yesterday.',
+    options:['The wether was beautiful yesterday.','The weather was beautifull yesterday.','The weather was beautifal yesterday.'] },
+  // Stage 6
+  { correct:'They decided to travel by train.',
+    options:['They dicided to travel by train.','They decided to travell by train.','They decided to travel by trian.'] },
+  // Stage 7 — harder, errors more subtle
+  { correct:'The library closes at eight o\u2019clock.',
+    options:['The librery closes at eight o\u2019clock.','The library closses at eight o\u2019clock.','The library closes at eigth o\u2019clock.'] },
+  // Stage 8
+  { correct:'She received a letter from her friend.',
+    options:['She recieved a letter from her friend.','She received a leter from her friend.','She received a letter from her freind.'] },
+  // Stage 9 — very subtle errors
+  { correct:'The government announced a new policy.',
+    options:['The goverment announced a new policy.','The government anounced a new policy.','The government announced a new polisy.'] },
+  // Stage 10 — hardest
+  { correct:'He successfully completed the examination.',
+    options:['He successfuly completed the examination.','He successfully completd the examination.','He successfully completed the examanation.'] },
 ];
 const L2_ROUNDS = 10;
+// Generous timers — players need time to READ full sentences
 const L2_CFG = [
-  { time:13, opts:3 }, { time:14, opts:3 },
-  { time:11, opts:4 }, { time:12, opts:4 },
-  { time:10, opts:5 }, { time:11, opts:4 },
-  { time: 9, opts:6 }, { time:10, opts:4 },
-  { time: 7, opts:7 }, { time: 8, opts:4 },
+  { time:18 }, { time:17 },
+  { time:16 }, { time:15 },
+  { time:14 }, { time:14 },
+  { time:13 }, { time:13 },
+  { time:12 }, { time:12 },
 ];
 function startLevel2() {
   l2Round = 0;
@@ -534,24 +529,16 @@ function nextL2Round() {
   const cfg  = L2_CFG[l2Round];
   const item = L2_DATA[l2Round];
   document.getElementById('l2-round').textContent = `${l2Round+1}/${L2_ROUNDS}`;
-  document.getElementById('l2-stage').textContent = item.type === 'stmt' ? 'Statement' : 'Spelling';
-  document.getElementById('word-prompt').textContent = item.type === 'stmt' ? item.prompt : 'Which is spelled correctly?';
+  document.getElementById('l2-stage').textContent = `Stage ${l2Round+1}`;
+  document.getElementById('word-prompt').textContent = 'Which sentence is spelled correctly?';
   const container = document.getElementById('word-options');
   container.innerHTML = '';
-  container.className = item.type === 'stmt' ? 'word-options stmt-mode' : 'word-options';
-  const pool = item.type === 'stmt'
-    ? shuffle(item.options).slice(0, cfg.opts)
-    : shuffle(item.options.filter(o => o !== item.correct)).slice(0, cfg.opts - 1);
-  const opts = item.type === 'stmt'
-    ? pool
-    : shuffle([item.correct, ...pool]);
-  // Ensure correct is in the stmt pool
-  const finalOpts = item.type === 'stmt' && !opts.includes(item.correct)
-    ? shuffle([item.correct, ...opts.slice(0,-1)])
-    : opts;
-  finalOpts.forEach(opt => {
+  container.className = 'word-options stmt-mode';
+  // Always 4 options: correct + all 3 wrong variants
+  const allOpts = shuffle([item.correct, ...item.options]);
+  allOpts.forEach(opt => {
     const btn = document.createElement('button');
-    btn.className = 'word-btn';
+    btn.className = 'word-btn sentence-btn';
     btn.textContent = opt;
     btn.onclick = () => handleL2Click(btn, opt === item.correct, item.correct);
     container.appendChild(btn);
@@ -563,8 +550,8 @@ function nextL2Round() {
       if (b.textContent === item.correct) b.classList.add('correct-pick');
       b.disabled = true;
     });
-    showToast(`⏱ Correct: "${item.correct}"`);
-    l2Round++; setTimeout(nextL2Round, 1300);
+    showToast('⏱ Time's up! Read more carefully next time.');
+    l2Round++; setTimeout(nextL2Round, 1600);
   });
 }
 function handleL2Click(btn, isCorrect, correctWord) {
@@ -572,13 +559,13 @@ function handleL2Click(btn, isCorrect, correctWord) {
   l2CanClick = false; stopLocalTimer();
   document.querySelectorAll('.word-btn').forEach(b => b.disabled = true);
   if (isCorrect) {
-    btn.classList.add('correct-pick'); addMyScore(100); sfxCorrect(); showToast('✅ +100 pts!');
+    btn.classList.add('correct-pick'); addMyScore(120); sfxCorrect(); showToast('✅ +120 pts!');
   } else {
     btn.classList.add('wrong-pick');
     document.querySelectorAll('.word-btn').forEach(b => { if (b.textContent === correctWord) b.classList.add('correct-pick'); });
-    sfxWrong(); showToast('❌ Wrong!');
+    sfxWrong(); showToast('❌ Look for the spelling error!');
   }
-  l2Round++; setTimeout(nextL2Round, 1100);
+  l2Round++; setTimeout(nextL2Round, 1400);
 }
 
 // ============================================================
@@ -587,11 +574,11 @@ function handleL2Click(btn, isCorrect, correctWord) {
 const ALL_FRUITS = ['🍎','🍌','🍇','🍓','🍍','🍊','🫐','🍑'];
 const L3_ROUNDS  = 5;
 const L3_CFG     = [
-  { time:16, total:12, speedMin:22, speedMax:42, penalty:25 },
-  { time:15, total:14, speedMin:28, speedMax:50, penalty:25 },
-  { time:14, total:15, speedMin:33, speedMax:58, penalty:30 },
-  { time:13, total:17, speedMin:38, speedMax:66, penalty:30 },
-  { time:11, total:19, speedMin:43, speedMax:74, penalty:35 },
+  { time:16, total:12, speedMin:30, speedMax:55, penalty:25 },   // Wave 1 — noticeable speed
+  { time:15, total:14, speedMin:40, speedMax:68, penalty:25 },   // Wave 2 — picks up
+  { time:14, total:15, speedMin:50, speedMax:80, penalty:30 },   // Wave 3 — fast
+  { time:13, total:17, speedMin:58, speedMax:92, penalty:30 },   // Wave 4 — intense
+  { time:11, total:19, speedMin:66, speedMax:105,penalty:35 },   // Wave 5 — chaos
 ];
 function startLevel3() {
   l3Round = 0;
@@ -685,12 +672,14 @@ function handleL3Tap(fObj, penalty) {
 const L4_ROUNDS = 5;
 const L4_EMOJIS = ['🍎','⭐','🎲','🍌','🔥','💎','🎯','🌙','🎪','🦋'];
 const L4_CFG    = [
-  { seqLen:3, showTime:6000, answerTime:12 },
-  { seqLen:3, showTime:5000, answerTime:11 },
-  { seqLen:4, showTime:4500, answerTime:10 },
-  { seqLen:4, showTime:3500, answerTime:9  },
-  { seqLen:4, showTime:2800, answerTime:8  },
+  { seqLen:3, showTime:5500, answerTime:11, distractors:0 },  // Round 1 — clean
+  { seqLen:3, showTime:4500, answerTime:10, distractors:1 },  // Round 2 — one flash
+  { seqLen:4, showTime:4000, answerTime:10, distractors:2 },  // Round 3 — two flashes
+  { seqLen:4, showTime:3200, answerTime:9,  distractors:3 },  // Round 4 — distracting
+  { seqLen:4, showTime:2500, answerTime:8,  distractors:4 },  // Round 5 — hardest
 ];
+// Distractor colours that flash across screen during memorise phase
+const L4_DISTRACT_COLORS = ['#e94560','#4f8ef7','#fbbf24','#4ade80','#c084fc','#ff8c42'];
 function startLevel4() {
   l4Round = 0;
   showScreen('screen-level4'); setupMuteButtons(); syncScoresDisplay('l4-scores');
@@ -715,6 +704,18 @@ function nextL4Round() {
   const bar = document.getElementById('l4-flash-bar');
   bar.style.transition = 'none'; bar.style.width = '100%';
   setTimeout(() => { bar.style.transition = `width ${cfg.showTime}ms linear`; bar.style.width = '0%'; }, 50);
+  // Spawn colour distractors during memorise phase
+  for (let d = 0; d < cfg.distractors; d++) {
+    setTimeout(() => {
+      const flash = document.createElement('div');
+      flash.className = 'l4-distractor-flash';
+      flash.style.background = L4_DISTRACT_COLORS[d % L4_DISTRACT_COLORS.length];
+      flash.style.left = randInt(5, 75) + '%';
+      flash.style.top  = randInt(5, 70) + '%';
+      document.getElementById('screen-level4').appendChild(flash);
+      setTimeout(() => flash.remove(), 500);
+    }, (cfg.showTime / (cfg.distractors + 1)) * (d + 1));
+  }
   setTimeout(() => {
     display.classList.add('hidden');
     prompt.textContent = 'Recreate the sequence!';
@@ -771,21 +772,49 @@ function showL4Result(correct) {
 }
 
 // ============================================================
-// LEVEL 5 — MIX MADNESS 🌀  (8 events, cycling all types)
+// LEVEL 5 — GRAND FINALE 🏆  (12 events, combo system)
+// Combines ALL four level mechanics with speed + combo rewards
 // ============================================================
-const L5_ROUNDS = 8;
-const L5_TYPES  = ['color','word','fruit','memory'];
+const L5_ROUNDS = 12;
+// Sequence: col,word,fruit,mem,col,fruit,word,mem,col,fruit,word,mem
+const L5_TYPES = ['color','word','fruit','memory','color','fruit','word','memory','color','fruit','word','memory'];
 const L5_COLOR_CFG = [
-  {grid:3,time:11,hueDiff:26},{grid:4,time:9,hueDiff:19},
-  {grid:4,time:8,hueDiff:14},{grid:5,time:7,hueDiff:10},
-  {grid:5,time:6,hueDiff:7}
+  {grid:3,time:9,hueDiff:24},{grid:4,time:8,hueDiff:18},
+  {grid:4,time:7,hueDiff:13},{grid:5,time:7,hueDiff:9},
+  {grid:5,time:6,hueDiff:7},{grid:5,time:5,hueDiff:5},
 ];
-const L5_WORD_TIME = [11,10,9,8,7,6];
+const L5_WORD_TIME = [13,12,11,10,9,8];  // Generous — sentences need reading time
 let l5ColorSeed = 0;
+let l5Combo = 0, l5ComboMultiplier = 1;
+
+function l5AddScore(base) {
+  // Combo multiplier: x1 → x2 → x3 → x4 (capped)
+  l5Combo++;
+  l5ComboMultiplier = Math.min(4, 1 + Math.floor(l5Combo / 2));
+  const pts = base * l5ComboMultiplier;
+  addMyScore(pts);
+  const fb2 = document.getElementById('l5-combo');
+  if (l5Combo >= 2) {
+    fb2.textContent = `🔥 COMBO ×${l5ComboMultiplier}`;
+    fb2.className = 'l5-combo active';
+    if (l5Combo >= 4) sfxLevelUp();
+    showToast(`✅ +${pts} pts! COMBO ×${l5ComboMultiplier}`);
+  } else {
+    fb2.textContent = '';
+    showToast(`✅ +${pts} pts!`);
+  }
+}
+function l5BreakCombo() {
+  l5Combo = 0; l5ComboMultiplier = 1;
+  const fb2 = document.getElementById('l5-combo');
+  fb2.textContent = ''; fb2.className = 'l5-combo';
+}
 
 function startLevel5() {
-  l5Round = 0;
+  l5Round = 0; l5Combo = 0; l5ComboMultiplier = 1;
   showScreen('screen-level5'); setupMuteButtons(); syncScoresDisplay('l5-scores');
+  const cb2 = document.getElementById('l5-combo');
+  if (cb2) { cb2.textContent = ''; cb2.className = 'l5-combo'; }
   nextL5Round();
 }
 function nextL5Round() {
@@ -824,14 +853,14 @@ function buildL5Color() {
     el.addEventListener('click', () => {
       if (!l5CanAct) return; l5CanAct = false; stopLocalTimer();
       const fb = document.getElementById('l5-feedback');
-      if (i===oddIdx) { addMyScore(100); sfxCorrect(); fb.textContent='✅ +100'; fb.className='l5-fb correct'; }
-      else { sfxWrong(); fb.textContent='❌ Wrong!'; fb.className='l5-fb wrong'; }
+      if (i===oddIdx) { l5AddScore(100); sfxCorrect(); fb.textContent='✅ Correct!'; fb.className='l5-fb correct'; }
+      else { sfxWrong(); l5BreakCombo(); deductScore(20); fb.textContent='❌ −20 pts'; fb.className='l5-fb wrong'; }
       l5Round++; setTimeout(nextL5Round, 700);
     });
     arena.appendChild(el);
   }
   startTimerLocal('l5-timer','l5-timer-bar', cfg.time, () => {
-    l5CanAct = false;
+    l5CanAct = false; l5BreakCombo();
     document.querySelectorAll('.l5-color-cell.odd-cell').forEach(c => c.classList.add('reveal'));
     const fb = document.getElementById('l5-feedback'); fb.textContent="⏱ Time's up!"; fb.className='l5-fb timeout';
     l5Round++; setTimeout(nextL5Round, 700);
@@ -855,14 +884,14 @@ function buildL5Word() {
       if (!l5CanAct) return; l5CanAct = false; stopLocalTimer();
       arena.querySelectorAll('button').forEach(b => b.disabled = true);
       const fb = document.getElementById('l5-feedback');
-      if (opt===item.correct) { btn.classList.add('correct-pick'); addMyScore(100); sfxCorrect(); fb.textContent='✅ +100'; fb.className='l5-fb correct'; }
-      else { btn.classList.add('wrong-pick'); arena.querySelectorAll('button').forEach(b=>{if(b.textContent===item.correct)b.classList.add('correct-pick');}); sfxWrong(); fb.textContent='❌ Wrong!'; fb.className='l5-fb wrong'; }
+      if (opt===item.correct) { btn.classList.add('correct-pick'); l5AddScore(120); sfxCorrect(); fb.textContent='✅ Correct!'; fb.className='l5-fb correct'; }
+      else { btn.classList.add('wrong-pick'); arena.querySelectorAll('button').forEach(b=>{if(b.textContent===item.correct)b.classList.add('correct-pick');}); sfxWrong(); l5BreakCombo(); deductScore(20); fb.textContent='❌ −20 pts'; fb.className='l5-fb wrong'; }
       l5Round++; setTimeout(nextL5Round, 950);
     };
     arena.appendChild(btn);
   });
   startTimerLocal('l5-timer','l5-timer-bar', t, () => {
-    l5CanAct = false; arena.querySelectorAll('button').forEach(b=>{b.disabled=true;if(b.textContent===item.correct)b.classList.add('correct-pick');});
+    l5CanAct = false; l5BreakCombo(); arena.querySelectorAll('button').forEach(b=>{b.disabled=true;if(b.textContent===item.correct)b.classList.add('correct-pick');});
     const fb = document.getElementById('l5-feedback'); fb.textContent="⏱ Time's up!"; fb.className='l5-fb timeout';
     l5Round++; setTimeout(nextL5Round, 950);
   });
@@ -885,23 +914,23 @@ function buildL5Fruit() {
   shuffle(flist).forEach(emoji => {
     const el = document.createElement('div'); el.className='fruit'; el.textContent=emoji; el.style.fontSize=FRUIT_SIZE+'px'; el.style.position='absolute';
     const x = rand(2, l5FruitArenaW-FRUIT_SIZE-2), y = rand(2, l5FruitArenaH-FRUIT_SIZE-2);
-    const speed = rand(30+l5Round*3, 55+l5Round*4), angle = rand(0,Math.PI*2);
+    const speed = rand(45+l5Round*4, 75+l5Round*5), angle = rand(0,Math.PI*2);
     el.style.left=x+'px'; el.style.top=y+'px';
     const fObj = {el,x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,emoji,tapped:false};
     l5FruitObjects.push(fObj); arena.appendChild(el);
     const tap = () => {
       if (!l5CanAct||fObj.tapped) return;
       if (fObj.emoji===target) {
-        fObj.tapped=true; fObj.el.classList.add('popped'); addMyScore(50); sfxCorrect();
+        fObj.tapped=true; fObj.el.classList.add('popped'); l5AddScore(50); sfxCorrect();
         hits++; document.getElementById('l5-fruit-hits').textContent=`${hits}/${needHits}`;
         setTimeout(()=>fObj.el.remove(),250);
         if (hits>=needHits) {
           l5CanAct=false; stopLocalTimer(); stopL5Fruits();
           document.getElementById('l5-fruit-target-wrap').classList.add('hidden');
-          const fb=document.getElementById('l5-feedback'); fb.textContent='🔥 +150!'; fb.className='l5-fb correct';
-          addMyScore(100); l5Round++; setTimeout(nextL5Round,700);
+          const fb=document.getElementById('l5-feedback'); fb.textContent='🔥 Wave clear!'; fb.className='l5-fb correct';
+          l5AddScore(80); l5Round++; setTimeout(nextL5Round,700);
         }
-      } else { fObj.el.classList.add('wrong-tap'); setTimeout(()=>fObj.el.classList.remove('wrong-tap'),300); sfxPenalty(); deductScore(20); showToast('❌ Wrong! −20'); }
+      } else { fObj.el.classList.add('wrong-tap'); setTimeout(()=>fObj.el.classList.remove('wrong-tap'),300); sfxPenalty(); l5BreakCombo(); deductScore(25); showToast('❌ Wrong! −25 combo reset'); }
     };
     el.addEventListener('click', tap);
     el.addEventListener('touchstart', e2=>{e2.preventDefault();tap();},{passive:false});
@@ -962,8 +991,8 @@ function buildL5Memory() {
           l5MemCanInput=false; stopLocalTimer();
           const ok=l5MemPlayerSeq.every((e2,i)=>e2===l5MemSeq[i]);
           const fb=document.getElementById('l5-feedback');
-          if(ok){addMyScore(150);sfxCorrect();fb.textContent='✅ Perfect! +150';fb.className='l5-fb correct';}
-          else{sfxWrong();fb.textContent='❌ Wrong order!';fb.className='l5-fb wrong';}
+          if(ok){l5AddScore(150);sfxCorrect();fb.textContent='✅ Perfect memory!';fb.className='l5-fb correct';}
+          else{sfxWrong();l5BreakCombo();deductScore(20);fb.textContent='❌ Wrong order! −20';fb.className='l5-fb wrong';}
           l5Round++; setTimeout(nextL5Round,1200);
         }
       };
