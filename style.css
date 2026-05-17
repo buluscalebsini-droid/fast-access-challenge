@@ -505,3 +505,51 @@ html,body { width:100%;height:100%;background:var(--bg);color:var(--text);font-f
 .color-grid {
   gap: 5px;
 }
+
+/* ============================================================
+   v3.5 — L5 memory polish: reveal/hide animations, slot fill
+   ============================================================ */
+
+/* ── Emoji reveal animation (show phase) ── */
+.mem-reveal {
+  animation: memReveal 0.35s ease both;
+}
+@keyframes memReveal {
+  from { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+  60%  { transform: scale(1.15) rotate(3deg); }
+  to   { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* ── Emoji hide animation (transition to input phase) ── */
+.mem-hide {
+  animation: memHide 0.25s ease forwards !important;
+}
+@keyframes memHide {
+  from { transform: scale(1); opacity: 1; }
+  to   { transform: scale(0.3) rotate(10deg); opacity: 0; }
+}
+
+/* ── Slot fill pulse ── */
+@keyframes slotFill {
+  0%   { transform: scale(0.8); border-color: var(--accent2); }
+  60%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+/* ── L5 memory floater — same as l4-floater but class scoped ── */
+.l5-mem-floater {
+  position: absolute;
+  pointer-events: none;
+  z-index: 6;
+  top: 50%;
+  filter: drop-shadow(0 0 5px rgba(255,255,255,0.3));
+}
+
+/* ── L5 arena flash bar (reuse .flash-bar-wrap/.flash-bar) ── */
+#l5-arena .flash-bar-wrap {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+/* ── Tighter L1 grid for 7×7 ── */
+.color-grid { gap: 5px; }
