@@ -96,6 +96,7 @@
 <!-- CHAMPION OVERLAY -->
 <div id="champion-overlay" class="fullscreen-overlay hidden champion-overlay">
   <div class="champion-content">
+    <div class="champion-who hidden" id="champion-who">🏆 WHO IS THE CHAMPION? 🏆</div>
     <div class="champion-suspense">🥁 And the winner is...</div>
     <div class="champion-trophy">🏆</div>
     <div class="champion-crown">👑</div>
@@ -115,7 +116,7 @@
     <div class="game-hud">
       <div class="hud-info">
         <span class="hud-level">🎨 Level 1</span>
-        <span class="hud-round" id="l1-round">1/7</span>
+        <span class="hud-round" id="l1-round">1/15</span>
         <span class="hud-stage" id="l1-stage">Stage 1</span>
       </div>
       <div class="hud-timer-wrap">
@@ -135,8 +136,8 @@
   <div class="game-screen-inner">
     <div class="game-hud">
       <div class="hud-info">
-        <span class="hud-level">📝 Level 2 — Sentences</span>
-        <span class="hud-round" id="l2-round">1/10</span>
+        <span class="hud-level">📝 Level 2 — Spelling</span>
+        <span class="hud-round" id="l2-round">1/14</span>
         <span class="hud-stage" id="l2-stage">Spelling</span>
       </div>
       <div class="hud-timer-wrap">
@@ -145,7 +146,7 @@
       </div>
       <button class="btn-mute" id="mute-btn-l2">🎵</button>
     </div>
-    <div class="level-desc sentence-prompt" id="word-prompt">Which sentence is spelled correctly?</div>
+    <div class="level-desc sentence-prompt" id="word-prompt">Which is spelled correctly?</div>
     <div class="word-options" id="word-options"></div>
     <div class="live-scores" id="l2-scores"></div>
   </div>
@@ -244,7 +245,7 @@
 <div id="screen-results" class="screen">
   <div class="results-inner">
     <div class="results-title">🏆 Final Results</div>
-    <div class="results-reveal-label">Revealing rankings — watch carefully!</div>
+    <div class="results-reveal-label" id="results-reveal-label">Revealing rankings — 5th place first!</div>
     <div class="podium" id="podium"></div>
     <div class="full-leaderboard" id="full-leaderboard"></div>
     <div class="results-actions" id="results-actions"></div>
