@@ -322,13 +322,13 @@ function animateCN(el) { el.style.animation = 'none'; void el.offsetWidth; el.st
 // ============================================================
 const LEVEL_INTROS = {
   1: { emoji:'🎨', title:'Colour Vision', sub:'Find the one circle with a different shade!',
-       tip:'Difficulty rises every round — hues get closer together.', badge:'7 Rounds' },
-  2: { emoji:'📝', title:'Sentence Spelling', sub:'Only ONE sentence is correctly spelled — find it!',
-       tip:'Look for tiny misspellings hidden in natural sentences.', badge:'10 Rounds' },
+       tip:'Later stages add gentle colour drift — stay sharp!', badge:'15 Stages' },
+  2: { emoji:'📝', title:'Mixed Spelling', sub:'Words AND sentences — find the only correct spelling!',
+       tip:'Words get short timers; sentences get more time to read.', badge:'10 Rounds' },
   3: { emoji:'🍎', title:'Fruit Frenzy', sub:'Tap every target fruit — speed increases each wave!',
        tip:'Wrong taps cost you points. Fruits bounce and speed up!', badge:'5 Waves' },
-  4: { emoji:'🧠', title:'Memory Flash', sub:'Memorise the sequence through distractions — then recreate it!',
-       tip:'Distracting colours flash while you memorise. Stay focused!', badge:'5 Rounds' },
+  4: { emoji:'🧠', title:'Memory Flash', sub:'Memorise through floating distractions — then recreate it!',
+       tip:'Icons float across your screen while you memorise. Block them out!', badge:'7 Rounds' },
   5: { emoji:'🏆', title:'Grand Finale', sub:'Every mechanic combined — the ultimate championship round!',
        tip:'Speed, memory, spelling and physics — all at once. Combos rewarded!', badge:'12 Events' },
 };
@@ -412,25 +412,40 @@ function setupMuteButtons() {
 }
 
 // ============================================================
-// LEVEL 1 — COLOUR VISION 🎨  (7 rounds)
+// LEVEL 1 — COLOUR VISION 🎨  (15 stages)
+// wobble:true = cells gently drift during viewing (stages 11-15)
 // ============================================================
-const L1_ROUNDS = 7;
+const L1_ROUNDS = 15;
 const L1_CFG = [
-  { grid:4, time:14, hueDiff:32 },  // Stage 1 — easy
-  { grid:4, time:12, hueDiff:24 },  // Stage 2
-  { grid:4, time:11, hueDiff:18 },  // Stage 3
-  { grid:5, time:10, hueDiff:13 },  // Stage 4
-  { grid:5, time:9,  hueDiff:9  },  // Stage 5
-  { grid:6, time:8,  hueDiff:7  },  // Stage 6 — hard
-  { grid:6, time:7,  hueDiff:5  },  // Stage 7 — very hard
+  { grid:3, time:16, hueDiff:40, wobble:false }, // Stage 1  — very easy warm-up
+  { grid:4, time:15, hueDiff:34, wobble:false }, // Stage 2
+  { grid:4, time:14, hueDiff:28, wobble:false }, // Stage 3
+  { grid:4, time:13, hueDiff:22, wobble:false }, // Stage 4
+  { grid:4, time:12, hueDiff:17, wobble:false }, // Stage 5
+  { grid:5, time:12, hueDiff:13, wobble:false }, // Stage 6
+  { grid:5, time:11, hueDiff:10, wobble:false }, // Stage 7
+  { grid:5, time:10, hueDiff: 8, wobble:false }, // Stage 8
+  { grid:5, time: 9, hueDiff: 6, wobble:false }, // Stage 9
+  { grid:6, time: 9, hueDiff: 5, wobble:false }, // Stage 10 — hard
+  { grid:6, time: 8, hueDiff: 4, wobble:true  }, // Stage 11 — cells wobble
+  { grid:6, time: 7, hueDiff: 4, wobble:true  }, // Stage 12
+  { grid:6, time: 7, hueDiff: 3, wobble:true  }, // Stage 13
+  { grid:7, time: 6, hueDiff: 3, wobble:true  }, // Stage 14
+  { grid:7, time: 5, hueDiff: 2, wobble:true  }, // Stage 15 — extreme
 ];
+
+let l1WobbleRafId = null;
+
 function startLevel1() {
   l1Round = 0;
   showScreen('screen-level1'); setupMuteButtons(); syncScoresDisplay('l1-scores');
   nextL1Round();
 }
+function stopL1Wobble() {
+  if (l1WobbleRafId) { cancelAnimationFrame(l1WobbleRafId); l1WobbleRafId = null; }
+}
 function nextL1Round() {
-  stopLocalTimer();
+  stopLocalTimer(); stopL1Wobble();
   if (l1Round >= L1_ROUNDS) { finishLevel(1); return; }
   const cfg = L1_CFG[l1Round];
   document.getElementById('l1-round').textContent = `${l1Round+1}/${L1_ROUNDS}`;
@@ -438,31 +453,49 @@ function nextL1Round() {
   buildL1Grid(cfg, l1Round * 9173 + 7);
   l1CanClick = true;
   startTimerLocal('l1-timer','l1-timer-bar', cfg.time, () => {
-    l1CanClick = false;
+    l1CanClick = false; stopL1Wobble();
     document.querySelectorAll('.color-cell.odd-cell').forEach(c => c.classList.add('reveal'));
-    l1Round++; setTimeout(nextL1Round, 750);
+    l1Round++; setTimeout(nextL1Round, 800);
   });
 }
 function buildL1Grid(cfg, seed) {
   const grid = document.getElementById('color-grid');
   grid.innerHTML = '';
-  const n = cfg.grid, total = n*n;
+  const n = cfg.grid, total = n * n;
   grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
-  const oddIdx = seed % total;
+  const oddIdx  = seed % total;
   const baseHue = (seed * 37) % 360;
   const oddHue  = (baseHue + cfg.hueDiff) % 360;
   const sat = 58 + (seed % 18), lit = 52 + (seed % 13);
+  const cells = [];
   for (let i = 0; i < total; i++) {
     const el = document.createElement('div');
     el.className = 'color-cell' + (i === oddIdx ? ' odd-cell' : '');
     el.style.background = `hsl(${i===oddIdx?oddHue:baseHue},${sat}%,${lit}%)`;
     el.addEventListener('click', () => handleL1Click(el, i===oddIdx));
     grid.appendChild(el);
+    cells.push(el);
+  }
+  // Gentle drift animation for late stages — cells shift their hue ±1 to add visual noise
+  if (cfg.wobble) {
+    const startT = performance.now();
+    const animate = (now) => {
+      const t = (now - startT) / 1000;
+      cells.forEach((cell, i) => {
+        if (cell.classList.contains('correct') || cell.classList.contains('wrong')) return;
+        const isOdd = cell.classList.contains('odd-cell');
+        const hue = isOdd ? oddHue : baseHue;
+        const drift = Math.sin(t * 1.2 + i * 0.7) * 1.5; // max ±1.5° hue drift
+        cell.style.background = `hsl(${hue + drift},${sat}%,${lit + Math.sin(t + i) * 1.5}%)`;
+      });
+      l1WobbleRafId = requestAnimationFrame(animate);
+    };
+    l1WobbleRafId = requestAnimationFrame(animate);
   }
 }
 function handleL1Click(el, isCorrect) {
   if (!l1CanClick) return;
-  l1CanClick = false; stopLocalTimer();
+  l1CanClick = false; stopLocalTimer(); stopL1Wobble();
   if (isCorrect) {
     el.classList.add('correct'); addMyScore(100); sfxCorrect(); showToast('✅ +100 pts!');
   } else {
@@ -474,49 +507,89 @@ function handleL1Click(el, isCorrect) {
 }
 
 // ============================================================
-// LEVEL 2 — SENTENCE SPELLING CHALLENGE 📝  (10 rounds)
-// Each round shows 4 similar sentences; only ONE is correctly spelled.
+// LEVEL 2 — MIXED SPELLING CHALLENGE 📝  (14 stages)
+// 7 WORD stages + 7 SENTENCE stages, strictly alternating
+// type:'word' = 4 similar words, pick correctly spelled one
+// type:'sent' = 4 similar sentences, pick correctly spelled one
 // ============================================================
 const L2_DATA = [
-  // Stage 1 — easy, single obvious error
-  { correct:'The children are playing outside.',
-    options:['The childern are playing outside.','The children are plaing outside.','The children are playng outside.'] },
-  // Stage 2 — easy
-  { correct:'She opened the window carefully.',
-    options:['She opend the window carefully.','She opened the windoe carefully.','She opened the window carfully.'] },
-  // Stage 3 — slightly trickier
-  { correct:'The students finished their homework.',
-    options:['The studants finished their homework.','The students finishd their homework.','The students finished thier homework.'] },
-  // Stage 4
-  { correct:'He quickly ran across the bridge.',
-    options:['He quikly ran across the bridge.','He quickly ran accross the bridge.','He quickly ran across the brdige.'] },
-  // Stage 5 — two plausible errors each
-  { correct:'The weather was beautiful yesterday.',
-    options:['The wether was beautiful yesterday.','The weather was beautifull yesterday.','The weather was beautifal yesterday.'] },
-  // Stage 6
-  { correct:'They decided to travel by train.',
-    options:['They dicided to travel by train.','They decided to travell by train.','They decided to travel by trian.'] },
-  // Stage 7 — harder, errors more subtle
-  { correct:'The library closes at eight o\u2019clock.',
-    options:['The librery closes at eight o\u2019clock.','The library closses at eight o\u2019clock.','The library closes at eigth o\u2019clock.'] },
-  // Stage 8
-  { correct:'She received a letter from her friend.',
-    options:['She recieved a letter from her friend.','She received a leter from her friend.','She received a letter from her freind.'] },
-  // Stage 9 — very subtle errors
-  { correct:'The government announced a new policy.',
-    options:['The goverment announced a new policy.','The government anounced a new policy.','The government announced a new polisy.'] },
-  // Stage 10 — hardest
-  { correct:'He successfully completed the examination.',
-    options:['He successfuly completed the examination.','He successfully completd the examination.','He successfully completed the examanation.'] },
+  // ─── WORD stages (7) ─────────────────────────────────────
+  // W1 — easy
+  { type:'word', prompt:'Which word is spelled correctly?',
+    correct:'necessary',
+    options:['necessary','neccessary','necessery','necesary'] },
+  // W2 — easy-medium
+  { type:'word', prompt:'Which word is spelled correctly?',
+    correct:'accommodation',
+    options:['acommodation','accomodation','accommodation','accommondation'] },
+  // W3 — medium
+  { type:'word', prompt:'Which word is spelled correctly?',
+    correct:'separate',
+    options:['seperate','separate','separete','separrate'] },
+  // W4 — medium-hard
+  { type:'word', prompt:'Which word is spelled correctly?',
+    correct:'occurrence',
+    options:['occurance','occurence','occurrence','occurrance'] },
+  // W5 — hard
+  { type:'word', prompt:'Which word is spelled correctly?',
+    correct:'conscientious',
+    options:['conscientous','conscientious','consientious','consciencious'] },
+  // W6 — hard
+  { type:'word', prompt:'Which word is spelled correctly?',
+    correct:'perseverance',
+    options:['perseverence','perserverance','perseverance','perseveranse'] },
+  // W7 — very hard
+  { type:'word', prompt:'Which word is spelled correctly?',
+    correct:'miscellaneous',
+    options:['miscelaneous','miscellaneous','miscellanneous','miscellanous'] },
+  // ─── SENTENCE stages (7) ─────────────────────────────────
+  // S1 — easy, obvious single error
+  { type:'sent', prompt:'Which sentence is spelled correctly?',
+    correct:'The children are playing outside.',
+    options:['The children are playing outside.','The childern are playing outside.','The children are plaing outside.','The children are playng outside.'] },
+  // S2 — easy-medium
+  { type:'sent', prompt:'Which sentence is spelled correctly?',
+    correct:'She opened the window carefully.',
+    options:['She opened the window carefully.','She opend the window carefully.','She opened the windoe carefully.','She opened the window carfully.'] },
+  // S3 — medium
+  { type:'sent', prompt:'Which sentence is spelled correctly?',
+    correct:'She received a letter from her friend.',
+    options:['She received a letter from her friend.','She recieved a letter from her friend.','She received a leter from her friend.','She received a letter from her freind.'] },
+  // S4 — medium-hard
+  { type:'sent', prompt:'Which sentence is spelled correctly?',
+    correct:'The government announced a new policy.',
+    options:['The government announced a new policy.','The goverment announced a new policy.','The government anounced a new policy.','The government announced a new polisy.'] },
+  // S5 — hard
+  { type:'sent', prompt:'Which sentence is spelled correctly?',
+    correct:'He successfully completed the examination.',
+    options:['He successfully completed the examination.','He successfuly completed the examination.','He successfully completed the examanation.','He successfully completd the examination.'] },
+  // S6 — hard
+  { type:'sent', prompt:'Which sentence is spelled correctly?',
+    correct:'The scientist conducted a thorough investigation.',
+    options:['The scientist conducted a thorough investigation.','The scientst conducted a thorough investigation.','The scientist conducated a thorough investigation.','The scientist conducted a throough investigation.'] },
+  // S7 — very hard, near-identical
+  { type:'sent', prompt:'Which sentence is spelled correctly?',
+    correct:'She persevered through every difficult challenge.',
+    options:['She persevered through every difficult challenge.','She perservered through every difficult challenge.','She persevered through every difficult challange.','She persevered through every difficalt challenge.'] },
 ];
-const L2_ROUNDS = 10;
-// Generous timers — players need time to READ full sentences
+// Interleaved: W1 S1 W2 S2 W3 S3 W4 S4 W5 S5 W6 S6 W7 S7
+const L2_ORDER = [0,7,1,8,2,9,3,10,4,11,5,12,6,13];
+const L2_ROUNDS = 14;
 const L2_CFG = [
-  { time:18 }, { time:17 },
-  { time:16 }, { time:15 },
-  { time:14 }, { time:14 },
-  { time:13 }, { time:13 },
-  { time:12 }, { time:12 },
+  { time:11 }, // Stage  1 — word
+  { time:18 }, // Stage  2 — sentence
+  { time:10 }, // Stage  3 — word
+  { time:17 }, // Stage  4 — sentence
+  { time: 9 }, // Stage  5 — word
+  { time:17 }, // Stage  6 — sentence
+  { time: 9 }, // Stage  7 — word
+  { time:16 }, // Stage  8 — sentence
+  { time: 8 }, // Stage  9 — word
+  { time:16 }, // Stage 10 — sentence
+  { time: 8 }, // Stage 11 — word
+  { time:15 }, // Stage 12 — sentence
+  { time: 7 }, // Stage 13 — word
+  { time:15 }, // Stage 14 — sentence
 ];
 function startLevel2() {
   l2Round = 0;
@@ -527,18 +600,20 @@ function nextL2Round() {
   stopLocalTimer();
   if (l2Round >= L2_ROUNDS) { finishLevel(2); return; }
   const cfg  = L2_CFG[l2Round];
-  const item = L2_DATA[l2Round];
-  document.getElementById('l2-round').textContent = `${l2Round+1}/${L2_ROUNDS}`;
-  document.getElementById('l2-stage').textContent = `Stage ${l2Round+1}`;
-  document.getElementById('word-prompt').textContent = 'Which sentence is spelled correctly?';
+  const item = L2_DATA[L2_ORDER[l2Round]];
+  const isSent = item.type === 'sent';
+  document.getElementById('l2-round').textContent = `${l2Round+1}/14`;
+  document.getElementById('l2-stage').textContent = isSent ? 'Sentence' : 'Word';
+  document.getElementById('word-prompt').textContent = item.prompt;
   const container = document.getElementById('word-options');
   container.innerHTML = '';
-  container.className = 'word-options stmt-mode';
-  // Always 4 options: correct + all 3 wrong variants
-  const allOpts = shuffle([item.correct, ...item.options]);
+  // Sentences: column layout with readable font; words: compact grid
+  container.className = isSent ? 'word-options stmt-mode' : 'word-options word-mode';
+  const allOpts = shuffle([...item.options]); // options already contains correct for sent; add for word
+  // For word type, options array already includes the correct word
   allOpts.forEach(opt => {
     const btn = document.createElement('button');
-    btn.className = 'word-btn sentence-btn';
+    btn.className = isSent ? 'word-btn sentence-btn' : 'word-btn';
     btn.textContent = opt;
     btn.onclick = () => handleL2Click(btn, opt === item.correct, item.correct);
     container.appendChild(btn);
@@ -550,8 +625,8 @@ function nextL2Round() {
       if (b.textContent === item.correct) b.classList.add('correct-pick');
       b.disabled = true;
     });
-    showToast("⏱ Time's up! Read more carefully next time.");
-    l2Round++; setTimeout(nextL2Round, 1600);
+    showToast("⏱ Time's up!");
+    l2Round++; setTimeout(nextL2Round, 1500);
   });
 }
 function handleL2Click(btn, isCorrect, correctWord) {
@@ -574,11 +649,11 @@ function handleL2Click(btn, isCorrect, correctWord) {
 const ALL_FRUITS = ['🍎','🍌','🍇','🍓','🍍','🍊','🫐','🍑'];
 const L3_ROUNDS  = 5;
 const L3_CFG     = [
-  { time:16, total:12, speedMin:30, speedMax:55, penalty:25 },   // Wave 1 — noticeable speed
-  { time:15, total:14, speedMin:40, speedMax:68, penalty:25 },   // Wave 2 — picks up
-  { time:14, total:15, speedMin:50, speedMax:80, penalty:30 },   // Wave 3 — fast
-  { time:13, total:17, speedMin:58, speedMax:92, penalty:30 },   // Wave 4 — intense
-  { time:11, total:19, speedMin:66, speedMax:105,penalty:35 },   // Wave 5 — chaos
+  { time:16, total:14, speedMin:35, speedMax:60,  penalty:25 }, // Wave 1
+  { time:15, total:16, speedMin:45, speedMax:72,  penalty:25 }, // Wave 2
+  { time:14, total:17, speedMin:55, speedMax:85,  penalty:30 }, // Wave 3
+  { time:13, total:18, speedMin:62, speedMax:96,  penalty:30 }, // Wave 4
+  { time:11, total:20, speedMin:70, speedMax:108, penalty:35 }, // Wave 5
 ];
 function startLevel3() {
   l3Round = 0;
@@ -667,26 +742,36 @@ function handleL3Tap(fObj, penalty) {
 }
 
 // ============================================================
-// LEVEL 4 — MEMORY FLASH 🧠  (5 rounds, max seq 4)
+// LEVEL 4 — MEMORY FLASH 🧠  (7 rounds, floating distractors)
 // ============================================================
 const L4_ROUNDS = 5;
 const L4_EMOJIS = ['🍎','⭐','🎲','🍌','🔥','💎','🎯','🌙','🎪','🦋'];
 const L4_CFG    = [
-  { seqLen:3, showTime:5500, answerTime:11, distractors:0 },  // Round 1 — clean
-  { seqLen:3, showTime:4500, answerTime:10, distractors:1 },  // Round 2 — one flash
-  { seqLen:4, showTime:4000, answerTime:10, distractors:2 },  // Round 3 — two flashes
-  { seqLen:4, showTime:3200, answerTime:9,  distractors:3 },  // Round 4 — distracting
-  { seqLen:4, showTime:2500, answerTime:8,  distractors:4 },  // Round 5 — hardest
+  { seqLen:3, showTime:6000, answerTime:12, floaters:3,  flashing:false }, // Round 1 — light
+  { seqLen:3, showTime:5000, answerTime:11, floaters:6,  flashing:false }, // Round 2
+  { seqLen:4, showTime:4500, answerTime:10, floaters:9,  flashing:true  }, // Round 3 — flashing added
+  { seqLen:4, showTime:3500, answerTime: 9, floaters:12, flashing:true  }, // Round 4
+  { seqLen:4, showTime:2800, answerTime: 8, floaters:16, flashing:true  }, // Round 5 — extreme
 ];
-// Distractor colours that flash across screen during memorise phase
+// L4_ROUNDS is 5 (reset from 7)
+const L4_DISTRACT_ICONS  = ['💥','🎉','⚡','🌈','🎭','🔔','🌀','💫','🎪','🎯','🔥','💎','🚀','🎸','🌟','🔴','🟡','🟢','🔵','🟣'];
 const L4_DISTRACT_COLORS = ['#e94560','#4f8ef7','#fbbf24','#4ade80','#c084fc','#ff8c42'];
+
+let l4FloaterInterval = null;
+
+function stopL4Floaters() {
+  if (l4FloaterInterval) { clearInterval(l4FloaterInterval); l4FloaterInterval = null; }
+  // Remove any lingering floaters
+  document.querySelectorAll('.l4-floater').forEach(el => el.remove());
+}
+
 function startLevel4() {
   l4Round = 0;
   showScreen('screen-level4'); setupMuteButtons(); syncScoresDisplay('l4-scores');
   nextL4Round();
 }
 function nextL4Round() {
-  stopLocalTimer();
+  stopLocalTimer(); stopL4Floaters();
   if (l4Round >= L4_ROUNDS) { finishLevel(4); return; }
   const cfg = L4_CFG[l4Round];
   document.getElementById('l4-round').textContent = `${l4Round+1}/${L4_ROUNDS}`;
@@ -704,19 +789,40 @@ function nextL4Round() {
   const bar = document.getElementById('l4-flash-bar');
   bar.style.transition = 'none'; bar.style.width = '100%';
   setTimeout(() => { bar.style.transition = `width ${cfg.showTime}ms linear`; bar.style.width = '0%'; }, 50);
-  // Spawn colour distractors during memorise phase
-  for (let d = 0; d < cfg.distractors; d++) {
-    setTimeout(() => {
-      const flash = document.createElement('div');
-      flash.className = 'l4-distractor-flash';
-      flash.style.background = L4_DISTRACT_COLORS[d % L4_DISTRACT_COLORS.length];
-      flash.style.left = randInt(5, 75) + '%';
-      flash.style.top  = randInt(5, 70) + '%';
-      document.getElementById('screen-level4').appendChild(flash);
-      setTimeout(() => flash.remove(), 500);
-    }, (cfg.showTime / (cfg.distractors + 1)) * (d + 1));
+
+  // Spawn continuously floating distractor icons + optional colour flashes
+  if (cfg.floaters > 0) {
+    const screen = document.getElementById('screen-level4');
+    const spawnFloater = () => {
+      const f = document.createElement('div');
+      f.className = 'l4-floater';
+      f.textContent = pick(L4_DISTRACT_ICONS);
+      const fromLeft = Math.random() < 0.5;
+      const yPct = randInt(8, 82);
+      const dur  = rand(1.0, 2.0).toFixed(2);
+      f.style.cssText = `top:${yPct}%;left:${fromLeft ? '-9%' : '109%'};` +
+        `animation:l4Float ${dur}s linear forwards;` +
+        `animation-direction:${fromLeft ? 'normal' : 'reverse'};`;
+      screen.appendChild(f);
+      setTimeout(() => f.remove(), 2200);
+      // Extra: flash a random colour blob behind it
+      if (cfg.flashing && Math.random() < 0.5) {
+        const blob = document.createElement('div');
+        blob.className = 'l4-distractor-flash';
+        blob.style.background = L4_DISTRACT_COLORS[randInt(0, L4_DISTRACT_COLORS.length-1)];
+        blob.style.left = randInt(5, 80) + '%';
+        blob.style.top  = randInt(5, 75) + '%';
+        screen.appendChild(blob);
+        setTimeout(() => blob.remove(), 520);
+      }
+    };
+    const interval = Math.max(180, cfg.showTime / (cfg.floaters * 1.8));
+    l4FloaterInterval = setInterval(spawnFloater, interval);
+    spawnFloater(); // immediate first spawn
   }
+
   setTimeout(() => {
+    stopL4Floaters();
     display.classList.add('hidden');
     prompt.textContent = 'Recreate the sequence!';
     bar.style.transition = 'none'; bar.style.width = '0%';
@@ -1012,19 +1118,20 @@ function buildL5Memory() {
 // BETWEEN LEVELS / LEADERBOARD
 // ============================================================
 function finishLevel(lvl) {
-  stopLocalTimer(); stopFruitAnimation(); stopL5Fruits(); sfxLevelUp();
+  stopLocalTimer(); stopFruitAnimation(); stopL5Fruits(); stopL4Floaters(); stopL1Wobble(); sfxLevelUp();
   get(dbRef('rooms', roomCode, 'players')).then(s => { players = s.val()||{}; showBetweenScreen(lvl); });
 }
 function showBetweenScreen(lvl) {
-  document.getElementById('between-title').textContent = lvl < 5 ? `Level ${lvl} Complete! 🎉` : 'All Done! 🏆';
-  document.getElementById('between-sub').textContent   = `Leaderboard after Level ${lvl}`;
+  const isLastLevel = lvl >= 5;
+  document.getElementById('between-title').textContent = isLastLevel ? 'Game Complete! 🏆' : `Level ${lvl} Complete! 🎉`;
+  document.getElementById('between-sub').textContent   = isLastLevel ? 'Final leaderboard — host starts the reveal' : `Leaderboard after Level ${lvl}`;
   renderLeaderboard('leaderboard-between', players);
   showScreen('screen-between');
   const nextBtn = document.getElementById('btn-next-level');
   const cd      = document.getElementById('between-countdown');
   if (isHost) {
     nextBtn.classList.remove('hidden'); nextBtn.disabled = false;
-    nextBtn.textContent = lvl < 5 ? 'Next Level →' : 'See Results →';
+    nextBtn.textContent = isLastLevel ? '🏆 Start Winner Reveal →' : 'Next Level →';
     nextBtn.onclick = () => {
       nextBtn.disabled = true; sfxClick();
       const nextLvl = lvl < 5 ? lvl+1 : 'results';
@@ -1034,14 +1141,14 @@ function showBetweenScreen(lvl) {
         else if (lvl===2) startLevel3();
         else if (lvl===3) startLevel4();
         else if (lvl===4) startLevel5();
-        else showFinalResults();
+        else showFinalResults();   // Only fires after host clicks
       };
       if (lvl < 5) showLevelIntro(lvl+1, go); else go();
     };
-    cd.textContent = '';
+    cd.textContent = isLastLevel ? 'Click the button above to start the dramatic reveal!' : '';
   } else {
     nextBtn.classList.add('hidden');
-    cd.textContent = 'Waiting for host...';
+    cd.textContent = isLastLevel ? 'Waiting for host to start the winner reveal...' : 'Waiting for host...';
     clearListeners();
     listenOn(`rooms/${roomCode}/game/level`, snap => {
       const v = snap.val();
@@ -1084,54 +1191,97 @@ function renderResults() {
   const sorted = Object.entries(players)
     .sort((a,b)=>(b[1].score||0)-(a[1].score||0))
     .map(([uid,p],i)=>({uid,...p,rank:i+1}));
-  showScreen('screen-results');
-  document.getElementById('podium').innerHTML = '';
-  document.getElementById('full-leaderboard').innerHTML = '';
-  document.getElementById('results-actions').innerHTML = '';
-  document.getElementById('champion-overlay').classList.add('hidden');
-  document.getElementById('champion-overlay').classList.remove('champion-reveal');
 
-  // Reveal 5th→2nd in cards, then champion overlay for 1st
-  const toReveal = sorted.slice(0,5).reverse(); // [5th,4th,3rd,2nd,1st]
-  const rankLabel = {1:'🥇 CHAMPION',2:'🥈 2nd Place',3:'🥉 3rd Place',4:'4th Place',5:'5th Place'};
-  let delay = 600;
-  toReveal.forEach(p => {
-    if (p.rank === 1) {
-      // First place — champion overlay
-      setTimeout(() => {
-        sfxDrumroll();
-        const ov = document.getElementById('champion-overlay');
-        document.getElementById('champion-name').textContent  = p.name + (p.uid===myUid ? ' 🎉' : '');
-        document.getElementById('champion-score').textContent = (p.score||0) + ' pts';
-        ov.classList.remove('hidden');
-        setTimeout(() => {
-          ov.classList.add('champion-reveal');
-          sfxChampion();
-          spawnConfetti(); setTimeout(spawnConfetti,500); setTimeout(spawnConfetti,1000);
-        }, 2400);
-      }, delay);
-    } else {
-      setTimeout(() => {
-        sfxReveal();
-        const card = document.createElement('div'); card.className=`reveal-card rank-${p.rank}`;
-        card.innerHTML = `<span class="reveal-rank">${rankLabel[p.rank]||('#'+p.rank)}</span>
-          <span class="reveal-name">${p.name}${p.uid===myUid?' (you)':''}</span>
-          <span class="reveal-score">${p.score||0} pts</span>`;
-        document.getElementById('podium').appendChild(card);
-      }, delay);
-    }
-    delay += p.rank === 1 ? 3800 : 4000;
+  showScreen('screen-results');
+  document.getElementById('podium').innerHTML         = '';
+  document.getElementById('full-leaderboard').innerHTML = '';
+  document.getElementById('results-actions').innerHTML  = '';
+  const champOv = document.getElementById('champion-overlay');
+  champOv.classList.add('hidden');
+  champOv.classList.remove('champion-reveal','champion-building');
+
+  const rankLabel = {2:'🥈 2nd Place',3:'🥉 3rd Place',4:'4th Place',5:'5th Place'};
+  // Reveal worst→best; skip rank 1, handle separately at the end
+  const others  = sorted.filter(p => p.rank !== 1).slice(0,4).reverse(); // [5th…2nd]
+  const winner  = sorted.find(p => p.rank === 1);
+  const CARD_GAP = 5000; // 5 s between each card
+
+  let delay = 800;
+
+  // ── Reveal 5th → 2nd ────────────────────────────────────
+  others.forEach(p => {
+    setTimeout(() => {
+      sfxReveal();
+      const card = document.createElement('div');
+      card.className = `reveal-card rank-${p.rank}`;
+      card.innerHTML = `<span class="reveal-rank">${rankLabel[p.rank]||('#'+p.rank)}</span>
+        <span class="reveal-name">${p.name}${p.uid===myUid?' (you)':''}</span>
+        <span class="reveal-score">${p.score||0} pts</span>`;
+      document.getElementById('podium').appendChild(card);
+    }, delay);
+    delay += CARD_GAP;
   });
 
-  // Show full leaderboard + buttons after all reveals
+  // ── 7-second build-up before 1st place ─────────────────
+  if (winner) {
+    const buildStart = delay;
+    // Phase 1 (0-2s): screen darkens + "WHO IS THE CHAMPION?" pulses
+    setTimeout(() => {
+      champOv.classList.remove('hidden');
+      champOv.classList.add('champion-building');
+      document.getElementById('champion-who').classList.remove('hidden');
+      sfxDrumroll();
+    }, buildStart);
+
+    // Phase 2 (2.2s): confetti starts
+    setTimeout(() => {
+      spawnConfetti();
+    }, buildStart + 2200);
+
+    // Phase 3 (4s): flashing lights rapid
+    setTimeout(() => {
+      spawnConfetti();
+      [0,150,300,450,600].forEach(t => {
+        setTimeout(() => {
+          const fl = document.createElement('div');
+          fl.className = 'champ-flash';
+          document.body.appendChild(fl);
+          setTimeout(() => fl.remove(), 300);
+        }, t);
+      });
+    }, buildStart + 4000);
+
+    // Phase 4 (6s): more confetti, drumroll again
+    setTimeout(() => {
+      spawnConfetti();
+      sfxDrumroll();
+    }, buildStart + 6000);
+
+    // Phase 5 (7s): reveal the champion
+    setTimeout(() => {
+      document.getElementById('champion-who').classList.add('hidden');
+      champOv.classList.remove('champion-building');
+      document.getElementById('champion-name').textContent  = winner.name + (winner.uid===myUid?' 🎉':'');
+      document.getElementById('champion-score').textContent = (winner.score||0) + ' pts';
+      champOv.classList.add('champion-reveal');
+      sfxChampion();
+      spawnConfetti(); setTimeout(spawnConfetti,400); setTimeout(spawnConfetti,800); setTimeout(spawnConfetti,1200);
+    }, buildStart + 7000);
+
+    delay = buildStart + 7000 + 3500;
+  }
+
+  // ── Full leaderboard + buttons after everything ─────────
   setTimeout(() => {
     renderLeaderboard('full-leaderboard', players);
     if (isHost) {
-      const paBtn = document.createElement('button'); paBtn.className='btn-main'; paBtn.style.marginBottom='10px';
-      paBtn.textContent='🔁 Play Again'; paBtn.onclick=()=>{sfxClick();resetGame();};
+      const paBtn = document.createElement('button');
+      paBtn.className = 'btn-main'; paBtn.style.marginBottom = '10px';
+      paBtn.textContent = '🔁 Play Again';
+      paBtn.onclick = () => { sfxClick(); resetGame(); };
       document.getElementById('results-actions').appendChild(paBtn);
     }
-  }, delay + 1200);
+  }, delay + 1000);
 }
 
 // ============================================================
@@ -1163,12 +1313,12 @@ async function resetGame() {
     Object.assign(upd,{'game/level':1,'game/round':0,'game/phase':'countdown','game/roundSeed':Math.floor(Math.random()*100000),'status':'lobby'});
     await update(dbRef('rooms',roomCode),upd);
   }
-  clearListeners(); stopLocalTimer(); stopFruitAnimation(); stopL5Fruits();
+  clearListeners(); stopLocalTimer(); stopFruitAnimation(); stopL5Fruits(); stopL4Floaters(); stopL1Wobble();
   Object.keys(players).forEach(uid=>{if(players[uid])players[uid].score=0;});
   openLobby();
 }
 function resetToMenu() {
-  clearListeners(); stopLocalTimer(); stopFruitAnimation(); stopL5Fruits(); stopJazz();
+  clearListeners(); stopLocalTimer(); stopFruitAnimation(); stopL5Fruits(); stopL4Floaters(); stopL1Wobble(); stopJazz();
   players={}; roomCode=''; isHost=false; showScreen('screen-menu');
 }
 
