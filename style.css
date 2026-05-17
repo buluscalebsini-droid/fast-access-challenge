@@ -481,3 +481,27 @@ html,body { width:100%;height:100%;background:var(--bg);color:var(--text);font-f
 
 /* ── Ensure hidden works for champion-who ── */
 .champion-who.hidden { display: none !important; }
+
+/* ============================================================
+   v3.4 — L1 final stages, L4 screen-shake
+   ============================================================ */
+
+/* ── Screen shake for L4 hardest rounds ── */
+@keyframes screenShake {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  15%  { transform: translate(-4px, 3px) rotate(-0.4deg); }
+  30%  { transform: translate(4px, -3px) rotate(0.4deg); }
+  45%  { transform: translate(-3px, 4px) rotate(-0.3deg); }
+  60%  { transform: translate(3px, -2px) rotate(0.3deg); }
+  75%  { transform: translate(-2px, 2px) rotate(-0.2deg); }
+  90%  { transform: translate(2px, -1px) rotate(0.1deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+.screen-shake {
+  animation: screenShake 0.35s ease both !important;
+}
+
+/* ── L1 final stages — tighter grid gap so 7×7 fits ── */
+.color-grid {
+  gap: 5px;
+}
