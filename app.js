@@ -421,12 +421,12 @@ const L1_CFG = [
   { grid:4, time:14, hueDiff:30, wobble:false, wobbleSpeed:0.0 }, // Stage 2  — easy
   { grid:4, time:13, hueDiff:22, wobble:false, wobbleSpeed:0.0 }, // Stage 3
   { grid:5, time:12, hueDiff:16, wobble:false, wobbleSpeed:0.0 }, // Stage 4
-  { grid:5, time:11, hueDiff:11, wobble:false, wobbleSpeed:0.0 }, // Stage 5  — medium
-  { grid:5, time:10, hueDiff: 8, wobble:false, wobbleSpeed:0.0 }, // Stage 6
-  { grid:6, time: 9, hueDiff: 6, wobble:true,  wobbleSpeed:1.0 }, // Stage 7  — wobble starts
-  { grid:6, time: 8, hueDiff: 4, wobble:true,  wobbleSpeed:1.6 }, // Stage 8  — hard
-  { grid:7, time: 6, hueDiff: 3, wobble:true,  wobbleSpeed:2.4 }, // Stage 9  — very hard
-  { grid:7, time: 5, hueDiff: 2, wobble:true,  wobbleSpeed:3.2 }, // Stage 10 — extreme
+  { grid:5, time:11, hueDiff:12, wobble:false, wobbleSpeed:0.0 }, // Stage 5  — medium
+  { grid:5, time:10, hueDiff: 9, wobble:false, wobbleSpeed:0.0 }, // Stage 6
+  { grid:6, time: 9, hueDiff: 7, wobble:false, wobbleSpeed:0.0 }, // Stage 7
+  { grid:6, time: 8, hueDiff: 6, wobble:true,  wobbleSpeed:1.0 }, // Stage 8  — hard, wobble starts
+  { grid:6, time: 7, hueDiff: 5, wobble:true,  wobbleSpeed:1.6 }, // Stage 9  — hard
+  { grid:7, time: 6, hueDiff: 4, wobble:true,  wobbleSpeed:2.2 }, // Stage 10 — very hard but fair
 ];
 
 let l1WobbleRafId = null;
