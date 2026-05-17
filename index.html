@@ -80,13 +80,43 @@
   <div class="countdown-num" id="countdown-num">3</div>
 </div>
 
-<!-- LEVEL 1 — COLOUR SORTING -->
+<!-- LEVEL INTRO OVERLAY -->
+<div id="level-intro-overlay" class="fullscreen-overlay hidden intro-overlay">
+  <div class="intro-content">
+    <div class="intro-emoji-big" id="intro-level-emoji">🎨</div>
+    <div class="intro-level-num" id="intro-level-num">Level 1</div>
+    <div class="intro-level-title" id="intro-level-title">Colour Vision</div>
+    <div class="intro-level-badge" id="intro-level-badge">7 Rounds</div>
+    <div class="intro-level-sub" id="intro-level-sub">Find the odd colour!</div>
+    <div class="intro-level-tip" id="intro-level-tip">💡 Look for the different shade.</div>
+    <div class="intro-count" id="intro-countdown"></div>
+  </div>
+</div>
+
+<!-- CHAMPION OVERLAY -->
+<div id="champion-overlay" class="fullscreen-overlay hidden champion-overlay">
+  <div class="champion-content">
+    <div class="champion-suspense">🥁 And the winner is...</div>
+    <div class="champion-trophy">🏆</div>
+    <div class="champion-crown">👑</div>
+    <div class="champion-title">CHAMPION</div>
+    <div class="champion-name" id="champion-name"></div>
+    <div class="champion-score" id="champion-score"></div>
+    <button class="btn-main champion-close-btn"
+      onclick="document.getElementById('champion-overlay').classList.add('hidden');document.getElementById('full-leaderboard').scrollIntoView({behavior:'smooth'})">
+      🏆 See Full Results
+    </button>
+  </div>
+</div>
+
+<!-- LEVEL 1 — COLOUR VISION -->
 <div id="screen-level1" class="screen">
   <div class="game-screen-inner">
     <div class="game-hud">
       <div class="hud-info">
         <span class="hud-level">🎨 Level 1</span>
-        <span class="hud-round" id="l1-round">1/5</span>
+        <span class="hud-round" id="l1-round">1/7</span>
+        <span class="hud-stage" id="l1-stage">Stage 1</span>
       </div>
       <div class="hud-timer-wrap">
         <div class="hud-timer" id="l1-timer">14</div>
@@ -100,16 +130,17 @@
   </div>
 </div>
 
-<!-- LEVEL 2 — DYSLEXIA CHALLENGE -->
+<!-- LEVEL 2 — TEXT CHALLENGE -->
 <div id="screen-level2" class="screen">
   <div class="game-screen-inner">
     <div class="game-hud">
       <div class="hud-info">
         <span class="hud-level">📝 Level 2</span>
-        <span class="hud-round" id="l2-round">1/7</span>
+        <span class="hud-round" id="l2-round">1/10</span>
+        <span class="hud-stage" id="l2-stage">Spelling</span>
       </div>
       <div class="hud-timer-wrap">
-        <div class="hud-timer" id="l2-timer">12</div>
+        <div class="hud-timer" id="l2-timer">13</div>
         <div class="timer-bar-wrap"><div class="timer-bar" id="l2-timer-bar"></div></div>
       </div>
       <button class="btn-mute" id="mute-btn-l2">🎵</button>
@@ -120,13 +151,14 @@
   </div>
 </div>
 
-<!-- LEVEL 3 — MOVING FRUITS -->
+<!-- LEVEL 3 — FRUIT FRENZY -->
 <div id="screen-level3" class="screen">
   <div class="game-screen-inner">
     <div class="game-hud">
       <div class="hud-info">
         <span class="hud-level">🍎 Level 3</span>
         <span class="hud-round" id="l3-round">1/5</span>
+        <span class="hud-stage" id="l3-stage">Wave 1</span>
       </div>
       <div class="hud-timer-wrap">
         <div class="hud-timer" id="l3-timer">16</div>
@@ -138,6 +170,7 @@
       <span class="target-label">Tap all:</span>
       <span class="target-fruit" id="l3-target">🍎</span>
       <span class="hit-count" id="l3-hits">0/5</span>
+      <span class="penalty-note">❌ Wrong = score penalty</span>
     </div>
     <div id="l3-arena" class="fruit-arena"></div>
     <div class="live-scores" id="l3-scores"></div>
@@ -151,6 +184,7 @@
       <div class="hud-info">
         <span class="hud-level">🧠 Level 4</span>
         <span class="hud-round" id="l4-round">1/5</span>
+        <span class="hud-stage" id="l4-stage">Round 1</span>
       </div>
       <div class="hud-timer-wrap">
         <div class="hud-timer" id="l4-timer">10</div>
@@ -168,7 +202,7 @@
   </div>
 </div>
 
-<!-- LEVEL 5 — MIX OF ALL -->
+<!-- LEVEL 5 — MIX MADNESS -->
 <div id="screen-level5" class="screen">
   <div class="game-screen-inner">
     <div class="game-hud">
@@ -209,7 +243,7 @@
 <div id="screen-results" class="screen">
   <div class="results-inner">
     <div class="results-title">🏆 Final Results</div>
-    <div class="results-reveal-label">Revealing rankings...</div>
+    <div class="results-reveal-label">Revealing rankings — watch carefully!</div>
     <div class="podium" id="podium"></div>
     <div class="full-leaderboard" id="full-leaderboard"></div>
     <div class="results-actions" id="results-actions"></div>
@@ -236,31 +270,6 @@
 <div id="conn-indicator" class="conn-indicator">
   <span class="conn-dot"></span>
   <span class="conn-label" id="conn-label">Connected</span>
-</div>
-
-<!-- LEVEL INTRO OVERLAY -->
-<div id="level-intro-overlay" class="fullscreen-overlay hidden intro-overlay">
-  <div class="intro-content">
-    <div class="intro-emoji-big" id="intro-level-emoji">🎨</div>
-    <div class="intro-level-num" id="intro-level-num">Level 1</div>
-    <div class="intro-level-title" id="intro-level-title">Colour Vision</div>
-    <div class="intro-level-sub" id="intro-level-sub">Find the odd colour!</div>
-    <div class="intro-level-tip" id="intro-level-tip">💡 Look for the different shade.</div>
-    <div class="intro-count" id="intro-countdown"></div>
-  </div>
-</div>
-
-<!-- CHAMPION OVERLAY -->
-<div id="champion-overlay" class="fullscreen-overlay hidden champion-overlay">
-  <div class="champion-content">
-    <div class="champion-suspense">🥁 And the winner is...</div>
-    <div class="champion-trophy">🏆</div>
-    <div class="champion-crown">👑</div>
-    <div class="champion-title">CHAMPION</div>
-    <div class="champion-name" id="champion-name"></div>
-    <div class="champion-score" id="champion-score"></div>
-    <button class="btn-main champion-close-btn" onclick="document.getElementById('champion-overlay').classList.add('hidden');document.getElementById('full-leaderboard').scrollIntoView({behavior:'smooth'})">🏆 See Full Results</button>
-  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
