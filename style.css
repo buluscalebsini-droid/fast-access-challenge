@@ -686,3 +686,180 @@ html, body {
 .l5-fb.correct{color:var(--accent3);background:rgba(74,222,128,0.08)}
 .l5-fb.wrong{color:var(--accent);background:rgba(233,69,96,0.08)}
 .l5-fb.timeout{color:var(--text-muted);background:rgba(255,255,255,0.04)}
+
+/* ===================================================
+   LEVEL INTRO OVERLAY
+   =================================================== */
+.intro-overlay {
+  background: linear-gradient(135deg, #0d0d1a 0%, #1a0d2e 50%, #0d1a2e 100%);
+  z-index: 500;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.intro-overlay.intro-in {
+  animation: introFadeIn 0.4s ease;
+}
+@keyframes introFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.intro-content {
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  max-width: 380px;
+}
+.intro-emoji-big {
+  font-size: 72px; line-height: 1;
+  animation: introBounce 0.6s ease;
+  filter: drop-shadow(0 0 24px rgba(233,69,96,0.6));
+}
+@keyframes introBounce {
+  0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.intro-level-num {
+  font-size: 13px; font-weight: 800; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--accent);
+  background: rgba(233,69,96,0.15); padding: 4px 14px;
+  border-radius: 20px; border: 1px solid var(--accent);
+}
+.intro-level-title {
+  font-size: 32px; font-weight: 900; color: var(--text);
+  background: linear-gradient(135deg, #fff, var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.intro-level-sub {
+  font-size: 17px; color: var(--text); font-weight: 600;
+  line-height: 1.4;
+}
+.intro-level-tip {
+  font-size: 13px; color: var(--text-muted); font-style: italic;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm); padding: 8px 16px;
+  max-width: 320px;
+}
+.intro-count {
+  font-size: 80px; font-weight: 900; min-height: 90px;
+  background: linear-gradient(135deg, var(--accent), #ff8c42);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: popIn 0.4s ease;
+  filter: drop-shadow(0 0 20px rgba(233,69,96,0.5));
+}
+
+/* ===================================================
+   DRAMATIC REVEAL CARDS (5th→2nd)
+   =================================================== */
+@keyframes revealSlide {
+  from { opacity: 0; transform: translateX(-40px) scale(0.9); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+.reveal-card {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--bg3); border: 1px solid var(--card-border);
+  border-radius: var(--radius); padding: 14px 18px;
+  margin-bottom: 10px; width: 100%;
+}
+.reveal-card.rank-2 { border-color: var(--silver); background: rgba(192,192,192,0.08); }
+.reveal-card.rank-3 { border-color: var(--bronze); background: rgba(205,127,50,0.08); }
+.reveal-rank  { font-size: 13px; font-weight: 800; color: var(--text-muted); min-width: 80px; }
+.reveal-name  { flex: 1; font-size: 18px; font-weight: 800; }
+.reveal-score { font-size: 20px; font-weight: 900; color: var(--accent3); }
+.results-reveal-label {
+  font-size: 13px; color: var(--text-muted); text-align: center;
+  letter-spacing: 1px; margin-bottom: 8px;
+  animation: pulse 1.5s ease infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ===================================================
+   CHAMPION OVERLAY — 1st Place Celebration
+   =================================================== */
+.champion-overlay {
+  background: radial-gradient(ellipse at center, #1a0a00 0%, #0d0d1a 70%);
+  z-index: 600;
+  flex-direction: column; align-items: center; justify-content: center;
+}
+.champion-content {
+  text-align: center; display: flex; flex-direction: column;
+  align-items: center; gap: 10px;
+}
+.champion-suspense {
+  font-size: 16px; color: var(--text-muted); letter-spacing: 1px;
+  animation: pulse 0.8s ease infinite;
+}
+.champion-trophy {
+  font-size: 80px; line-height: 1;
+  opacity: 0; transition: opacity 0.5s;
+  filter: drop-shadow(0 0 30px rgba(255,215,0,0.8));
+}
+.champion-crown {
+  font-size: 48px; line-height: 1; opacity: 0;
+  transition: opacity 0.5s 0.2s;
+}
+.champion-title {
+  font-size: 48px; font-weight: 900; letter-spacing: 6px;
+  background: linear-gradient(135deg, var(--gold), #ff8c42, var(--gold));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  opacity: 0; transition: opacity 0.5s 0.4s;
+  text-shadow: none;
+  filter: drop-shadow(0 0 20px rgba(255,215,0,0.6));
+}
+.champion-name {
+  font-size: 36px; font-weight: 900; color: #fff;
+  opacity: 0; transition: opacity 0.7s 0.6s;
+  text-shadow: 0 0 30px rgba(255,215,0,0.8);
+}
+.champion-score {
+  font-size: 22px; font-weight: 700; color: var(--accent3);
+  opacity: 0; transition: opacity 0.5s 0.9s;
+}
+.champion-close-btn {
+  opacity: 0; transition: opacity 0.5s 1.2s;
+  margin-top: 16px;
+}
+.champion-reveal .champion-trophy,
+.champion-reveal .champion-crown,
+.champion-reveal .champion-title,
+.champion-reveal .champion-name,
+.champion-reveal .champion-score,
+.champion-reveal .champion-close-btn { opacity: 1; }
+.champion-reveal .champion-trophy  { animation: championBounce 0.8s 0.1s ease both; }
+.champion-reveal .champion-title   { animation: championGlow  1.5s 0.5s ease infinite alternate; }
+@keyframes championBounce {
+  0%  { transform: scale(0) rotate(-20deg); }
+  60% { transform: scale(1.3) rotate(5deg); }
+  100%{ transform: scale(1) rotate(0); }
+}
+@keyframes championGlow {
+  from { filter: drop-shadow(0 0 10px rgba(255,215,0,0.4)); }
+  to   { filter: drop-shadow(0 0 40px rgba(255,215,0,1)); }
+}
+
+/* ===================================================
+   RESULTS ACTIONS — dynamically populated
+   =================================================== */
+#results-actions { display: flex; flex-direction: column; gap: 8px; }
+
+/* ===================================================
+   RESPONSIVE TOUCH IMPROVEMENTS
+   =================================================== */
+.color-cell { min-width: 36px; min-height: 36px; cursor: pointer; }
+.word-btn   { min-height: 48px; }
+.mem-btn    { min-width: 48px; min-height: 48px; font-size: 24px; }
+.fruit      { cursor: pointer; user-select: none; -webkit-user-select: none; }
+button      { -webkit-tap-highlight-color: transparent; }
+
+/* ===================================================
+   STAGE LABEL IN HUD
+   =================================================== */
+.hud-stage {
+  font-size: 11px; color: var(--accent2); font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+}
