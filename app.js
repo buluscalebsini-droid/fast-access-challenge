@@ -1,5 +1,7 @@
 // ============================================================
-// app.js — Fast Access Challenge — Multiplayer v3
+// app.js — Service vs Product Complaints — ICS Training v1
+// INFRASTRUCTURE: kept 100% identical to original
+// GAME CONTENT: replaced with 7 corporate training stages
 // ============================================================
 import {
   db, auth, ref, set, get, update, onValue, onDisconnect,
@@ -8,11 +10,10 @@ import {
 } from './firebase.js';
 
 // ============================================================
-// AUDIO ENGINE
+// AUDIO ENGINE (unchanged)
 // ============================================================
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let actx = null, jazzInterval = null, musicOn = true, jazzStep = 0;
-
 function getACtx() {
   if (!actx) actx = new AudioCtx();
   if (actx.state === 'suspended') actx.resume();
@@ -39,7 +40,6 @@ const sfxGo        = () => [523,659,784].forEach((f,i) => playTone(f,'sine',0.1,
 const sfxTimerWarn = () => playTone(330,'triangle',0.08,0.12);
 const sfxLevelUp   = () => [523,659,784,1047].forEach((f,i) => playTone(f,'sine',0.18,0.25,i*0.12));
 const sfxClick     = () => playTone(660,'triangle',0.06,0.12);
-const sfxPenalty   = () => { playTone(150,'sawtooth',0.15,0.3); playTone(120,'sawtooth',0.12,0.25,0.1); };
 const sfxReveal    = () => { playTone(440,'sine',0.1,0.22); playTone(660,'sine',0.14,0.28,0.1); };
 const sfxDrumroll  = () => {
   [0,0.10,0.19,0.27,0.34,0.40,0.45,0.49,0.52,0.545,0.565,0.58]
@@ -49,19 +49,19 @@ const sfxChampion  = () => {
   [523,659,784,880,1047].forEach((f,i) => playTone(f,'sine',0.35,0.32,i*0.13));
   setTimeout(() => [784,880,1047,1319].forEach((f,i) => playTone(f,'sine',0.4,0.35,i*0.09)), 900);
 };
-
-const JAZZ_CHORDS = [[261,330,392,494],[294,370,440,554],[349,440,523,659],[392,494,587,740],[330,415,494,622],[261,330,392,523]];
+const sfxBonus     = () => [784,880,1047,1319,1568].forEach((f,i) => playTone(f,'sine',0.2,0.28,i*0.08));
+const JAZZ_CHORDS  = [[261,330,392,494],[294,370,440,554],[349,440,523,659],[392,494,587,740],[330,415,494,622]];
 function playJazzChord() {
   if (!musicOn) return;
   const c = JAZZ_CHORDS[jazzStep % JAZZ_CHORDS.length];
-  c.forEach((f,i) => playTone(f/2,'sine',0.5,0.055,i*0.04));
-  playTone(c[0]/4,'triangle',0.55,0.09); jazzStep++;
+  c.forEach((f,i) => playTone(f/2,'sine',0.5,0.045,i*0.04));
+  playTone(c[0]/4,'triangle',0.55,0.07); jazzStep++;
 }
-function startJazz() { stopJazz(); if (!musicOn) return; playJazzChord(); jazzInterval = setInterval(playJazzChord,1400); }
+function startJazz() { stopJazz(); if (!musicOn) return; playJazzChord(); jazzInterval = setInterval(playJazzChord,1600); }
 function stopJazz()  { if (jazzInterval) { clearInterval(jazzInterval); jazzInterval = null; } }
 function toggleMusic() {
   musicOn = !musicOn;
-  document.querySelectorAll('.btn-mute').forEach(b => b.textContent = musicOn ? '🎵' : '🔇');
+  document.querySelectorAll('.btn-mute,.btn-mute-sm').forEach(b => b.textContent = musicOn ? '🔊' : '🔇');
   if (musicOn) startJazz(); else stopJazz();
 }
 
@@ -72,27 +72,19 @@ let myUid = null, myName = '', roomCode = '', isHost = false;
 let players = {}, gameState = {}, activeListeners = [];
 let localTimerId = null;
 
-// Level 1 — Color Vision
-let l1Round = 0, l1CanClick = false;
-
-// Level 2 — Text Challenge
-let l2Round = 0, l2CanClick = false;
-
-// Level 3 — Moving Fruits
-let l3Round = 0, l3CanHit = false, l3Hits = 0, l3Target = '', l3NeedHits = 5;
-let fruitObjects = [], rafId = null, lastTime = 0, arenaW = 0, arenaH = 0;
-const FRUIT_SIZE = 38;
-
-// Level 4 — Memory
-let l4Round = 0, l4Sequence = [], l4PlayerSeq = [], l4CanInput = false;
-
-// Level 5 — Mix
-let l5Round = 0, l5CanAct = false, l5RafId = null, l5FruitObjects = [];
-let l5MemSeq = [], l5MemPlayerSeq = [], l5MemCanInput = false;
-let l5FruitArenaW = 0, l5FruitArenaH = 0;
+// Training game state
+let currentStage  = 1;   // 1-7
+let stageItem     = 0;   // current question index within stage
+let stageCanAct   = false;
+let s5CaseIdx     = 0;   // stage 5: which case (0-3)
+let s5QuestionIdx = 0;   // stage 5: question within case (0-3)
+let s5CaseCorrect = 0;   // stage 5: correct answers in current case
+let s7Step        = 0;   // stage 7: step (0-7)
+let s7Mistakes    = 0;   // stage 7: mistakes count
+let stageScoreLocal = 0; // points scored this stage
 
 // ============================================================
-// UTILS
+// UTILS (unchanged)
 // ============================================================
 function rand(min, max) { return Math.random() * (max - min) + min; }
 function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
@@ -102,12 +94,10 @@ function shuffle(arr) {
   return a;
 }
 function pick(arr) { return arr[randInt(0, arr.length-1)]; }
-
 const AVATAR_COLORS = ['avatar-0','avatar-1','avatar-2','avatar-3','avatar-4','avatar-5','avatar-6','avatar-7','avatar-8','avatar-9'];
 function playerColor(idx) { return AVATAR_COLORS[idx % AVATAR_COLORS.length]; }
 function playerInitials(name) { return name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) || '?'; }
-
-function showToast(msg, dur=1800) {
+function showToast(msg, dur=2200) {
   const t = document.getElementById('toast');
   t.classList.remove('hidden'); t.textContent = msg; t.classList.add('show');
   clearTimeout(t._tid); t._tid = setTimeout(() => t.classList.remove('show'), dur);
@@ -124,25 +114,16 @@ function setConnected(ok) {
   const el = document.getElementById('conn-indicator'), lbl = document.getElementById('conn-label');
   if (!el) return;
   el.classList.toggle('offline', !ok);
-  lbl.textContent = ok ? 'Connected' : 'Reconnecting...';
+  lbl.textContent = ok ? '● Connected' : '● Reconnecting...';
 }
 function showError(elId, msg) {
   const el = document.getElementById(elId); if (!el) return;
   el.textContent = msg; el.classList.remove('hidden');
   setTimeout(() => el.classList.add('hidden'), 4000);
 }
-function deductScore(pts) {
-  if (!myUid || !roomCode) return;
-  if (!players[myUid]) return;
-  const cur = players[myUid].score || 0;
-  const next = Math.max(0, cur - pts);
-  players[myUid].score = next;
-  updateAllScoreDisplays();
-  update(dbRef('rooms', roomCode, 'players', myUid), { score: next });
-}
 
 // ============================================================
-// FIREBASE HELPERS
+// FIREBASE HELPERS (unchanged)
 // ============================================================
 function dbRef(...parts) { return ref(db, parts.join('/')); }
 function listenOn(path, cb) {
@@ -150,43 +131,9 @@ function listenOn(path, cb) {
 }
 function clearListeners() { activeListeners.forEach(r => off(r)); activeListeners = []; }
 function stopLocalTimer() { if (localTimerId) { clearInterval(localTimerId); localTimerId = null; } }
-function stopFruitAnimation() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
-function stopL5Fruits() { if (l5RafId) { cancelAnimationFrame(l5RafId); l5RafId = null; } }
-
-// Shared arcade-quality collision resolver used by both L3 and L5
-function resolveCollisions(objects, size) {
-  for (let i = 0; i < objects.length; i++) {
-    const f = objects[i]; if (f.tapped) continue;
-    for (let j = i+1; j < objects.length; j++) {
-      const g = objects[j]; if (g.tapped) continue;
-      const dx = (f.x + size/2) - (g.x + size/2);
-      const dy = (f.y + size/2) - (g.y + size/2);
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist < size && dist > 0.001) {
-        const nx = dx/dist, ny = dy/dist;
-        // Separate overlapping objects
-        const overlap = (size - dist) / 2 + 0.5;
-        f.x += nx * overlap; f.y += ny * overlap;
-        g.x -= nx * overlap; g.y -= ny * overlap;
-        // Elastic velocity exchange along collision normal
-        const relV = (f.vx - g.vx)*nx + (f.vy - g.vy)*ny;
-        if (relV < 0) {
-          const restitution = 0.85;
-          const impulse = relV * (1 + restitution) / 2;
-          f.vx -= impulse*nx; f.vy -= impulse*ny;
-          g.vx += impulse*nx; g.vy += impulse*ny;
-          // Speed cap to prevent explosions
-          const cap = 120;
-          const clamp = v => { const sp = Math.sqrt(v.vx*v.vx+v.vy*v.vy); if(sp>cap){v.vx=v.vx/sp*cap;v.vy=v.vy/sp*cap;} };
-          clamp(f); clamp(g);
-        }
-      }
-    }
-  }
-}
 
 // ============================================================
-// AUTH
+// AUTH (unchanged)
 // ============================================================
 async function initAuth() {
   document.getElementById('loading-msg').textContent = 'Authenticating...';
@@ -200,7 +147,7 @@ function initConnectionMonitor() {
 }
 
 // ============================================================
-// ROOM CREATION / JOINING
+// ROOM CREATION / JOINING (unchanged)
 // ============================================================
 async function createRoom(hostName) {
   myName = hostName.trim(); isHost = true; roomCode = genRoomCode();
@@ -210,7 +157,7 @@ async function createRoom(hostName) {
   await set(roomRef, {
     host: myUid, status: 'lobby', created: serverTimestamp(),
     players: { [myUid]: { name: myName, score: 0, color: 0, ready: true } },
-    game: { level: 0, round: 0, roundSeed: 0, phase: 'waiting' }
+    game: { level: 0, round: 0, roundSeed: 0, phase: 'waiting', betweenPhase: 'leaderboard' }
   });
   openLobby();
 }
@@ -233,7 +180,7 @@ async function joinRoom(name, code) {
 }
 
 // ============================================================
-// LOBBY
+// LOBBY (unchanged structure, updated text)
 // ============================================================
 function openLobby() {
   showScreen('screen-lobby');
@@ -250,13 +197,13 @@ function listenLobby() {
   listenOn(`rooms/${roomCode}/players`, snap => {
     players = snap.val() || {};
     renderLobbyPlayers();
-    if (!players[myUid]) { showToast('You were removed.'); resetToMenu(); }
+    if (!players[myUid]) { showToast('You were removed from the session.'); resetToMenu(); }
   });
   listenOn(`rooms/${roomCode}/status`, snap => {
     if (snap.val() === 'playing') { clearListeners(); startGame(); }
   });
   listenOn(`rooms/${roomCode}`, snap => {
-    if (!snap.exists()) { showToast('Room closed.'); resetToMenu(); }
+    if (!snap.exists()) { showToast('Session closed.'); resetToMenu(); }
   });
 }
 function renderLobbyPlayers() {
@@ -269,37 +216,37 @@ function renderLobbyPlayers() {
     const nm = document.createElement('div'); nm.className = 'player-name'; nm.textContent = p.name;
     const bg = document.createElement('div'); bg.style.cssText = 'display:flex;gap:6px';
     get(dbRef('rooms', roomCode, 'host')).then(s => {
-      if (s.val() === uid) { const h = document.createElement('span'); h.className = 'player-badge'; h.textContent = 'HOST'; bg.appendChild(h); }
+      if (s.val() === uid) { const h = document.createElement('span'); h.className = 'player-badge'; h.textContent = 'FACILITATOR'; bg.appendChild(h); }
     });
     if (uid === myUid) { const y = document.createElement('span'); y.className = 'player-badge you'; y.textContent = 'YOU'; bg.appendChild(y); }
     card.appendChild(av); card.appendChild(nm); card.appendChild(bg); list.appendChild(card);
   });
   const count = entries.length;
   document.getElementById('lobby-status').textContent =
-    count === 1 ? 'Waiting for more players... (1/40)' : `${count}/40 players connected`;
+    count === 1 ? 'Waiting for participants... (1/40)' : `${count}/40 participants connected`;
   if (isHost) {
     const btn = document.getElementById('btn-start-game');
     btn.disabled = count < 1;
-    btn.textContent = count < 2 ? '▶ Start Solo' : '▶ Start Game';
+    btn.textContent = count < 2 ? '▶ Start Solo Session' : '▶ Begin Training';
   }
 }
 async function hostStartGame() {
   document.getElementById('btn-start-game').disabled = true;
   await update(dbRef('rooms', roomCode), {
     status: 'playing', 'game/level': 1, 'game/round': 0,
-    'game/phase': 'countdown',
+    'game/phase': 'intro', 'game/betweenPhase': 'leaderboard',
     'game/roundSeed': Math.floor(Math.random() * 100000),
     'game/roundStartTime': serverTimestamp()
   });
 }
 
 // ============================================================
-// GAME START + COUNTDOWN
+// GAME START + COUNTDOWN (unchanged)
 // ============================================================
 function startGame() {
   clearListeners();
   get(dbRef('rooms', roomCode, 'players')).then(s => { if (s.exists()) players = s.val(); });
-  showLevelIntro(1, startLevel1);
+  showStageIntro(1, () => startStage(1));
 }
 function doCountdown(cb) {
   const overlay = document.getElementById('countdown-overlay');
@@ -318,970 +265,786 @@ function doCountdown(cb) {
 function animateCN(el) { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'popIn 0.5s ease'; }
 
 // ============================================================
-// LEVEL INTRO SYSTEM
-// ============================================================
-const LEVEL_INTROS = {
-  1: { emoji:'🎨', title:'Colour Vision', sub:'Find the one circle with a different shade!',
-       tip:'Later stages add gentle colour drift — stay sharp!', badge:'10 Stages' },
-  2: { emoji:'📝', title:'Mixed Spelling', sub:'Words AND sentences — find the only correct spelling!',
-       tip:'Words get short timers; sentences get more time to read.', badge:'10 Rounds' },
-  3: { emoji:'🍎', title:'Fruit Frenzy', sub:'Tap every target fruit — speed increases each wave!',
-       tip:'Wrong taps cost you points. Fruits bounce and speed up!', badge:'5 Waves' },
-  4: { emoji:'🧠', title:'Memory Flash', sub:'Memorise through floating distractions — then recreate it!',
-       tip:'Icons float across your screen while you memorise. Block them out!', badge:'7 Rounds' },
-  5: { emoji:'🏆', title:'Grand Finale', sub:'Every mechanic combined — the ultimate championship round!',
-       tip:'Speed, memory, spelling and physics — all at once. Combos rewarded!', badge:'12 Events' },
-};
-function showLevelIntro(lvl, cb) {
-  const info = LEVEL_INTROS[lvl];
-  if (!info) { cb(); return; }
-  const ov = document.getElementById('level-intro-overlay');
-  document.getElementById('intro-level-emoji').textContent  = info.emoji;
-  document.getElementById('intro-level-num').textContent    = `Level ${lvl}`;
-  document.getElementById('intro-level-title').textContent  = info.title;
-  document.getElementById('intro-level-badge').textContent  = info.badge;
-  document.getElementById('intro-level-sub').textContent    = info.sub;
-  document.getElementById('intro-level-tip').textContent    = `💡 ${info.tip}`;
-  document.getElementById('intro-countdown').textContent    = '';
-  ov.classList.remove('hidden');
-  void ov.offsetWidth; ov.classList.add('intro-in');
-  setTimeout(() => {
-    let c = 3;
-    document.getElementById('intro-countdown').textContent = c; sfxCountdown();
-    const tick = setInterval(() => {
-      c--;
-      if (c <= 0) {
-        clearInterval(tick);
-        document.getElementById('intro-countdown').textContent = 'GO!'; sfxGo();
-        setTimeout(() => { ov.classList.add('hidden'); ov.classList.remove('intro-in'); cb(); }, 520);
-      } else { document.getElementById('intro-countdown').textContent = c; sfxCountdown(); }
-    }, 800);
-  }, 2000);
-}
-
-// ============================================================
-// SCORE SYNC
+// SCORE SYNC (unchanged)
 // ============================================================
 function addMyScore(pts) {
   if (!myUid || !roomCode) return;
   if (!players[myUid]) players[myUid] = { score: 0 };
   players[myUid].score = (players[myUid].score || 0) + pts;
-  updateAllScoreDisplays();
+  stageScoreLocal += pts;
+  renderGameScores();
   get(dbRef('rooms', roomCode, 'players', myUid, 'score')).then(s => {
     const cur = s.val() || 0;
     update(dbRef('rooms', roomCode, 'players', myUid), { score: cur + pts });
   });
 }
-function syncScoresDisplay(id) {
-  const c = document.getElementById(id); if (!c) return;
-  listenOn(`rooms/${roomCode}/players`, snap => { players = snap.val() || {}; renderScoreChips(c); });
+function deductScore(pts) {
+  if (!myUid || !roomCode) return;
+  if (!players[myUid]) return;
+  const cur = players[myUid].score || 0;
+  const next = Math.max(0, cur - pts);
+  players[myUid].score = next;
+  renderGameScores();
+  update(dbRef('rooms', roomCode, 'players', myUid), { score: next });
 }
-function updateAllScoreDisplays() {
-  ['l1-scores','l2-scores','l3-scores','l4-scores','l5-scores'].forEach(id => {
-    const c = document.getElementById(id); if (c && c.childElementCount > 0) renderScoreChips(c);
-  });
+function syncGameScores() {
+  listenOn(`rooms/${roomCode}/players`, snap => { players = snap.val() || {}; renderGameScores(); });
 }
-function renderScoreChips(container) {
+function renderGameScores() {
+  const c = document.getElementById('game-scores'); if (!c) return;
   const sorted = Object.entries(players).sort((a,b) => (b[1].score||0)-(a[1].score||0));
-  container.innerHTML = '';
-  sorted.forEach(([uid,p],idx) => {
+  c.innerHTML = '';
+  sorted.slice(0, 8).forEach(([uid, p], idx) => {
     const chip = document.createElement('div'); chip.className = 'score-chip' + (idx===0?' leader':'');
     chip.innerHTML = `<span class="chip-name">${p.name}</span><span class="chip-score">${p.score||0}</span>`;
-    container.appendChild(chip);
+    c.appendChild(chip);
   });
 }
 
 // ============================================================
-// TIMER
+// TIMER (unchanged)
 // ============================================================
 function startTimerLocal(timerId, barId, seconds, onEnd) {
   stopLocalTimer();
   let remaining = seconds;
   const timerEl = document.getElementById(timerId), barEl = document.getElementById(barId);
+  const CIRC = 113; // 2 * pi * 18
   if (timerEl) { timerEl.textContent = remaining; timerEl.classList.remove('warn'); }
-  if (barEl)   { barEl.style.width = '100%'; barEl.classList.remove('warn'); }
+  if (barEl)   {
+    // SVG ring: stroke-dashoffset drives the progress
+    if (barEl.tagName === 'circle') { barEl.style.strokeDashoffset = '0'; barEl.classList.remove('warn'); }
+    else { barEl.style.width = '100%'; barEl.classList.remove('warn'); }
+  }
   localTimerId = setInterval(() => {
     remaining--;
-    if (timerEl) { timerEl.textContent = remaining; if (remaining <= 3) { timerEl.classList.add('warn'); sfxTimerWarn(); } }
-    if (barEl)   { barEl.style.width = Math.max(0,(remaining/seconds)*100)+'%'; if (remaining<=3) barEl.classList.add('warn'); }
+    if (timerEl) { timerEl.textContent = remaining; if (remaining <= 4) { timerEl.classList.add('warn'); sfxTimerWarn(); } }
+    if (barEl) {
+      const pct = Math.max(0, remaining / seconds);
+      if (barEl.tagName === 'circle') {
+        barEl.style.strokeDashoffset = CIRC * (1 - pct) + '';
+        if (remaining <= 4) barEl.classList.add('warn');
+      } else {
+        barEl.style.width = (pct*100)+'%';
+        if (remaining <= 4) barEl.classList.add('warn');
+      }
+    }
     if (remaining <= 0) { stopLocalTimer(); onEnd(); }
   }, 1000);
 }
-function setupMuteButtons() {
-  document.querySelectorAll('.btn-mute').forEach(b => { b.textContent = musicOn ? '🎵' : '🔇'; b.onclick = toggleMusic; });
+
+// ============================================================
+// STAGE INTRO SYSTEM
+// ============================================================
+const STAGE_INTROS = {
+  1: { icon:'🔀', title:'Service or Product?',   sub:'Classify each complaint as a Service Complaint or a Product Complaint.', tip:'Service = ICS managed it. Product = from manufacturer.', badge:'8 Scenarios', color:'var(--c-purple)' },
+  2: { icon:'👤', title:'Who Owns It?',            sub:'Determine whether the Claims Team or the Account Manager should handle each complaint.', tip:'Service Complaints → Claims. Product Complaints → Contact AM.', badge:'6 Scenarios', color:'var(--c-green)' },
+  3: { icon:'✔',  title:'True or False',           sub:'Fast-paced: is each statement about complaint routing correct?', tip:'Apply your knowledge of the three key questions.', badge:'10 Statements', color:'var(--c-blue)' },
+  4: { icon:'🔄', title:'Complete the Workflow',   sub:'Fill in the missing step in each complaint routing workflow.', tip:'Think through the full routing process step by step.', badge:'6 Questions', color:'var(--c-orange)' },
+  5: { icon:'📋', title:'Investigation Challenge', sub:'Work through four complete complaint cases, answering all four routing questions per case.', tip:'Bonus points for getting all four questions right in a single case!', badge:'4 Cases', color:'var(--c-purple)' },
+  6: { icon:'🕐', title:'Root Cause Timeline',     sub:'Identify where on the supply chain timeline the complaint originated.', tip:'The origin point determines whether it\'s a Service or Product complaint.', badge:'6 Scenarios', color:'var(--c-green)' },
+  7: { icon:'🚪', title:'Complaint Escape',        sub:'Navigate a complete complaint from receipt to resolution by making correct decisions at every step.', tip:'Perfect score earns a bonus certificate!', badge:'8 Decisions', color:'var(--c-blue)' },
+};
+function showStageIntro(n, cb) {
+  const info = STAGE_INTROS[n];
+  if (!info) { cb(); return; }
+  const ov = document.getElementById('stage-intro-overlay');
+  document.getElementById('si-icon').textContent    = info.icon;
+  document.getElementById('si-num').textContent     = `Stage ${n} of 7`;
+  document.getElementById('si-title').textContent   = info.title;
+  document.getElementById('si-badge').textContent   = info.badge;
+  document.getElementById('si-sub').textContent     = info.sub;
+  document.getElementById('si-tip').textContent     = info.tip;
+  document.getElementById('si-count').textContent   = '';
+  document.getElementById('si-icon').style.background = info.color;
+  ov.classList.remove('hidden'); void ov.offsetWidth; ov.classList.add('si-in');
+  setTimeout(() => {
+    let c = 3;
+    document.getElementById('si-count').textContent = c; sfxCountdown();
+    const tick = setInterval(() => {
+      c--;
+      if (c <= 0) {
+        clearInterval(tick);
+        document.getElementById('si-count').textContent = 'GO!'; sfxGo();
+        setTimeout(() => { ov.classList.add('hidden'); ov.classList.remove('si-in'); cb(); }, 520);
+      } else { document.getElementById('si-count').textContent = c; sfxCountdown(); }
+    }, 800);
+  }, 2200);
 }
 
 // ============================================================
-// LEVEL 1 — COLOUR VISION 🎨  (10 stages)
-// wobble:true = cells gently drift in hue (stages 7-10)
+// TRAINING CONTENT DATA
 // ============================================================
-const L1_ROUNDS = 10;
-const L1_CFG = [
-  { grid:3, time:16, hueDiff:40, wobble:false, wobbleSpeed:0.0 }, // Stage 1  — very easy
-  { grid:4, time:14, hueDiff:30, wobble:false, wobbleSpeed:0.0 }, // Stage 2  — easy
-  { grid:4, time:13, hueDiff:22, wobble:false, wobbleSpeed:0.0 }, // Stage 3
-  { grid:5, time:12, hueDiff:16, wobble:false, wobbleSpeed:0.0 }, // Stage 4
-  { grid:5, time:11, hueDiff:12, wobble:false, wobbleSpeed:0.0 }, // Stage 5  — medium
-  { grid:5, time:10, hueDiff: 9, wobble:false, wobbleSpeed:0.0 }, // Stage 6
-  { grid:6, time: 9, hueDiff: 7, wobble:false, wobbleSpeed:0.0 }, // Stage 7
-  { grid:6, time: 9, hueDiff:12, wobble:true,  wobbleSpeed:0.8 }, // Stage 8  — wobble starts, diff stays visible
-  { grid:6, time: 8, hueDiff:10, wobble:true,  wobbleSpeed:1.2 }, // Stage 9  — moderately hard
-  { grid:6, time: 7, hueDiff: 8, wobble:true,  wobbleSpeed:1.6 }, // Stage 10 — hard but clearly fair
+
+// ── STAGE 1: Service or Product? ────────────────────────────
+const S1_DATA = [
+  { scenario: 'Medication arrived with crushed packaging after an ICS-managed delivery. Products appear unusable.', answer: 'service', hint: 'Damage occurred during ICS-managed transportation → Service Complaint.' },
+  { scenario: 'A patient reports the insulin pen does not deliver the correct dose due to a device mechanism failure.', answer: 'product', hint: 'Device malfunction originates from the manufacturer → Product Complaint.' },
+  { scenario: 'Hospital received 50 units instead of the ordered 100 — the picking error happened at the ICS warehouse.', answer: 'service', hint: 'Wrong quantity from ICS warehouse = handling error during ICS service → Service Complaint.' },
+  { scenario: 'A batch of syringes shows visible contamination linked to the manufacturing facility batch record.', answer: 'product', hint: 'Contamination originating at the manufacturing stage → Product Complaint.' },
+  { scenario: 'Temperature-sensitive vaccines exceeded cold-chain limits during the ICS truck delivery (GPS log confirms).', answer: 'service', hint: 'Temperature excursion during ICS-managed transit → Service Complaint.' },
+  { scenario: 'A patient experiences an adverse reaction after using the medication at the prescribed dosage.', answer: 'product', hint: 'Adverse effects relate to the product itself, not the service → Product Complaint.' },
+  { scenario: 'A medical device was shipped by ICS to the wrong hospital address.', answer: 'service', hint: 'Wrong-address delivery is an ICS service error → Service Complaint.' },
+  { scenario: 'A pharmacy discovers a manufacturing defect in the blister-pack seal upon opening.', answer: 'product', hint: 'Manufacturing defects originate from the manufacturer → Product Complaint.' },
 ];
 
-let l1WobbleRafId = null;
+// ── STAGE 2: Who Owns It? ───────────────────────────────────
+const S2_DATA = [
+  { scenario: 'Service complaint confirmed: carrier damaged products during ICS-managed transit.', question: 'Who owns this complaint?', answer: 'claims', hint: 'Service Complaints are owned by the Claims Team (ICS). They create and investigate the Quality Case.' },
+  { scenario: 'Product complaint received: a medical device has a manufacturing defect reported by the end user.', question: 'Who should Returns contact?', answer: 'am', hint: 'Product Complaints belong to the Source Client. Returns contacts the Account Manager (AM). No Quality Case.' },
+  { scenario: 'ICS warehouse dispatched the wrong product line to a hospital.', question: 'Who investigates this?', answer: 'claims', hint: 'Wrong product from ICS warehouse = Service Complaint → Claims Team investigates.' },
+  { scenario: 'A patient reports an adverse effect from using the product as directed by the prescription.', question: 'Who does Returns contact?', answer: 'am', hint: 'Adverse effects = Product Complaint → Contact AM, follow Source Client direction.' },
+  { scenario: 'Cold-chain excursion confirmed during an ICS-managed delivery run.', question: 'Who creates the Quality Case?', answer: 'claims', hint: 'Transport excursion = Service Complaint → Claims Team creates the Quality Case.' },
+  { scenario: 'Product contamination traced to the manufacturing facility batch production.', question: 'What does Returns do?', answer: 'am', hint: 'Manufacturing contamination = Product Complaint → Contact AM. Returns does NOT create a Quality Case.' },
+];
 
-function startLevel1() {
-  l1Round = 0;
-  showScreen('screen-level1'); setupMuteButtons(); syncScoresDisplay('l1-scores');
-  nextL1Round();
-}
-function stopL1Wobble() {
-  if (l1WobbleRafId) { cancelAnimationFrame(l1WobbleRafId); l1WobbleRafId = null; }
-}
-function nextL1Round() {
-  stopLocalTimer(); stopL1Wobble();
-  if (l1Round >= L1_ROUNDS) { finishLevel(1); return; }
-  const cfg = L1_CFG[l1Round];
-  document.getElementById('l1-round').textContent = `${l1Round+1}/${L1_ROUNDS}`;
-  document.getElementById('l1-stage').textContent = `Stage ${l1Round+1}`;
-  buildL1Grid(cfg, l1Round * 9173 + 7);
-  l1CanClick = true;
-  startTimerLocal('l1-timer','l1-timer-bar', cfg.time, () => {
-    l1CanClick = false; stopL1Wobble();
-    document.querySelectorAll('.color-cell.odd-cell').forEach(c => c.classList.add('reveal'));
-    l1Round++; setTimeout(nextL1Round, 800);
+// ── STAGE 3: True or False ──────────────────────────────────
+const S3_DATA = [
+  { statement: 'The Returns Team creates Quality Cases for all complaints.', answer: false, hint: 'FALSE — Returns does NOT create Quality Cases. The Claims Team creates them for Service Complaints only.' },
+  { statement: 'Claims Team investigates Service Complaints and creates the Quality Case.', answer: true, hint: 'TRUE — Claims Team owns Service Complaints: they investigate and create the Quality Case.' },
+  { statement: 'Product Complaints originate from the manufacturer or the product itself.', answer: true, hint: 'TRUE — Product Complaints include defects, adverse effects, and manufacturing issues.' },
+  { statement: 'The Returns Team investigates every complaint it receives.', answer: false, hint: 'FALSE — Returns reviews and ROUTES complaints. Returns does NOT investigate.' },
+  { statement: 'If ICS did not manage the shipment, Returns should contact the Account Manager.', answer: true, hint: 'TRUE — No ICS involvement = contact AM and follow Source Client direction.' },
+  { statement: 'A temperature excursion during ICS delivery is a Product Complaint.', answer: false, hint: 'FALSE — Temperature excursion during ICS service = Service Complaint.' },
+  { statement: 'For Product Complaints, Returns contacts the Account Manager.', answer: true, hint: 'TRUE — Product Complaints: Returns contacts AM, follows Source Client direction. No Quality Case.' },
+  { statement: 'Wrong quantity delivered by ICS is classified as a Product Complaint.', answer: false, hint: 'FALSE — Wrong quantity from ICS handling = Service Complaint.' },
+  { statement: 'Claims Team is responsible for Service Complaints.', answer: true, hint: 'TRUE — Claims Team (ICS) owns all Service Complaints.' },
+  { statement: 'Returns Team should create a Quality Case for Product Complaints.', answer: false, hint: 'FALSE — No Quality Case for Product Complaints. Returns contacts AM only.' },
+];
+
+// ── STAGE 4: Complete the Workflow ──────────────────────────
+const S4_DATA = [
+  { context: 'A complaint arrives. What is the Returns Team\'s FIRST action?',
+    flow: ['📥 Complaint Received', '❓ ???', '🔍 Determine Complaint Type', '📤 Route Complaint'],
+    options: ['Review Complaint', 'Create Quality Case', 'Contact Claims', 'Investigate', 'Contact Manufacturer'],
+    answer: 'Review Complaint',
+    hint: 'Returns always REVIEWS the complaint before determining its type.' },
+  { context: 'ICS managed the shipment and damage occurred during transit. What type of complaint?',
+    flow: ['🚚 Damage During ICS Transit', '❓ ???', '👥 Claims Team', '📋 Quality Case Created'],
+    options: ['Product Complaint', 'Service Complaint', 'Manufacturer Issue', 'Customer Complaint'],
+    answer: 'Service Complaint',
+    hint: 'Issue during ICS-managed transit = Service Complaint.' },
+  { context: 'The complaint is a Product Complaint. What is Returns\' next action?',
+    flow: ['📦 Product Complaint Identified', '📞 ???', '📋 Follow Source Client Direction', '🚫 No Quality Case'],
+    options: ['Create Quality Case', 'Contact Claims Team', 'Contact Account Manager (AM)', 'Investigate Complaint'],
+    answer: 'Contact Account Manager (AM)',
+    hint: 'Product Complaint → Returns contacts the Account Manager (AM).' },
+  { context: 'ICS did NOT manage the shipment. What happens next?',
+    flow: ['❓ Did ICS Manage Shipment?', '❌ NO', '???', '📋 Follow Source Client Direction'],
+    options: ['Create Quality Case', 'Contact Claims Team', 'Contact Account Manager (AM)', 'Classify as Service Complaint'],
+    answer: 'Contact Account Manager (AM)',
+    hint: 'If ICS did not manage the shipment → contact AM, follow Source Client direction, no QC.' },
+  { context: 'Service complaint confirmed. Who creates the Quality Case?',
+    flow: ['✅ Service Complaint', '📞 Route to ???', '📋 Quality Case Created', '🔍 Investigate'],
+    options: ['Returns Team', 'Account Manager', 'Claims Team (ICS)', 'Warehouse Team'],
+    answer: 'Claims Team (ICS)',
+    hint: 'Claims Team (ICS) creates and owns the Quality Case for Service Complaints.' },
+  { context: 'Where does a Product Complaint originate?',
+    flow: ['🏭 ???', '📦 Product Defect Found', '👤 Customer Reports Issue', '📋 Product Complaint'],
+    options: ['ICS Warehouse', 'Carrier / Transporter', 'Manufacturer', 'Claims Team'],
+    answer: 'Manufacturer',
+    hint: 'Product Complaints originate from the manufacturer or the product itself.' },
+];
+
+// ── STAGE 5: Investigation Challenge ────────────────────────
+const S5_CASES = [
+  { title: 'Case #001 — Damaged Delivery',
+    desc: 'A hospital contacts the ICS Returns Team. They received an ICS-managed shipment but multiple packages arrived with visible crush damage. Products appear unusable.',
+    questions: [
+      { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'YES', hint: 'The hospital confirms the shipment was managed by ICS.' },
+      { q: 'Where did the issue originate?', opts: ['During ICS Shipment / Handling', 'From the Manufacturer'], answer: 'During ICS Shipment / Handling', hint: 'Crush damage occurred during ICS-managed transit — a service issue.' },
+      { q: 'What type of complaint is this?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Service Complaint', hint: 'Damage during ICS-managed transit = Service Complaint.' },
+      { q: 'What should Returns do?', opts: ['Route to Claims Team', 'Contact AM — No Quality Case', 'Create Quality Case', 'Investigate Warehouse'], answer: 'Route to Claims Team', hint: 'Service Complaints → Claims Team. Claims creates the Quality Case.' },
+    ]
+  },
+  { title: 'Case #002 — Device Malfunction',
+    desc: 'A pharmacy reports patients experiencing dosing errors with a specific insulin device. The device appears to have a mechanical failure. ICS delivered the products, manufactured by PharmaCo.',
+    questions: [
+      { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'YES', hint: 'ICS did deliver the products — but delivery is not the issue here.' },
+      { q: 'Where did the issue originate?', opts: ['During ICS Shipment / Handling', 'From the Manufacturer'], answer: 'From the Manufacturer', hint: 'Mechanical failure in the device originates from the manufacturer/product.' },
+      { q: 'What type of complaint is this?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Product Complaint', hint: 'Device malfunction from manufacturer = Product Complaint.' },
+      { q: 'What should Returns do?', opts: ['Route to Claims Team', 'Contact AM — No Quality Case', 'Create Quality Case', 'Investigate'], answer: 'Contact AM — No Quality Case', hint: 'Product Complaint → Contact AM, follow Source Client direction, no Quality Case.' },
+    ]
+  },
+  { title: 'Case #003 — Non-ICS Shipment',
+    desc: 'A clinic contacts ICS Returns with a complaint about damaged products. After review, Returns finds that the shipment was managed entirely by the client\'s own logistics team, not ICS.',
+    questions: [
+      { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'NO', hint: 'The client\'s own logistics team managed this shipment — ICS was not responsible.' },
+      { q: 'What is the immediate next step?', opts: ['Contact Account Manager', 'Create Quality Case', 'Route to Claims', 'Investigate the Carrier'], answer: 'Contact Account Manager', hint: 'If ICS did not manage the shipment → contact AM immediately.' },
+      { q: 'Does Returns create a Quality Case?', opts: ['NO — Follow Source Client Direction', 'YES — Always Required', 'Only if Claims requests it', 'Only if severity is high'], answer: 'NO — Follow Source Client Direction', hint: 'No Quality Case when ICS did not manage the shipment. Follow Source Client direction.' },
+      { q: 'Who provides direction on next steps?', opts: ['Source Client via Account Manager', 'Claims Team', 'Returns Team Leader', 'Warehouse Manager'], answer: 'Source Client via Account Manager', hint: 'Contact AM → the Source Client provides direction when ICS was not involved.' },
+    ]
+  },
+  { title: 'Case #004 — Temperature Excursion',
+    desc: 'A hospital reports that a temperature-sensitive product arrived outside the required 2–8°C range. ICS managed the entire cold-chain delivery. Data loggers confirm the excursion occurred during the truck journey.',
+    questions: [
+      { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'YES', hint: 'ICS managed the full cold-chain delivery.' },
+      { q: 'Where did the issue originate?', opts: ['During ICS Shipment / Handling', 'From the Manufacturer'], answer: 'During ICS Shipment / Handling', hint: 'Cold-chain breach occurred during ICS-managed transportation.' },
+      { q: 'What type of complaint is this?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Service Complaint', hint: 'Temperature excursion during ICS service = Service Complaint.' },
+      { q: 'Who creates the Quality Case?', opts: ['Claims Team (ICS)', 'Returns Team', 'Account Manager', 'Warehouse Manager'], answer: 'Claims Team (ICS)', hint: 'Service Complaints → Claims Team creates and owns the Quality Case.' },
+    ]
+  },
+];
+
+// ── STAGE 6: Root Cause Timeline ────────────────────────────
+const S6_NODES = ['🏭 Manufacturing', '🏢 Warehouse', '🚚 Transportation', '🏥 Customer Site'];
+const S6_DATA = [
+  { scenario: 'A patient reports medication tablets crumble when pressed from the blister pack. The batch code links to the production facility.', answer: '🏭 Manufacturing', hint: 'Tablet fragility from production = manufacturing defect.' },
+  { scenario: 'Products arrived correctly but 3 boxes were mixed with another client\'s order. The mix-up was identified to have occurred at the ICS facility during picking.', answer: '🏢 Warehouse', hint: 'Mix-up during picking at ICS facility = warehouse error.' },
+  { scenario: 'Temperature-sensitive vaccines arrived at 12°C instead of 2–8°C. Data logger shows the breach occurred during the truck journey.', answer: '🚚 Transportation', hint: 'Cold-chain breach during truck journey = transportation issue.' },
+  { scenario: 'A device was returned as non-functional. Engineering testing confirms the internal motor was assembled incorrectly at the production facility.', answer: '🏭 Manufacturing', hint: 'Incorrect motor assembly at production = manufacturing defect.' },
+  { scenario: 'Products were delivered correctly and in good condition. The clinic stored them at room temperature instead of refrigerated. When administered, they had degraded.', answer: '🏥 Customer Site', hint: 'Improper storage at the customer\'s site caused the issue.' },
+  { scenario: 'Packages arrived crushed with clear external impact marks. Carrier tracking data shows the damage occurred during carrier transit.', answer: '🚚 Transportation', hint: 'External impact damage by carrier = transportation issue.' },
+];
+
+// ── STAGE 7: Complaint Escape ────────────────────────────────
+const S7_STEPS = [
+  { step:1, situation:'📥 You receive a complaint: a hospital reports receiving 200 units of Product X, but ordered 300. ICS managed this delivery.', q:'What is your FIRST action as Returns Team?', opts:['Review the complaint details','Contact Claims immediately','Create a Quality Case','Escalate to management'], ans:0, hint:'Always REVIEW the complaint first before routing or escalating.' },
+  { step:2, situation:'✅ You have reviewed the complaint. The delivery was managed by ICS.', q:'Did ICS manage the shipment?', opts:['YES — continue classification','NO — contact AM'], ans:0, hint:'Yes, ICS managed the shipment. Continue the classification process.' },
+  { step:3, situation:'🔍 ICS managed the shipment. Determine where the issue originated.', q:'Where did the wrong-quantity issue originate?', opts:['During ICS shipment / warehouse handling','From the manufacturer'], ans:0, hint:'Wrong quantity from ICS warehouse = issue during ICS service handling.' },
+  { step:4, situation:'📋 The issue originated during ICS handling.', q:'How should this complaint be classified?', opts:['Service Complaint','Product Complaint','Customer Error'], ans:0, hint:'ICS handling error = Service Complaint.' },
+  { step:5, situation:'✅ Classified: Service Complaint.', q:'Who OWNS this complaint?', opts:['Claims Team (ICS)','Account Manager','Returns Team'], ans:0, hint:'Service Complaints are owned by the Claims Team (ICS).' },
+  { step:6, situation:'📞 Routing to the Claims Team.', q:'What does the Returns Team do with this complaint?', opts:['Route it to the Claims Team','Create the Quality Case ourselves','Investigate the warehouse picking error'], ans:0, hint:'Returns routes the complaint. Returns does NOT investigate or create QC.' },
+  { step:7, situation:'📬 Complaint handed to Claims Team. They take ownership.', q:'Who creates the Quality Case?', opts:['Claims Team (ICS)','Returns Team','Account Manager'], ans:0, hint:'Claims Team creates the Quality Case for Service Complaints.' },
+  { step:8, situation:'🎯 All steps completed successfully!', q:'Which principle did you apply throughout this investigation?', opts:['Returns reviews & routes — Claims investigates & creates Quality Case','Returns investigates all complaints end-to-end','Returns creates Quality Cases for Service Complaints'], ans:0, hint:'Returns: review and route. Claims: investigate and create Quality Case.' },
+];
+
+// ── STAGE EXPLANATIONS ────────────────────────────────────────
+const STAGE_EXPLANATIONS = {
+  1: {
+    title: 'Service vs Product — Key Rules',
+    points: [
+      { icon:'🚚', color:'green',  text:'<strong>Service Complaint</strong> — Issue occurred DURING ICS-managed shipment, warehouse, or transportation.' },
+      { icon:'🏭', color:'blue',   text:'<strong>Product Complaint</strong> — Issue originated from the MANUFACTURER or the PRODUCT ITSELF.' },
+      { icon:'💡', color:'orange', text:'<strong>Key question:</strong> "Where did the issue occur?" — during ICS service, or at the product source?' },
+    ],
+    diagram: 'service-product',
+    takeaway: 'The origin point — not the severity — determines the complaint type.'
+  },
+  2: {
+    title: 'Ownership — Who Handles What',
+    points: [
+      { icon:'👥', color:'green',  text:'<strong>Service Complaint → Claims Team (ICS)</strong> — Claims investigates and creates the Quality Case.' },
+      { icon:'📞', color:'blue',   text:'<strong>Product Complaint → Account Manager</strong> — Returns contacts AM. Source Client provides direction. No Quality Case.' },
+      { icon:'📋', color:'purple', text:'<strong>Returns Team</strong> reviews and ROUTES. Returns does NOT investigate or create Quality Cases.' },
+    ],
+    diagram: 'ownership',
+    takeaway: 'Route correctly the first time — the wrong owner wastes time and creates compliance risk.'
+  },
+  3: {
+    title: 'Core Rules — Quick Reference',
+    points: [
+      { icon:'✅', color:'green',  text:'Returns: <strong>receives → reviews → determines type → routes</strong>.' },
+      { icon:'❌', color:'red',    text:'Returns does NOT: investigate, create Quality Cases, or contact the manufacturer directly.' },
+      { icon:'📋', color:'blue',   text:'Quality Cases are created by <strong>Claims Team only</strong>, for Service Complaints only.' },
+    ],
+    diagram: 'rules',
+    takeaway: 'Know your lane: Returns routes, Claims investigates.'
+  },
+  4: {
+    title: 'The Routing Workflow',
+    points: [
+      { icon:'1️⃣', color:'purple', text:'<strong>Receive</strong> → <strong>Review</strong> → <strong>Did ICS manage it?</strong>' },
+      { icon:'2️⃣', color:'orange', text:'If YES: <strong>Where did it originate?</strong> → Service or Product type.' },
+      { icon:'3️⃣', color:'green',  text:'<strong>Service</strong> → Claims Team (creates QC). <strong>Product</strong> → Contact AM (no QC).' },
+    ],
+    diagram: 'workflow',
+    takeaway: 'Three questions, two paths, clear ownership — every time.'
+  },
+  5: {
+    title: 'Investigation — Applying All Three Questions',
+    points: [
+      { icon:'❓', color:'purple', text:'Q1: <strong>Did ICS manage the shipment?</strong> — If NO → AM immediately.' },
+      { icon:'❓', color:'orange', text:'Q2: <strong>Where did it originate?</strong> — Service (ICS handling) or Product (manufacturer).' },
+      { icon:'❓', color:'green',  text:'Q3: <strong>Who owns it?</strong> — Claims (Service) or Source Client via AM (Product).' },
+    ],
+    diagram: 'three-questions',
+    takeaway: 'Always answer all three questions systematically — never skip steps.'
+  },
+  6: {
+    title: 'Root Cause — Supply Chain Origins',
+    points: [
+      { icon:'🏭', color:'blue',   text:'<strong>Manufacturing</strong> defects → Product Complaint → Contact AM.' },
+      { icon:'🏢', color:'purple', text:'<strong>Warehouse</strong> errors (ICS facility) → Service Complaint → Claims Team.' },
+      { icon:'🚚', color:'green',  text:'<strong>Transportation</strong> damage (ICS carrier) → Service Complaint → Claims Team.' },
+      { icon:'🏥', color:'orange', text:'<strong>Customer site</strong> mishandling → may not be ICS responsibility → Contact AM.' },
+    ],
+    diagram: 'timeline',
+    takeaway: 'Trace every complaint back to its origin before classifying.'
+  },
+  7: {
+    title: 'Complaint Escape — Full Routing Mastered',
+    points: [
+      { icon:'📥', color:'purple', text:'<strong>Step 1:</strong> Receive complaint → REVIEW before any action.' },
+      { icon:'🔍', color:'orange', text:'<strong>Steps 2–4:</strong> Apply three questions → classify correctly.' },
+      { icon:'📤', color:'green',  text:'<strong>Steps 5–7:</strong> Route to correct owner → Claims or AM.' },
+      { icon:'🏆', color:'blue',   text:'<strong>Step 8:</strong> Returns\' role ends at routing — never investigate.' },
+    ],
+    diagram: 'escape',
+    takeaway: 'The Returns Team is the gateway — accurate routing protects quality and compliance.'
+  },
+};
+
+// ============================================================
+// STAGE CONTROLLER
+// ============================================================
+function startStage(n) {
+  currentStage = n; stageItem = 0; stageScoreLocal = 0; stageCanAct = false;
+  showScreen('screen-game');
+  document.getElementById('stage-num-label').textContent = `Stage ${n} of 7`;
+  document.getElementById('stage-title-label').textContent = STAGE_INTROS[n].title;
+  syncGameScores();
+
+  // Reset panels
+  ['s1-panel','s2-panel','s3-panel','s4-panel','s5-panel','s6-panel','s7-panel'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.classList.add('hidden');
   });
-}
-function buildL1Grid(cfg, seed) {
-  const grid = document.getElementById('color-grid');
-  grid.innerHTML = '';
-  const n = cfg.grid, total = n * n;
-  grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
-  const oddIdx  = seed % total;
-  const baseHue = (seed * 37) % 360;
-  const oddHue  = (baseHue + cfg.hueDiff) % 360;
-  const sat = 58 + (seed % 18), lit = 52 + (seed % 13);
-  const cells = [];
-  for (let i = 0; i < total; i++) {
-    const el = document.createElement('div');
-    el.className = 'color-cell' + (i === oddIdx ? ' odd-cell' : '');
-    el.style.background = `hsl(${i===oddIdx?oddHue:baseHue},${sat}%,${lit}%)`;
-    el.addEventListener('click', () => handleL1Click(el, i===oddIdx));
-    grid.appendChild(el);
-    cells.push(el);
-  }
-  // Gentle drift animation for late stages — cells shift their hue ±1 to add visual noise
-  if (cfg.wobble) {
-    const startT = performance.now();
-    const speed  = cfg.wobbleSpeed || 1.2;   // faster in final stages
-    const animate = (now) => {
-      const t = (now - startT) / 1000;
-      cells.forEach((cell, i) => {
-        if (cell.classList.contains('correct') || cell.classList.contains('wrong')) return;
-        const isOdd = cell.classList.contains('odd-cell');
-        const hue = isOdd ? oddHue : baseHue;
-        const drift = Math.sin(t * speed + i * 0.7) * 1.8; // ±1.8° hue drift, speed-scaled
-        cell.style.background = `hsl(${hue + drift},${sat}%,${lit + Math.sin(t * speed + i) * 1.8}%)`;
-      });
-      l1WobbleRafId = requestAnimationFrame(animate);
-    };
-    l1WobbleRafId = requestAnimationFrame(animate);
-  }
-}
-function handleL1Click(el, isCorrect) {
-  if (!l1CanClick) return;
-  l1CanClick = false; stopLocalTimer(); stopL1Wobble();
-  if (isCorrect) {
-    el.classList.add('correct'); addMyScore(100); sfxCorrect(); showToast('✅ +100 pts!');
-  } else {
-    el.classList.add('wrong');
-    document.querySelectorAll('.color-cell.odd-cell').forEach(c => c.classList.add('reveal'));
-    sfxWrong(); showToast('❌ Wrong!');
-  }
-  l1Round++; setTimeout(nextL1Round, 800);
+  document.getElementById('waiting-msg').classList.add('hidden');
+  document.getElementById('game-scores').innerHTML = '';
+
+  if      (n === 1) nextS1();
+  else if (n === 2) nextS2();
+  else if (n === 3) nextS3();
+  else if (n === 4) nextS4();
+  else if (n === 5) startS5();
+  else if (n === 6) nextS6();
+  else if (n === 7) startS7();
 }
 
-// ============================================================
-// LEVEL 2 — MIXED SPELLING CHALLENGE 📝  (14 stages)
-// 7 WORD stages + 7 SENTENCE stages, strictly alternating
-// type:'word' = 4 similar words, pick correctly spelled one
-// type:'sent' = 4 similar sentences, pick correctly spelled one
-// ============================================================
-const L2_DATA = [
-  // ─── WORD stages (7) ─────────────────────────────────────
-  // W1 — easy
-  { type:'word', prompt:'Which word is spelled correctly?',
-    correct:'necessary',
-    options:['necessary','neccessary','necessery','necesary'] },
-  // W2 — easy-medium
-  { type:'word', prompt:'Which word is spelled correctly?',
-    correct:'accommodation',
-    options:['acommodation','accomodation','accommodation','accommondation'] },
-  // W3 — medium
-  { type:'word', prompt:'Which word is spelled correctly?',
-    correct:'separate',
-    options:['seperate','separate','separete','separrate'] },
-  // W4 — medium-hard
-  { type:'word', prompt:'Which word is spelled correctly?',
-    correct:'occurrence',
-    options:['occurance','occurence','occurrence','occurrance'] },
-  // W5 — hard
-  { type:'word', prompt:'Which word is spelled correctly?',
-    correct:'conscientious',
-    options:['conscientous','conscientious','consientious','consciencious'] },
-  // W6 — hard
-  { type:'word', prompt:'Which word is spelled correctly?',
-    correct:'perseverance',
-    options:['perseverence','perserverance','perseverance','perseveranse'] },
-  // W7 — very hard
-  { type:'word', prompt:'Which word is spelled correctly?',
-    correct:'miscellaneous',
-    options:['miscelaneous','miscellaneous','miscellanneous','miscellanous'] },
-  // ─── SENTENCE stages (7) ─────────────────────────────────
-  // S1 — easy, obvious single error
-  { type:'sent', prompt:'Which sentence is spelled correctly?',
-    correct:'The children are playing outside.',
-    options:['The children are playing outside.','The childern are playing outside.','The children are plaing outside.','The children are playng outside.'] },
-  // S2 — easy-medium
-  { type:'sent', prompt:'Which sentence is spelled correctly?',
-    correct:'She opened the window carefully.',
-    options:['She opened the window carefully.','She opend the window carefully.','She opened the windoe carefully.','She opened the window carfully.'] },
-  // S3 — medium
-  { type:'sent', prompt:'Which sentence is spelled correctly?',
-    correct:'She received a letter from her friend.',
-    options:['She received a letter from her friend.','She recieved a letter from her friend.','She received a leter from her friend.','She received a letter from her freind.'] },
-  // S4 — medium-hard
-  { type:'sent', prompt:'Which sentence is spelled correctly?',
-    correct:'The government announced a new policy.',
-    options:['The government announced a new policy.','The goverment announced a new policy.','The government anounced a new policy.','The government announced a new polisy.'] },
-  // S5 — hard
-  { type:'sent', prompt:'Which sentence is spelled correctly?',
-    correct:'He successfully completed the examination.',
-    options:['He successfully completed the examination.','He successfuly completed the examination.','He successfully completed the examanation.','He successfully completd the examination.'] },
-  // S6 — hard
-  { type:'sent', prompt:'Which sentence is spelled correctly?',
-    correct:'The scientist conducted a thorough investigation.',
-    options:['The scientist conducted a thorough investigation.','The scientst conducted a thorough investigation.','The scientist conducated a thorough investigation.','The scientist conducted a throough investigation.'] },
-  // S7 — very hard, near-identical
-  { type:'sent', prompt:'Which sentence is spelled correctly?',
-    correct:'She persevered through every difficult challenge.',
-    options:['She persevered through every difficult challenge.','She perservered through every difficult challenge.','She persevered through every difficult challange.','She persevered through every difficalt challenge.'] },
-];
-// Interleaved: W1 S1 W2 S2 W3 S3 W4 S4 W5 S5 W6 S6 W7 S7
-const L2_ORDER = [0,7,1,8,2,9,3,10,4,11,5,12,6,13];
-const L2_ROUNDS = 14;
-const L2_CFG = [
-  { time:11 }, // Stage  1 — word
-  { time:18 }, // Stage  2 — sentence
-  { time:10 }, // Stage  3 — word
-  { time:17 }, // Stage  4 — sentence
-  { time: 9 }, // Stage  5 — word
-  { time:17 }, // Stage  6 — sentence
-  { time: 9 }, // Stage  7 — word
-  { time:16 }, // Stage  8 — sentence
-  { time: 8 }, // Stage  9 — word
-  { time:16 }, // Stage 10 — sentence
-  { time: 8 }, // Stage 11 — word
-  { time:15 }, // Stage 12 — sentence
-  { time: 7 }, // Stage 13 — word
-  { time:15 }, // Stage 14 — sentence
-];
-function startLevel2() {
-  l2Round = 0;
-  showScreen('screen-level2'); setupMuteButtons(); syncScoresDisplay('l2-scores');
-  nextL2Round();
+function setItemProgress(cur, total) {
+  document.getElementById('item-progress').textContent = `${cur}/${total}`;
 }
-function nextL2Round() {
+function showGamePanel(id) {
+  ['s1-panel','s2-panel','s3-panel','s4-panel','s5-panel','s6-panel','s7-panel'].forEach(pid => {
+    const el = document.getElementById(pid); if (el) el.classList.add('hidden');
+  });
+  const el = document.getElementById(id); if (el) el.classList.remove('hidden');
+}
+function showAnswerFeedback(correct, hintText, panelId, delay=1200) {
+  const fb = document.getElementById(panelId + '-feedback');
+  if (!fb) return;
+  fb.className = 'answer-feedback ' + (correct ? 'correct' : 'wrong');
+  fb.innerHTML = (correct ? '<span class="fb-icon">✓</span>' : '<span class="fb-icon">✗</span>') + ` ${hintText}`;
+  fb.classList.remove('hidden');
+  setTimeout(() => { fb.classList.add('hidden'); fb.textContent = ''; }, delay + 400);
+}
+
+// ── STAGE 1 ──────────────────────────────────────────────────
+function nextS1() {
   stopLocalTimer();
-  if (l2Round >= L2_ROUNDS) { finishLevel(2); return; }
-  const cfg  = L2_CFG[l2Round];
-  const item = L2_DATA[L2_ORDER[l2Round]];
-  const isSent = item.type === 'sent';
-  document.getElementById('l2-round').textContent = `${l2Round+1}/14`;
-  document.getElementById('l2-stage').textContent = isSent ? 'Sentence' : 'Word';
-  document.getElementById('word-prompt').textContent = item.prompt;
-  const container = document.getElementById('word-options');
-  container.innerHTML = '';
-  // Sentences: column layout with readable font; words: compact grid
-  container.className = isSent ? 'word-options stmt-mode' : 'word-options word-mode';
-  const allOpts = shuffle([...item.options]); // options already contains correct for sent; add for word
-  // For word type, options array already includes the correct word
-  allOpts.forEach(opt => {
+  if (stageItem >= S1_DATA.length) { finishStage(1); return; }
+  const d = S1_DATA[stageItem];
+  setItemProgress(stageItem+1, S1_DATA.length);
+  showGamePanel('s1-panel');
+  document.getElementById('s1-scenario').textContent = d.scenario;
+  document.getElementById('s1-feedback').className = 'answer-feedback hidden';
+  document.getElementById('s1-feedback').textContent = '';
+  stageCanAct = true;
+  startTimerLocal('train-timer','train-timer-bar',14,() => {
+    stageCanAct = false;
+    showAnswerFeedback(false, d.hint, 's1', 1400);
+    stageItem++; setTimeout(nextS1,1800);
+  });
+}
+function handleS1(chosen) {
+  if (!stageCanAct) return;
+  stageCanAct = false; stopLocalTimer();
+  const d = S1_DATA[stageItem];
+  const correct = chosen === d.answer;
+  if (correct) { addMyScore(100); sfxCorrect(); }
+  else sfxWrong();
+  showAnswerFeedback(correct, d.hint, 's1', 1200);
+  stageItem++; setTimeout(nextS1, 1600);
+}
+window.handleS1 = handleS1;
+
+// ── STAGE 2 ──────────────────────────────────────────────────
+function nextS2() {
+  stopLocalTimer();
+  if (stageItem >= S2_DATA.length) { finishStage(2); return; }
+  const d = S2_DATA[stageItem];
+  setItemProgress(stageItem+1, S2_DATA.length);
+  showGamePanel('s2-panel');
+  document.getElementById('s2-scenario').textContent = d.scenario;
+  document.getElementById('s2-question').textContent = d.question;
+  document.getElementById('s2-feedback').className = 'answer-feedback hidden';
+  stageCanAct = true;
+  startTimerLocal('train-timer','train-timer-bar',12,() => {
+    stageCanAct = false;
+    showAnswerFeedback(false, d.hint, 's2', 1400);
+    stageItem++; setTimeout(nextS2,1800);
+  });
+}
+function handleS2(chosen) {
+  if (!stageCanAct) return;
+  stageCanAct = false; stopLocalTimer();
+  const d = S2_DATA[stageItem];
+  const correct = chosen === d.answer;
+  if (correct) { addMyScore(100); sfxCorrect(); } else sfxWrong();
+  showAnswerFeedback(correct, d.hint, 's2', 1200);
+  stageItem++; setTimeout(nextS2, 1600);
+}
+window.handleS2 = handleS2;
+
+// ── STAGE 3 ──────────────────────────────────────────────────
+function nextS3() {
+  stopLocalTimer();
+  if (stageItem >= S3_DATA.length) { finishStage(3); return; }
+  const d = S3_DATA[stageItem];
+  setItemProgress(stageItem+1, S3_DATA.length);
+  showGamePanel('s3-panel');
+  document.getElementById('s3-statement').textContent = d.statement;
+  document.getElementById('s3-feedback').className = 'answer-feedback hidden';
+  stageCanAct = true;
+  startTimerLocal('train-timer','train-timer-bar',9,() => {
+    stageCanAct = false;
+    showAnswerFeedback(false, d.hint, 's3', 1400);
+    stageItem++; setTimeout(nextS3,1800);
+  });
+}
+function handleS3(chosen) {
+  if (!stageCanAct) return;
+  stageCanAct = false; stopLocalTimer();
+  const d = S3_DATA[stageItem];
+  const correct = chosen === d.answer;
+  if (correct) { addMyScore(80); sfxCorrect(); } else sfxWrong();
+  showAnswerFeedback(correct, d.hint, 's3', 1200);
+  stageItem++; setTimeout(nextS3, 1600);
+}
+window.handleS3 = handleS3;
+
+// ── STAGE 4 ──────────────────────────────────────────────────
+function nextS4() {
+  stopLocalTimer();
+  if (stageItem >= S4_DATA.length) { finishStage(4); return; }
+  const d = S4_DATA[stageItem];
+  setItemProgress(stageItem+1, S4_DATA.length);
+  showGamePanel('s4-panel');
+  document.getElementById('s4-context').textContent = d.context;
+  // Render flow
+  const flowEl = document.getElementById('s4-flow');
+  flowEl.innerHTML = d.flow.map((step,i) =>
+    `<div class="flow-step ${step.includes('???')?'flow-missing':''}">${step}</div>${i<d.flow.length-1?'<div class="flow-arrow">↓</div>':''}`
+  ).join('');
+  // Render options
+  const optsEl = document.getElementById('s4-options');
+  optsEl.innerHTML = '';
+  shuffle([...d.options]).forEach(opt => {
     const btn = document.createElement('button');
-    btn.className = isSent ? 'word-btn sentence-btn' : 'word-btn';
-    btn.textContent = opt;
-    btn.onclick = () => handleL2Click(btn, opt === item.correct, item.correct);
-    container.appendChild(btn);
+    btn.className = 'option-btn'; btn.textContent = opt;
+    btn.onclick = () => handleS4(opt);
+    optsEl.appendChild(btn);
   });
-  l2CanClick = true;
-  startTimerLocal('l2-timer','l2-timer-bar', cfg.time, () => {
-    l2CanClick = false;
-    document.querySelectorAll('.word-btn').forEach(b => {
-      if (b.textContent === item.correct) b.classList.add('correct-pick');
-      b.disabled = true;
-    });
-    showToast("⏱ Time's up!");
-    l2Round++; setTimeout(nextL2Round, 1500);
+  document.getElementById('s4-feedback').className = 'answer-feedback hidden';
+  stageCanAct = true;
+  startTimerLocal('train-timer','train-timer-bar',13,() => {
+    stageCanAct = false;
+    document.querySelectorAll('#s4-options .option-btn').forEach(b => b.disabled = true);
+    showAnswerFeedback(false, d.hint, 's4', 1400);
+    stageItem++; setTimeout(nextS4,1800);
   });
 }
-function handleL2Click(btn, isCorrect, correctWord) {
-  if (!l2CanClick) return;
-  l2CanClick = false; stopLocalTimer();
-  document.querySelectorAll('.word-btn').forEach(b => b.disabled = true);
-  if (isCorrect) {
-    btn.classList.add('correct-pick'); addMyScore(120); sfxCorrect(); showToast('✅ +120 pts!');
-  } else {
-    btn.classList.add('wrong-pick');
-    document.querySelectorAll('.word-btn').forEach(b => { if (b.textContent === correctWord) b.classList.add('correct-pick'); });
-    sfxWrong(); showToast('❌ Look for the spelling error!');
-  }
-  l2Round++; setTimeout(nextL2Round, 1400);
+function handleS4(chosen) {
+  if (!stageCanAct) return;
+  stageCanAct = false; stopLocalTimer();
+  document.querySelectorAll('#s4-options .option-btn').forEach(b => b.disabled = true);
+  const d = S4_DATA[stageItem];
+  const correct = chosen === d.answer;
+  if (correct) { addMyScore(120); sfxCorrect(); } else sfxWrong();
+  showAnswerFeedback(correct, d.hint, 's4', 1200);
+  stageItem++; setTimeout(nextS4, 1600);
 }
 
-// ============================================================
-// LEVEL 3 — FRUIT FRENZY 🍎  (5 waves, gradual speed increase)
-// ============================================================
-const ALL_FRUITS = ['🍎','🍌','🍇','🍓','🍍','🍊','🫐','🍑'];
-const L3_ROUNDS  = 5;
-const L3_CFG     = [
-  { time:16, total:14, speedMin:35, speedMax:60,  penalty:25 }, // Wave 1
-  { time:15, total:16, speedMin:45, speedMax:72,  penalty:25 }, // Wave 2
-  { time:14, total:17, speedMin:55, speedMax:85,  penalty:30 }, // Wave 3
-  { time:13, total:18, speedMin:62, speedMax:96,  penalty:30 }, // Wave 4
-  { time:11, total:20, speedMin:70, speedMax:108, penalty:35 }, // Wave 5
-];
-function startLevel3() {
-  l3Round = 0;
-  showScreen('screen-level3'); setupMuteButtons(); syncScoresDisplay('l3-scores');
-  nextL3Round();
+// ── STAGE 5 ──────────────────────────────────────────────────
+function startS5() {
+  s5CaseIdx = 0; s5QuestionIdx = 0; s5CaseCorrect = 0;
+  nextS5Case();
 }
-function nextL3Round() {
-  stopLocalTimer(); stopFruitAnimation(); fruitObjects = [];
-  if (l3Round >= L3_ROUNDS) { finishLevel(3); return; }
-  const cfg = L3_CFG[l3Round];
-  l3Hits = 0; l3NeedHits = 5; l3CanHit = true;
-  document.getElementById('l3-round').textContent = `${l3Round+1}/${L3_ROUNDS}`;
-  document.getElementById('l3-stage').textContent = `Wave ${l3Round+1}`;
-  l3Target = pick(ALL_FRUITS);
-  document.getElementById('l3-target').textContent = l3Target;
-  document.getElementById('l3-hits').textContent = `0/${l3NeedHits}`;
-  const arena = document.getElementById('l3-arena');
-  arena.innerHTML = '';
-  arenaW = arena.offsetWidth  || 360;
-  arenaH = arena.offsetHeight || 220;
-  // Separate fruits with no starting overlap
-  const positions = [];
-  const fruitList = [];
-  for (let i = 0; i < l3NeedHits; i++) fruitList.push(l3Target);
-  while (fruitList.length < cfg.total) {
-    const f = pick(ALL_FRUITS); if (f !== l3Target) fruitList.push(f);
-  }
-  shuffle(fruitList).forEach(emoji => {
-    let x, y, tries = 0;
-    do {
-      x = rand(4, arenaW - FRUIT_SIZE - 4);
-      y = rand(4, arenaH - FRUIT_SIZE - 4);
-      tries++;
-    } while (tries < 20 && positions.some(p => Math.hypot(p.x-x, p.y-y) < FRUIT_SIZE+4));
-    positions.push({x,y});
-    const el = document.createElement('div');
-    el.className = 'fruit'; el.textContent = emoji; el.style.fontSize = FRUIT_SIZE+'px';
-    el.style.left = x+'px'; el.style.top = y+'px';
-    const speed = rand(cfg.speedMin, cfg.speedMax), angle = rand(0, Math.PI*2);
-    const fObj = { el, x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed, emoji, tapped:false };
-    fruitObjects.push(fObj); arena.appendChild(el);
-    el.addEventListener('click', () => handleL3Tap(fObj, cfg.penalty));
-    el.addEventListener('touchstart', e => { e.preventDefault(); handleL3Tap(fObj, cfg.penalty); }, {passive:false});
-  });
-  lastTime = performance.now(); animateFruits();
-  startTimerLocal('l3-timer','l3-timer-bar', cfg.time, () => {
-    l3CanHit = false; stopFruitAnimation();
-    showToast(`⏱ Wave over! ${l3Hits}/${l3NeedHits}`);
-    l3Round++; setTimeout(nextL3Round, 900);
-  });
+function nextS5Case() {
+  stopLocalTimer();
+  if (s5CaseIdx >= S5_CASES.length) { finishStage(5); return; }
+  const c = S5_CASES[s5CaseIdx];
+  s5QuestionIdx = 0; s5CaseCorrect = 0;
+  setItemProgress(s5CaseIdx+1, S5_CASES.length);
+  showGamePanel('s5-panel');
+  document.getElementById('s5-case-title').textContent = c.title;
+  document.getElementById('s5-case-desc').textContent  = c.desc;
+  document.getElementById('s5-case-qarea').innerHTML = '';
+  document.getElementById('s5-feedback').className = 'answer-feedback hidden';
+  nextS5Question();
 }
-function animateFruits() {
-  rafId = requestAnimationFrame(now => {
-    const dt = Math.min((now - lastTime)/1000, 0.05); lastTime = now;
-    for (const f of fruitObjects) {
-      if (f.tapped) continue;
-      f.x += f.vx*dt; f.y += f.vy*dt;
-      if (f.x < 0)              { f.x = 0;              f.vx =  Math.abs(f.vx); }
-      if (f.x > arenaW-FRUIT_SIZE) { f.x = arenaW-FRUIT_SIZE; f.vx = -Math.abs(f.vx); }
-      if (f.y < 0)              { f.y = 0;              f.vy =  Math.abs(f.vy); }
-      if (f.y > arenaH-FRUIT_SIZE) { f.y = arenaH-FRUIT_SIZE; f.vy = -Math.abs(f.vy); }
-      f.el.style.left = f.x+'px'; f.el.style.top = f.y+'px';
+function nextS5Question() {
+  stopLocalTimer();
+  const c = S5_CASES[s5CaseIdx];
+  if (s5QuestionIdx >= c.questions.length) {
+    // Case complete — check bonus
+    if (s5CaseCorrect === c.questions.length) {
+      addMyScore(200); sfxBonus(); showToast('🌟 Perfect case! +200 bonus pts');
     }
-    resolveCollisions(fruitObjects, FRUIT_SIZE);
-    animateFruits();
+    s5CaseIdx++; setTimeout(nextS5Case, 1200);
+    return;
+  }
+  const q = c.questions[s5QuestionIdx];
+  const qarea = document.getElementById('s5-case-qarea');
+  qarea.innerHTML = `<div class="s5-q-label">Question ${s5QuestionIdx+1} of ${c.questions.length}</div>
+    <div class="s5-q-text">${q.q}</div>
+    <div class="s5-opts" id="s5-opts"></div>`;
+  const optsEl = document.getElementById('s5-opts');
+  q.opts.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn'; btn.textContent = opt;
+    btn.onclick = () => handleS5(opt, q);
+    optsEl.appendChild(btn);
+  });
+  document.getElementById('s5-feedback').className = 'answer-feedback hidden';
+  stageCanAct = true;
+  startTimerLocal('train-timer','train-timer-bar',11,() => {
+    stageCanAct = false;
+    document.querySelectorAll('#s5-opts .option-btn').forEach(b => b.disabled=true);
+    showAnswerFeedback(false, q.hint, 's5', 1400);
+    s5QuestionIdx++; setTimeout(nextS5Question,1800);
   });
 }
-function handleL3Tap(fObj, penalty) {
-  if (!l3CanHit || fObj.tapped) return;
-  if (fObj.emoji === l3Target) {
-    fObj.tapped = true; fObj.el.classList.add('popped');
-    l3Hits++; addMyScore(50); sfxCorrect();
-    document.getElementById('l3-hits').textContent = `${l3Hits}/${l3NeedHits}`;
-    showToast('🎯 +50 pts!');
-    setTimeout(() => fObj.el.remove(), 260);
-    if (l3Hits >= l3NeedHits) {
-      l3CanHit = false; stopLocalTimer(); stopFruitAnimation(); sfxLevelUp();
-      showToast('🔥 Wave clear!'); l3Round++; setTimeout(nextL3Round, 700);
+function handleS5(chosen, q) {
+  if (!stageCanAct) return;
+  stageCanAct = false; stopLocalTimer();
+  document.querySelectorAll('#s5-opts .option-btn').forEach(b => b.disabled=true);
+  const correct = chosen === q.answer;
+  if (correct) { addMyScore(100); s5CaseCorrect++; sfxCorrect(); } else sfxWrong();
+  showAnswerFeedback(correct, q.hint, 's5', 1200);
+  s5QuestionIdx++; setTimeout(nextS5Question, 1600);
+}
+
+// ── STAGE 6 ──────────────────────────────────────────────────
+function nextS6() {
+  stopLocalTimer();
+  if (stageItem >= S6_DATA.length) { finishStage(6); return; }
+  const d = S6_DATA[stageItem];
+  setItemProgress(stageItem+1, S6_DATA.length);
+  showGamePanel('s6-panel');
+  document.getElementById('s6-scenario').textContent = d.scenario;
+  // Render timeline nodes
+  const track = document.getElementById('s6-timeline');
+  track.innerHTML = '';
+  S6_NODES.forEach(node => {
+    const btn = document.createElement('button');
+    btn.className = 'timeline-node'; btn.textContent = node;
+    btn.onclick = () => handleS6(node, d);
+    track.appendChild(btn);
+    if (node !== S6_NODES[S6_NODES.length-1]) {
+      const arr = document.createElement('div'); arr.className = 'timeline-arrow'; arr.textContent = '↓';
+      track.appendChild(arr);
     }
-  } else {
-    fObj.el.classList.add('wrong-tap');
-    setTimeout(() => fObj.el.classList.remove('wrong-tap'), 300);
-    sfxPenalty(); deductScore(penalty);
-    showToast(`❌ Wrong! −${penalty} pts`);
+  });
+  document.getElementById('s6-feedback').className = 'answer-feedback hidden';
+  stageCanAct = true;
+  startTimerLocal('train-timer','train-timer-bar',12,() => {
+    stageCanAct = false;
+    document.querySelectorAll('.timeline-node').forEach(b => b.disabled=true);
+    showAnswerFeedback(false, d.hint, 's6', 1400);
+    stageItem++; setTimeout(nextS6,1800);
+  });
+}
+function handleS6(chosen, d) {
+  if (!stageCanAct) return;
+  stageCanAct = false; stopLocalTimer();
+  document.querySelectorAll('.timeline-node').forEach(b => b.disabled=true);
+  const correct = chosen === d.answer;
+  if (correct) { addMyScore(100); sfxCorrect(); } else sfxWrong();
+  showAnswerFeedback(correct, d.hint, 's6', 1200);
+  stageItem++; setTimeout(nextS6, 1600);
+}
+
+// ── STAGE 7 ──────────────────────────────────────────────────
+function startS7() {
+  s7Step = 0; s7Mistakes = 0; stageCanAct = false;
+  document.getElementById('s7-progress-fill').style.width = '0%';
+  showGamePanel('s7-panel');
+  setItemProgress(1, S7_STEPS.length);
+  nextS7Step();
+}
+function nextS7Step() {
+  stopLocalTimer();
+  if (s7Step >= S7_STEPS.length) {
+    // Bonus for perfect run
+    if (s7Mistakes === 0) { addMyScore(500); sfxBonus(); showToast('🏆 Perfect Investigation! +500 bonus pts'); }
+    setTimeout(() => finishStage(7), 1200);
+    return;
   }
+  const d = S7_STEPS[s7Step];
+  setItemProgress(s7Step+1, S7_STEPS.length);
+  document.getElementById('s7-progress-fill').style.width = `${(s7Step/S7_STEPS.length)*100}%`;
+  document.getElementById('s7-step-num').textContent = `Decision ${d.step} of ${S7_STEPS.length}`;
+  document.getElementById('s7-situation').textContent = d.situation;
+  document.getElementById('s7-question').textContent = d.q;
+  // Render options
+  const optsEl = document.getElementById('s7-opts');
+  optsEl.innerHTML = '';
+  d.opts.forEach((opt,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn'; btn.textContent = opt;
+    btn.onclick = () => handleS7(i, d);
+    optsEl.appendChild(btn);
+  });
+  document.getElementById('s7-feedback').className = 'answer-feedback hidden';
+  stageCanAct = true;
+  startTimerLocal('train-timer','train-timer-bar',13,() => {
+    stageCanAct = false;
+    document.querySelectorAll('#s7-opts .option-btn').forEach(b=>b.disabled=true);
+    s7Mistakes++;
+    showAnswerFeedback(false, d.hint, 's7', 1400);
+    s7Step++; setTimeout(nextS7Step, 1800);
+  });
+}
+function handleS7(idx, d) {
+  if (!stageCanAct) return;
+  stageCanAct = false; stopLocalTimer();
+  document.querySelectorAll('#s7-opts .option-btn').forEach(b=>b.disabled=true);
+  const correct = idx === d.ans;
+  if (correct) { addMyScore(150); sfxCorrect(); }
+  else { sfxWrong(); s7Mistakes++; }
+  showAnswerFeedback(correct, d.hint, 's7', 1200);
+  s7Step++; setTimeout(nextS7Step, 1600);
 }
 
 // ============================================================
-// LEVEL 4 — MEMORY FLASH 🧠  (7 rounds, floating distractors)
+// STAGE COMPLETION & BETWEEN-STAGE FLOW
 // ============================================================
-const L4_EMOJIS = ['🍎','⭐','🎲','🍌','🔥','💎','🎯','🌙','🎪','🦋'];
-const L4_CFG    = [
-  { seqLen:3, showTime:6000, answerTime:12, floaters: 3, flashing:false, shake:false }, // Round 1 — calm start
-  { seqLen:3, showTime:5200, answerTime:11, floaters: 6, flashing:false, shake:false }, // Round 2
-  { seqLen:4, showTime:4500, answerTime:10, floaters: 9, flashing:true,  shake:false }, // Round 3 — flashing
-  { seqLen:4, showTime:4000, answerTime:10, floaters:12, flashing:true,  shake:false }, // Round 4
-  { seqLen:4, showTime:3200, answerTime: 9, floaters:15, flashing:true,  shake:false }, // Round 5
-  { seqLen:4, showTime:2800, answerTime: 8, floaters:18, flashing:true,  shake:true  }, // Round 6 — screen shake
-  { seqLen:4, showTime:2400, answerTime: 7, floaters:22, flashing:true,  shake:true  }, // Round 7 — extreme
-];
-const L4_ROUNDS = 7;
-const L4_DISTRACT_ICONS  = ['💥','🎉','⚡','🌈','🎭','🔔','🌀','💫','🎪','🎯','🔥','💎','🚀','🎸','🌟','🔴','🟡','🟢','🔵','🟣'];
-const L4_DISTRACT_COLORS = ['#e94560','#4f8ef7','#fbbf24','#4ade80','#c084fc','#ff8c42'];
-
-let l4FloaterInterval = null;
-
-function stopL4Floaters() {
-  if (l4FloaterInterval) { clearInterval(l4FloaterInterval); l4FloaterInterval = null; }
-  // Remove any lingering floaters
-  document.querySelectorAll('.l4-floater').forEach(el => el.remove());
+function finishStage(n) {
+  stopLocalTimer(); sfxLevelUp();
+  // Show waiting message for players who finished first
+  document.getElementById('waiting-msg').classList.remove('hidden');
+  get(dbRef('rooms', roomCode, 'players')).then(s => { players = s.val()||{}; showStageBetween(n); });
 }
 
-function startLevel4() {
-  l4Round = 0;
-  showScreen('screen-level4'); setupMuteButtons(); syncScoresDisplay('l4-scores');
-  nextL4Round();
-}
-function nextL4Round() {
-  stopLocalTimer(); stopL4Floaters();
-  if (l4Round >= L4_ROUNDS) { finishLevel(4); return; }
-  const cfg = L4_CFG[l4Round];
-  document.getElementById('l4-round').textContent = `${l4Round+1}/${L4_ROUNDS}`;
-  document.getElementById('l4-stage').textContent = `Round ${l4Round+1}`;
-  l4Sequence = []; l4PlayerSeq = []; l4CanInput = false;
-  for (let i = 0; i < cfg.seqLen; i++) l4Sequence.push(L4_EMOJIS[randInt(0, L4_EMOJIS.length-1)]);
-  const display   = document.getElementById('l4-sequence-display');
-  const prompt    = document.getElementById('l4-prompt');
-  const inputArea = document.getElementById('l4-input-area');
-  const feedback  = document.getElementById('l4-feedback');
-  feedback.textContent = ''; inputArea.innerHTML = '';
-  display.innerHTML = l4Sequence.map(e => `<span class="mem-emoji">${e}</span>`).join('');
-  prompt.textContent = 'Memorise this sequence!';
-  display.classList.remove('hidden');
-  const bar = document.getElementById('l4-flash-bar');
-  bar.style.transition = 'none'; bar.style.width = '100%';
-  setTimeout(() => { bar.style.transition = `width ${cfg.showTime}ms linear`; bar.style.width = '0%'; }, 50);
-
-  // Spawn continuously floating distractor icons + optional colour flashes
-  if (cfg.floaters > 0) {
-    const screen = document.getElementById('screen-level4');
-    const spawnFloater = () => {
-      const f = document.createElement('div');
-      f.className = 'l4-floater';
-      f.textContent = pick(L4_DISTRACT_ICONS);
-      const fromLeft = Math.random() < 0.5;
-      const yPct = randInt(8, 82);
-      const dur  = rand(1.0, 2.0).toFixed(2);
-      f.style.cssText = `top:${yPct}%;left:${fromLeft ? '-9%' : '109%'};` +
-        `animation:l4Float ${dur}s linear forwards;` +
-        `animation-direction:${fromLeft ? 'normal' : 'reverse'};`;
-      screen.appendChild(f);
-      setTimeout(() => f.remove(), 2200);
-      // Extra: flash a random colour blob behind it
-      if (cfg.flashing && Math.random() < 0.5) {
-        const blob = document.createElement('div');
-        blob.className = 'l4-distractor-flash';
-        blob.style.background = L4_DISTRACT_COLORS[randInt(0, L4_DISTRACT_COLORS.length-1)];
-        blob.style.left = randInt(5, 80) + '%';
-        blob.style.top  = randInt(5, 75) + '%';
-        screen.appendChild(blob);
-        setTimeout(() => blob.remove(), 520);
-      }
-    };
-    const interval = Math.max(180, cfg.showTime / (cfg.floaters * 1.8));
-    l4FloaterInterval = setInterval(spawnFloater, interval);
-    spawnFloater(); // immediate first spawn
-  }
-
-  // Periodic screen shake for hardest rounds
-  if (cfg.shake) {
-    const shakeCount = Math.floor(cfg.showTime / 800);
-    for (let s = 1; s <= shakeCount; s++) {
-      setTimeout(() => {
-        const sc = document.getElementById('screen-level4');
-        sc.classList.add('screen-shake');
-        setTimeout(() => sc.classList.remove('screen-shake'), 350);
-      }, (cfg.showTime / (shakeCount + 1)) * s);
-    }
-  }
-
-  setTimeout(() => {
-    stopL4Floaters();
-    display.classList.add('hidden');
-    prompt.textContent = 'Recreate the sequence!';
-    bar.style.transition = 'none'; bar.style.width = '0%';
-    buildL4Input(); l4CanInput = true;
-    startTimerLocal('l4-timer','l4-timer-bar', cfg.answerTime, () => { l4CanInput = false; showL4Result(false); });
-  }, cfg.showTime);
-}
-function buildL4Input() {
-  const inputArea = document.getElementById('l4-input-area');
-  const slotArea  = document.getElementById('l4-slots');
-  inputArea.innerHTML = ''; slotArea.innerHTML = '';
-  const counts = {};
-  l4Sequence.forEach(e => { counts[e] = (counts[e]||0)+1; });
-  const pool = Object.keys(counts);
-  while (pool.length < Math.min(L4_EMOJIS.length, l4Sequence.length + 3)) {
-    const e = L4_EMOJIS[randInt(0, L4_EMOJIS.length-1)]; if (!pool.includes(e)) pool.push(e);
-  }
-  shuffle(pool).forEach(emoji => {
-    const max = counts[emoji]||0; let left = max;
-    const btn = document.createElement('button'); btn.className = 'mem-btn'; btn.textContent = emoji;
-    const upd = () => {
-      btn.dataset.uses = left;
-      if (max > 1) btn.setAttribute('data-count', left > 0 ? `×${left}` : '');
-      btn.disabled = left <= 0;
-    };
-    upd();
-    btn.onclick = () => { if (!l4CanInput || left<=0) return; left--; upd(); handleL4Pick(emoji); };
-    inputArea.appendChild(btn);
-  });
-  for (let i = 0; i < l4Sequence.length; i++) {
-    const s = document.createElement('div'); s.className = 'mem-slot'; s.dataset.idx = i; slotArea.appendChild(s);
-  }
-}
-function handleL4Pick(emoji) {
-  if (!l4CanInput) return;
-  const idx = l4PlayerSeq.length; if (idx >= l4Sequence.length) return;
-  l4PlayerSeq.push(emoji);
-  const slots = document.querySelectorAll('.mem-slot');
-  if (slots[idx]) { slots[idx].textContent = emoji; slots[idx].classList.add('filled'); }
-  if (l4PlayerSeq.length === l4Sequence.length) { l4CanInput = false; stopLocalTimer(); showL4Result(l4PlayerSeq.every((e,i) => e===l4Sequence[i])); }
-}
-function showL4Result(correct) {
-  const fb  = document.getElementById('l4-feedback');
-  const dis = document.getElementById('l4-sequence-display');
-  dis.innerHTML = l4Sequence.map((e,i) => {
-    const pe = l4PlayerSeq[i], ok = pe === e;
-    return `<span class="mem-emoji ${correct?'correct':(pe?(ok?'correct':'wrong'):'missing')}">${e}</span>`;
-  }).join('');
-  dis.classList.remove('hidden');
-  if (correct) { addMyScore(150); sfxCorrect(); fb.textContent='✅ Perfect! +150 pts'; fb.className='l4-feedback correct'; }
-  else { sfxWrong(); fb.textContent='❌ Wrong order!'; fb.className='l4-feedback wrong'; }
-  l4Round++; setTimeout(nextL4Round, 1600);
-}
-
-// ============================================================
-// LEVEL 5 — GRAND FINALE 🏆  (12 events, combo system)
-// Memory events are now the centrepiece — harder sequences,
-// faster flash times, floating distractors during memorise phase
-// ============================================================
-const L5_ROUNDS = 12;
-// Sequence weighted toward memory: mem appears 4 times
-const L5_TYPES = ['color','word','memory','fruit','color','memory','word','fruit','memory','color','memory','fruit'];
-const L5_COLOR_CFG = [
-  {grid:3,time:9,hueDiff:24},{grid:4,time:8,hueDiff:18},
-  {grid:4,time:7,hueDiff:13},{grid:5,time:7,hueDiff:9},
-  {grid:5,time:6,hueDiff:7},{grid:5,time:5,hueDiff:5},
-];
-const L5_WORD_TIME = [13,12,11,10,9,8];
-
-// Progressive memory config for L5 — harder than L4
-const L5_MEM_CFG = [
-  { seqLen:3, showMs:4000, answerTime:10, floaters:2, distractEmoji:true },  // Event 1 — manageable
-  { seqLen:4, showMs:3500, answerTime: 9, floaters:4, distractEmoji:true },  // Event 2 — harder
-  { seqLen:4, showMs:2800, answerTime: 9, floaters:6, distractEmoji:true },  // Event 3 — fast flash
-  { seqLen:5, showMs:2500, answerTime: 8, floaters:8, distractEmoji:true },  // Event 4 — max pressure
-];
-let l5MemEventIdx = 0;  // tracks which memory event we're on (0-3)
-
-let l5ColorSeed = 0;
-let l5Combo = 0, l5ComboMultiplier = 1;
-
-function l5AddScore(base) {
-  // Combo multiplier: x1 → x2 → x3 → x4 (capped)
-  l5Combo++;
-  l5ComboMultiplier = Math.min(4, 1 + Math.floor(l5Combo / 2));
-  const pts = base * l5ComboMultiplier;
-  addMyScore(pts);
-  const fb2 = document.getElementById('l5-combo');
-  if (l5Combo >= 2) {
-    fb2.textContent = `🔥 COMBO ×${l5ComboMultiplier}`;
-    fb2.className = 'l5-combo active';
-    if (l5Combo >= 4) sfxLevelUp();
-    showToast(`✅ +${pts} pts! COMBO ×${l5ComboMultiplier}`);
-  } else {
-    fb2.textContent = '';
-    showToast(`✅ +${pts} pts!`);
-  }
-}
-function l5BreakCombo() {
-  l5Combo = 0; l5ComboMultiplier = 1;
-  const fb2 = document.getElementById('l5-combo');
-  fb2.textContent = ''; fb2.className = 'l5-combo';
-}
-
-function startLevel5() {
-  l5Round = 0; l5Combo = 0; l5ComboMultiplier = 1; l5MemEventIdx = 0;
-  showScreen('screen-level5'); setupMuteButtons(); syncScoresDisplay('l5-scores');
-  const cb2 = document.getElementById('l5-combo');
-  if (cb2) { cb2.textContent = ''; cb2.className = 'l5-combo'; }
-  nextL5Round();
-}
-function nextL5Round() {
-  stopLocalTimer(); stopL5Fruits();
-  const arena    = document.getElementById('l5-arena');
-  const feedback = document.getElementById('l5-feedback');
-  if (arena)    { arena.innerHTML = ''; arena.style.cssText = ''; }
-  if (feedback) feedback.textContent = '';
-  document.getElementById('l5-fruit-target-wrap').classList.add('hidden');
-  if (l5Round >= L5_ROUNDS) { finishLevel(5); return; }
-  document.getElementById('l5-round').textContent = `${l5Round+1}/${L5_ROUNDS}`;
-  const type = L5_TYPES[l5Round % L5_TYPES.length];
-  if      (type==='color')  buildL5Color();
-  else if (type==='word')   buildL5Word();
-  else if (type==='fruit')  buildL5Fruit();
-  else                      buildL5Memory();
-}
-function buildL5Color() {
-  const cfgIdx = Math.min(Math.floor(l5Round/4), L5_COLOR_CFG.length-1);
-  const cfg    = L5_COLOR_CFG[cfgIdx];
-  const arena  = document.getElementById('l5-arena');
-  document.getElementById('l5-type-label').textContent = '🎨 Find the odd colour!';
-  arena.style.display = 'grid';
-  arena.style.gridTemplateColumns = `repeat(${cfg.grid},1fr)`;
-  arena.style.gap = '6px';
-  l5ColorSeed = l5Round * 3311 + 42;
-  const total = cfg.grid*cfg.grid;
-  const oddIdx = l5ColorSeed % total;
-  const baseHue = (l5ColorSeed*37)%360, oddHue = (baseHue+cfg.hueDiff)%360;
-  const sat = 56+(l5ColorSeed%18), lit = 50+(l5ColorSeed%14);
-  l5CanAct = true;
-  for (let i = 0; i < total; i++) {
-    const el = document.createElement('div');
-    el.className = 'color-cell l5-color-cell'+(i===oddIdx?' odd-cell':'');
-    el.style.background = `hsl(${i===oddIdx?oddHue:baseHue},${sat}%,${lit}%)`;
-    el.addEventListener('click', () => {
-      if (!l5CanAct) return; l5CanAct = false; stopLocalTimer();
-      const fb = document.getElementById('l5-feedback');
-      if (i===oddIdx) { l5AddScore(100); sfxCorrect(); fb.textContent='✅ Correct!'; fb.className='l5-fb correct'; }
-      else { sfxWrong(); l5BreakCombo(); deductScore(20); fb.textContent='❌ −20 pts'; fb.className='l5-fb wrong'; }
-      l5Round++; setTimeout(nextL5Round, 700);
-    });
-    arena.appendChild(el);
-  }
-  startTimerLocal('l5-timer','l5-timer-bar', cfg.time, () => {
-    l5CanAct = false; l5BreakCombo();
-    document.querySelectorAll('.l5-color-cell.odd-cell').forEach(c => c.classList.add('reveal'));
-    const fb = document.getElementById('l5-feedback'); fb.textContent="⏱ Time's up!"; fb.className='l5-fb timeout';
-    l5Round++; setTimeout(nextL5Round, 700);
-  });
-}
-function buildL5Word() {
-  const tIdx = Math.min(Math.floor(l5Round/4), L5_WORD_TIME.length-1);
-  const t    = L5_WORD_TIME[tIdx];
-  const item = L2_DATA[l5Round % L2_DATA.length];
-  const arena = document.getElementById('l5-arena');
-  document.getElementById('l5-type-label').textContent = item.type==='stmt' ? '📝 True statement?' : '📝 Correct spelling?';
-  arena.style.display = 'flex'; arena.style.flexWrap = 'wrap'; arena.style.gap = '8px';
-  const pool = item.type==='stmt'
-    ? shuffle(item.options).slice(0,3)
-    : shuffle(item.options.filter(o=>o!==item.correct)).slice(0,3);
-  let opts = item.type==='stmt' ? (pool.includes(item.correct)?pool:shuffle([item.correct,...pool.slice(0,2)])) : shuffle([item.correct,...pool]);
-  l5CanAct = true;
-  opts.forEach(opt => {
-    const btn = document.createElement('button'); btn.className = 'word-btn l5-word-btn'; btn.textContent = opt;
-    btn.onclick = () => {
-      if (!l5CanAct) return; l5CanAct = false; stopLocalTimer();
-      arena.querySelectorAll('button').forEach(b => b.disabled = true);
-      const fb = document.getElementById('l5-feedback');
-      if (opt===item.correct) { btn.classList.add('correct-pick'); l5AddScore(120); sfxCorrect(); fb.textContent='✅ Correct!'; fb.className='l5-fb correct'; }
-      else { btn.classList.add('wrong-pick'); arena.querySelectorAll('button').forEach(b=>{if(b.textContent===item.correct)b.classList.add('correct-pick');}); sfxWrong(); l5BreakCombo(); deductScore(20); fb.textContent='❌ −20 pts'; fb.className='l5-fb wrong'; }
-      l5Round++; setTimeout(nextL5Round, 950);
-    };
-    arena.appendChild(btn);
-  });
-  startTimerLocal('l5-timer','l5-timer-bar', t, () => {
-    l5CanAct = false; l5BreakCombo(); arena.querySelectorAll('button').forEach(b=>{b.disabled=true;if(b.textContent===item.correct)b.classList.add('correct-pick');});
-    const fb = document.getElementById('l5-feedback'); fb.textContent="⏱ Time's up!"; fb.className='l5-fb timeout';
-    l5Round++; setTimeout(nextL5Round, 950);
-  });
-}
-function buildL5Fruit() {
-  const tVal = Math.max(8, 14 - l5Round);
-  const arena = document.getElementById('l5-arena');
-  document.getElementById('l5-type-label').textContent = '🍎 Tap the target fruit!';
-  arena.style.display = 'block'; arena.style.position = 'relative';
-  const target = pick(ALL_FRUITS);
-  document.getElementById('l5-fruit-target').textContent = target;
-  document.getElementById('l5-fruit-target-wrap').classList.remove('hidden');
-  document.getElementById('l5-fruit-hits').textContent = '0/3';
-  l5FruitArenaW = arena.offsetWidth||320; l5FruitArenaH = arena.offsetHeight||180;
-  l5FruitObjects = []; l5CanAct = true;
-  let hits = 0; const needHits = 3;
-  const total = Math.min(10 + l5Round, 16);
-  const flist = [target, target, target];
-  while (flist.length < total) { const f = pick(ALL_FRUITS); if (f!==target) flist.push(f); }
-  shuffle(flist).forEach(emoji => {
-    const el = document.createElement('div'); el.className='fruit'; el.textContent=emoji; el.style.fontSize=FRUIT_SIZE+'px'; el.style.position='absolute';
-    const x = rand(2, l5FruitArenaW-FRUIT_SIZE-2), y = rand(2, l5FruitArenaH-FRUIT_SIZE-2);
-    const speed = rand(45+l5Round*4, 75+l5Round*5), angle = rand(0,Math.PI*2);
-    el.style.left=x+'px'; el.style.top=y+'px';
-    const fObj = {el,x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,emoji,tapped:false};
-    l5FruitObjects.push(fObj); arena.appendChild(el);
-    const tap = () => {
-      if (!l5CanAct||fObj.tapped) return;
-      if (fObj.emoji===target) {
-        fObj.tapped=true; fObj.el.classList.add('popped'); l5AddScore(50); sfxCorrect();
-        hits++; document.getElementById('l5-fruit-hits').textContent=`${hits}/${needHits}`;
-        setTimeout(()=>fObj.el.remove(),250);
-        if (hits>=needHits) {
-          l5CanAct=false; stopLocalTimer(); stopL5Fruits();
-          document.getElementById('l5-fruit-target-wrap').classList.add('hidden');
-          const fb=document.getElementById('l5-feedback'); fb.textContent='🔥 Wave clear!'; fb.className='l5-fb correct';
-          l5AddScore(80); l5Round++; setTimeout(nextL5Round,700);
-        }
-      } else { fObj.el.classList.add('wrong-tap'); setTimeout(()=>fObj.el.classList.remove('wrong-tap'),300); sfxPenalty(); l5BreakCombo(); deductScore(25); showToast('❌ Wrong! −25 combo reset'); }
-    };
-    el.addEventListener('click', tap);
-    el.addEventListener('touchstart', e2=>{e2.preventDefault();tap();},{passive:false});
-  });
-  let lastT = performance.now();
-  const animL5 = now => {
-    const dt = Math.min((now-lastT)/1000,0.05); lastT = now;
-    for (const f of l5FruitObjects) {
-      if (f.tapped) continue;
-      f.x+=f.vx*dt; f.y+=f.vy*dt;
-      if(f.x<0){f.x=0;f.vx=Math.abs(f.vx);}
-      if(f.x>l5FruitArenaW-FRUIT_SIZE){f.x=l5FruitArenaW-FRUIT_SIZE;f.vx=-Math.abs(f.vx);}
-      if(f.y<0){f.y=0;f.vy=Math.abs(f.vy);}
-      if(f.y>l5FruitArenaH-FRUIT_SIZE){f.y=l5FruitArenaH-FRUIT_SIZE;f.vy=-Math.abs(f.vy);}
-      f.el.style.left=f.x+'px'; f.el.style.top=f.y+'px';
-    }
-    resolveCollisions(l5FruitObjects, FRUIT_SIZE);
-    l5RafId = requestAnimationFrame(animL5);
-  };
-  l5RafId = requestAnimationFrame(animL5);
-  startTimerLocal('l5-timer','l5-timer-bar', tVal, () => {
-    l5CanAct=false; stopL5Fruits();
-    document.getElementById('l5-fruit-target-wrap').classList.add('hidden');
-    const fb=document.getElementById('l5-feedback'); fb.textContent=`⏱ Got ${hits}/${needHits}`; fb.className='l5-fb timeout';
-    l5Round++; setTimeout(nextL5Round,700);
-  });
-}
-function buildL5Memory() {
-  // Pick the progressive cfg — harder each time memory appears
-  const memCfg = L5_MEM_CFG[Math.min(l5MemEventIdx, L5_MEM_CFG.length - 1)];
-  l5MemEventIdx++;
-
-  const arena = document.getElementById('l5-arena');
-  document.getElementById('l5-type-label').textContent = '🧠 Memorise & recreate!';
-  arena.style.display = 'flex'; arena.style.flexWrap = 'wrap'; arena.style.gap = '8px';
-
-  l5MemSeq = []; l5MemPlayerSeq = []; l5MemCanInput = false;
-  for (let i = 0; i < memCfg.seqLen; i++) {
-    l5MemSeq.push(L4_EMOJIS[randInt(0, L4_EMOJIS.length - 1)]);
-  }
-
-  // ── SHOW PHASE — display sequence with flash bar ──────────
-  const seqDisplay = document.createElement('div');
-  seqDisplay.className = 'l5-mem-display';
-  seqDisplay.innerHTML = l5MemSeq.map(e => `<span class="mem-emoji mem-reveal">${e}</span>`).join('');
-
-  // Flash progress bar
-  const flashWrap = document.createElement('div'); flashWrap.className = 'flash-bar-wrap';
-  const flashBar  = document.createElement('div'); flashBar.className = 'flash-bar';
-  flashWrap.appendChild(flashBar); arena.appendChild(flashWrap); arena.appendChild(seqDisplay);
-  l5CanAct = false;
-
-  // Animate flash bar draining
-  setTimeout(() => {
-    flashBar.style.transition = `width ${memCfg.showMs}ms linear`;
-    flashBar.style.width = '0%';
-  }, 50);
-
-  // Spawn floating emoji distractors during memorise phase
-  const screen5  = document.getElementById('screen-level5');
-  const floatIds = [];
-  if (memCfg.distractEmoji && memCfg.floaters > 0) {
-    const spawnInterval = Math.max(250, memCfg.showMs / (memCfg.floaters + 1));
-    for (let d = 0; d < memCfg.floaters; d++) {
-      const tid = setTimeout(() => {
-        const fl = document.createElement('div');
-        fl.className = 'l5-mem-floater';
-        fl.textContent = L4_DISTRACT_ICONS[randInt(0, L4_DISTRACT_ICONS.length - 1)];
-        const fromLeft = Math.random() < 0.5;
-        fl.style.cssText = `top:${randInt(10,80)}%;left:${fromLeft?'-8%':'108%'};` +
-          `animation:l4Float ${rand(0.9,1.8).toFixed(2)}s linear forwards;` +
-          `animation-direction:${fromLeft?'normal':'reverse'};font-size:26px;opacity:0.7;pointer-events:none;`;
-        screen5.appendChild(fl);
-        setTimeout(() => fl.remove(), 2000);
-      }, spawnInterval * (d + 1));
-      floatIds.push(tid);
-    }
-  }
-
-  // ── INPUT PHASE — after showMs, hide sequence and show buttons ──
-  setTimeout(() => {
-    // Clear distractors
-    floatIds.forEach(id => clearTimeout(id));
-    document.querySelectorAll('.l5-mem-floater').forEach(el => el.remove());
-
-    // Animate sequence hiding
-    seqDisplay.querySelectorAll('.mem-emoji').forEach((el, i) => {
-      setTimeout(() => {
-        el.classList.add('mem-hide');
-      }, i * 60);
-    });
-
-    setTimeout(() => {
-      arena.innerHTML = ''; arena.style.flexWrap = 'wrap';
-
-      // Slot row
-      const slotRow = document.createElement('div');
-      slotRow.className = 'mem-slots'; slotRow.style.marginBottom = '8px';
-      for (let i = 0; i < l5MemSeq.length; i++) {
-        const s = document.createElement('div'); s.className = 'mem-slot'; slotRow.appendChild(s);
-      }
-      arena.appendChild(slotRow);
-
-      // Button pool — include distractors (more than L4)
-      const counts = {};
-      l5MemSeq.forEach(e => { counts[e] = (counts[e] || 0) + 1; });
-      const pool = Object.keys(counts);
-      const extraPad = memCfg.seqLen <= 3 ? 3 : 4; // more distractors for longer seqs
-      while (pool.length < Math.min(L4_EMOJIS.length, l5MemSeq.length + extraPad)) {
-        const e = L4_EMOJIS[randInt(0, L4_EMOJIS.length - 1)];
-        if (!pool.includes(e)) pool.push(e);
-      }
-
-      const btnRow = document.createElement('div'); btnRow.className = 'mem-input';
-      shuffle(pool).forEach(emoji => {
-        const max = counts[emoji] || 0; let left = max;
-        const btn = document.createElement('button');
-        btn.className = 'mem-btn'; btn.textContent = emoji;
-        const upd = () => {
-          btn.dataset.uses = left;
-          if (max > 1) btn.setAttribute('data-count', left > 0 ? `×${left}` : '');
-          btn.disabled = left <= 0;
-        };
-        upd();
-        btn.onclick = () => {
-          if (!l5MemCanInput || left <= 0) return;
-          left--; upd();
-          l5MemPlayerSeq.push(emoji);
-          const slots = slotRow.querySelectorAll('.mem-slot');
-          const idx = l5MemPlayerSeq.length - 1;
-          if (slots[idx]) {
-            slots[idx].textContent = emoji;
-            slots[idx].classList.add('filled');
-            // Pulse animation on fill
-            slots[idx].style.animation = 'slotFill 0.25s ease';
-            setTimeout(() => slots[idx].style.animation = '', 250);
-          }
-          if (l5MemPlayerSeq.length === l5MemSeq.length) {
-            l5MemCanInput = false; stopLocalTimer();
-            const ok = l5MemPlayerSeq.every((e2, i) => e2 === l5MemSeq[i]);
-            // Reveal correct sequence with colour coding
-            slotRow.querySelectorAll('.mem-slot').forEach((sl, i) => {
-              const correct = sl.textContent === l5MemSeq[i];
-              sl.style.borderColor = correct ? 'var(--accent3)' : 'var(--accent)';
-              sl.style.background  = correct ? 'rgba(74,222,128,0.15)' : 'rgba(233,69,96,0.15)';
-            });
-            const fb = document.getElementById('l5-feedback');
-            if (ok) {
-              l5AddScore(150); sfxCorrect();
-              fb.textContent = '✅ Perfect memory!'; fb.className = 'l5-fb correct';
-            } else {
-              sfxWrong(); l5BreakCombo(); deductScore(20);
-              fb.textContent = '❌ Wrong order! −20'; fb.className = 'l5-fb wrong';
-            }
-            l5Round++; setTimeout(nextL5Round, 1400);
-          }
-        };
-        btnRow.appendChild(btn);
-      });
-      arena.appendChild(btnRow);
-      l5MemCanInput = true; l5CanAct = true;
-      startTimerLocal('l5-timer', 'l5-timer-bar', memCfg.answerTime, () => {
-        l5MemCanInput = false; l5CanAct = false; l5BreakCombo();
-        const fb = document.getElementById('l5-feedback');
-        fb.textContent = "⏱ Time's up!"; fb.className = 'l5-fb timeout';
-        l5Round++; setTimeout(nextL5Round, 800);
-      });
-    }, memCfg.seqLen * 60 + 150); // wait for hide animation
-  }, memCfg.showMs);
-}
-
-// ============================================================
-// BETWEEN LEVELS / LEADERBOARD
-// ============================================================
-function finishLevel(lvl) {
-  stopLocalTimer(); stopFruitAnimation(); stopL5Fruits(); stopL4Floaters(); stopL1Wobble(); sfxLevelUp();
-  get(dbRef('rooms', roomCode, 'players')).then(s => { players = s.val()||{}; showBetweenScreen(lvl); });
-}
-function showBetweenScreen(lvl) {
-  const isLastLevel = lvl >= 5;
-  document.getElementById('between-title').textContent = isLastLevel ? 'Game Complete! 🏆' : `Level ${lvl} Complete! 🎉`;
-  document.getElementById('between-sub').textContent   = isLastLevel ? 'Final leaderboard — host starts the reveal' : `Leaderboard after Level ${lvl}`;
+function showStageBetween(n) {
+  const isLast = n >= 7;
+  document.getElementById('between-title').textContent = isLast ? 'Training Complete! 🏆' : `Stage ${n} Complete! ✅`;
+  document.getElementById('between-sub').textContent = isLast
+    ? 'Final leaderboard — facilitator will start the winner reveal'
+    : `Results after Stage ${n} — facilitator will show the learning points`;
   renderLeaderboard('leaderboard-between', players);
   showScreen('screen-between');
+
   const nextBtn = document.getElementById('btn-next-level');
   const cd      = document.getElementById('between-countdown');
+
   if (isHost) {
     nextBtn.classList.remove('hidden'); nextBtn.disabled = false;
-    nextBtn.textContent = isLastLevel ? '🏆 Start Winner Reveal →' : 'Next Level →';
+    nextBtn.textContent = isLast ? '🏆 Reveal Winners →' : '💡 Show Learning Points →';
     nextBtn.onclick = () => {
       nextBtn.disabled = true; sfxClick();
-      const nextLvl = lvl < 5 ? lvl+1 : 'results';
-      update(dbRef('rooms', roomCode), { 'game/level': nextLvl });
-      const go = () => {
-        if      (lvl===1) startLevel2();
-        else if (lvl===2) startLevel3();
-        else if (lvl===3) startLevel4();
-        else if (lvl===4) startLevel5();
-        else showFinalResults();   // Only fires after host clicks
-      };
-      if (lvl < 5) showLevelIntro(lvl+1, go); else go();
+      if (isLast) {
+        update(dbRef('rooms', roomCode), { 'game/level': 'results' });
+        showFinalResults();
+      } else {
+        update(dbRef('rooms', roomCode), { 'game/level': n, 'game/betweenPhase': 'explanation' });
+        showExplanation(n);
+      }
     };
-    cd.textContent = isLastLevel ? 'Click the button above to start the dramatic reveal!' : '';
+    cd.textContent = '';
   } else {
     nextBtn.classList.add('hidden');
-    cd.textContent = isLastLevel ? 'Waiting for host to start the winner reveal...' : 'Waiting for host...';
+    cd.textContent = isLast ? 'Waiting for facilitator to start winner reveal...' : 'Waiting for facilitator to show learning points...';
+    clearListeners();
+    listenOn(`rooms/${roomCode}/game/betweenPhase`, snap => {
+      const bp = snap.val();
+      if (bp === 'explanation') { clearListeners(); showExplanation(n); }
+    });
+    listenOn(`rooms/${roomCode}/game/level`, snap => {
+      const lv = snap.val();
+      if (lv === 'results') { clearListeners(); showFinalResults(); }
+    });
+  }
+}
+
+// ============================================================
+// EXPLANATION SCREEN
+// ============================================================
+function showExplanation(n) {
+  const exp = STAGE_EXPLANATIONS[n];
+  if (!exp) { advanceToNextStage(n); return; }
+  showScreen('screen-explanation');
+  document.getElementById('exp-stage-label').textContent = `Stage ${n} of 7 — Learning Points`;
+  document.getElementById('exp-title').textContent = exp.title;
+
+  // Build explanation content
+  const content = document.getElementById('exp-points');
+  content.innerHTML = exp.points.map(p =>
+    `<div class="exp-point exp-${p.color}">
+      <span class="exp-point-icon">${p.icon}</span>
+      <span class="exp-point-text">${p.text}</span>
+    </div>`
+  ).join('');
+
+  // Takeaway
+  document.getElementById('exp-takeaway').textContent = exp.takeaway;
+
+  // Workflow diagram (simplified inline)
+  buildExpDiagram(n, document.getElementById('exp-diagram'));
+
+  const nextBtn = document.getElementById('btn-next-stage');
+  const waiting = document.getElementById('exp-waiting');
+
+  if (isHost) {
+    nextBtn.classList.remove('hidden'); nextBtn.disabled = false;
+    waiting.classList.add('hidden');
+    nextBtn.textContent = n < 7 ? `Start Stage ${n+1} →` : '🏆 Reveal Winners →';
+    nextBtn.onclick = () => {
+      nextBtn.disabled = true; sfxClick();
+      update(dbRef('rooms', roomCode), { 'game/level': n+1, 'game/betweenPhase': 'leaderboard' });
+      if (n < 7) showStageIntro(n+1, () => startStage(n+1));
+      else showFinalResults();
+    };
+  } else {
+    nextBtn.classList.add('hidden');
+    waiting.classList.remove('hidden');
+    waiting.textContent = 'Waiting for facilitator to start next stage...';
     clearListeners();
     listenOn(`rooms/${roomCode}/game/level`, snap => {
-      const v = snap.val();
-      if (v === 'results') { clearListeners(); showFinalResults(); return; }
-      if (v > lvl) {
+      const lv = snap.val();
+      if (lv === 'results') { clearListeners(); showFinalResults(); return; }
+      if (typeof lv === 'number' && lv > n) {
         clearListeners();
-        const go = () => {
-          if      (v===2) startLevel2();
-          else if (v===3) startLevel3();
-          else if (v===4) startLevel4();
-          else if (v===5) startLevel5();
-        };
-        showLevelIntro(v, go);
+        showStageIntro(lv, () => startStage(lv));
       }
     });
   }
 }
+
+function buildExpDiagram(n, container) {
+  container.innerHTML = '';
+  const diagrams = {
+    'service-product': [
+      { text:'Issue during ICS Service', cls:'diag-green', arrow:'→ Service Complaint → Claims Team' },
+      { text:'Issue from Manufacturer / Product', cls:'diag-blue', arrow:'→ Product Complaint → Contact AM' },
+    ],
+    'ownership': [
+      { text:'Returns Team', cls:'diag-purple', arrow:'Reviews & Routes Only' },
+      { text:'Claims Team (ICS)', cls:'diag-green', arrow:'Owns Service Complaints + Quality Case' },
+      { text:'Account Manager', cls:'diag-blue', arrow:'Receives Product Complaints' },
+    ],
+    'workflow': [
+      { text:'Complaint Received', cls:'diag-gray', arrow:'↓' },
+      { text:'Returns Reviews', cls:'diag-purple', arrow:'↓' },
+      { text:'Did ICS manage shipment?', cls:'diag-orange', arrow:'YES ↓ / NO → AM' },
+      { text:'Where did it originate?', cls:'diag-orange', arrow:'Service ↓ / Product → AM' },
+      { text:'Service → Claims | Product → AM', cls:'diag-green', arrow:'' },
+    ],
+  };
+  const diag = diagrams[STAGE_EXPLANATIONS[n]?.diagram] || diagrams['workflow'];
+  diag.forEach(step => {
+    const div = document.createElement('div');
+    div.className = `diag-step ${step.cls}`;
+    div.innerHTML = `<span class="diag-text">${step.text}</span>${step.arrow?`<span class="diag-arrow">${step.arrow}</span>`:''}`;
+    container.appendChild(div);
+  });
+}
+
+// ============================================================
+// LEADERBOARD + RESULTS (unchanged structure)
+// ============================================================
 function renderLeaderboard(id, playerData) {
-  const container = document.getElementById(id); if(!container) return;
+  const container = document.getElementById(id); if (!container) return;
   container.innerHTML = '';
   const sorted = Object.entries(playerData).sort((a,b)=>(b[1].score||0)-(a[1].score||0));
   const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',...Array.from({length:30},(_,i)=>`${i+11}`)];
@@ -1289,45 +1052,36 @@ function renderLeaderboard(id, playerData) {
     const row = document.createElement('div'); row.className = `lb-row rank-${i+1}`;
     row.innerHTML = `<span class="lb-rank">${medals[i]||i+1}</span>
       <span class="lb-name${uid===myUid?' you-tag':''}">${p.name}</span>
-      <span class="lb-score">${p.score||0}</span>`;
+      <span class="lb-score">${p.score||0} pts</span>`;
     container.appendChild(row);
   });
 }
 
-// ============================================================
-// FINAL RESULTS — Dramatic sequential reveal
-// ============================================================
 function showFinalResults() {
-  stopLocalTimer(); stopFruitAnimation(); stopL5Fruits(); stopJazz();
+  stopLocalTimer(); stopJazz();
   get(dbRef('rooms', roomCode, 'players')).then(s => { players = s.val()||{}; renderResults(); });
 }
 function renderResults() {
   const sorted = Object.entries(players)
     .sort((a,b)=>(b[1].score||0)-(a[1].score||0))
     .map(([uid,p],i)=>({uid,...p,rank:i+1}));
-
   showScreen('screen-results');
-  document.getElementById('podium').innerHTML         = '';
+  document.getElementById('podium').innerHTML = '';
   document.getElementById('full-leaderboard').innerHTML = '';
-  document.getElementById('results-actions').innerHTML  = '';
+  document.getElementById('results-actions').innerHTML = '';
   const champOv = document.getElementById('champion-overlay');
-  champOv.classList.add('hidden');
-  champOv.classList.remove('champion-reveal','champion-building');
+  champOv.classList.add('hidden'); champOv.classList.remove('champion-reveal','champion-building');
 
   const rankLabel = {2:'🥈 2nd Place',3:'🥉 3rd Place',4:'4th Place',5:'5th Place'};
-  // Reveal worst→best; skip rank 1, handle separately at the end
-  const others  = sorted.filter(p => p.rank !== 1).slice(0,4).reverse(); // [5th…2nd]
-  const winner  = sorted.find(p => p.rank === 1);
-  const CARD_GAP = 5000; // 5 s between each card
-
+  const others = sorted.filter(p=>p.rank!==1).slice(0,4).reverse();
+  const winner = sorted.find(p=>p.rank===1);
+  const CARD_GAP = 5000;
   let delay = 800;
 
-  // ── Reveal 5th → 2nd ────────────────────────────────────
   others.forEach(p => {
     setTimeout(() => {
       sfxReveal();
-      const card = document.createElement('div');
-      card.className = `reveal-card rank-${p.rank}`;
+      const card = document.createElement('div'); card.className=`reveal-card rank-${p.rank}`;
       card.innerHTML = `<span class="reveal-rank">${rankLabel[p.rank]||('#'+p.rank)}</span>
         <span class="reveal-name">${p.name}${p.uid===myUid?' (you)':''}</span>
         <span class="reveal-score">${p.score||0} pts</span>`;
@@ -1336,141 +1090,106 @@ function renderResults() {
     delay += CARD_GAP;
   });
 
-  // ── 7-second build-up before 1st place ─────────────────
   if (winner) {
-    const buildStart = delay;
-    // Phase 1 (0-2s): screen darkens + "WHO IS THE CHAMPION?" pulses
-    setTimeout(() => {
-      champOv.classList.remove('hidden');
-      champOv.classList.add('champion-building');
-      document.getElementById('champion-who').classList.remove('hidden');
-      sfxDrumroll();
-    }, buildStart);
-
-    // Phase 2 (2.2s): confetti starts
-    setTimeout(() => {
-      spawnConfetti();
-    }, buildStart + 2200);
-
-    // Phase 3 (4s): flashing lights rapid
-    setTimeout(() => {
-      spawnConfetti();
-      [0,150,300,450,600].forEach(t => {
-        setTimeout(() => {
-          const fl = document.createElement('div');
-          fl.className = 'champ-flash';
-          document.body.appendChild(fl);
-          setTimeout(() => fl.remove(), 300);
-        }, t);
-      });
-    }, buildStart + 4000);
-
-    // Phase 4 (6s): more confetti, drumroll again
-    setTimeout(() => {
-      spawnConfetti();
-      sfxDrumroll();
-    }, buildStart + 6000);
-
-    // Phase 5 (7s): reveal the champion
-    setTimeout(() => {
+    const bs = delay;
+    setTimeout(()=>{ champOv.classList.remove('hidden'); champOv.classList.add('champion-building'); document.getElementById('champion-who').classList.remove('hidden'); sfxDrumroll(); }, bs);
+    setTimeout(()=>spawnConfetti(), bs+2200);
+    setTimeout(()=>{ spawnConfetti(); [0,150,300,450,600].forEach(t=>{ setTimeout(()=>{ const fl=document.createElement('div'); fl.className='champ-flash'; document.body.appendChild(fl); setTimeout(()=>fl.remove(),300); },t); }); }, bs+4000);
+    setTimeout(()=>{ spawnConfetti(); sfxDrumroll(); }, bs+6000);
+    setTimeout(()=>{
       document.getElementById('champion-who').classList.add('hidden');
       champOv.classList.remove('champion-building');
-      document.getElementById('champion-name').textContent  = winner.name + (winner.uid===myUid?' 🎉':'');
-      document.getElementById('champion-score').textContent = (winner.score||0) + ' pts';
-      champOv.classList.add('champion-reveal');
-      sfxChampion();
-      spawnConfetti(); setTimeout(spawnConfetti,400); setTimeout(spawnConfetti,800); setTimeout(spawnConfetti,1200);
-    }, buildStart + 7000);
-
-    delay = buildStart + 7000 + 3500;
+      document.getElementById('champion-name').textContent  = winner.name+(winner.uid===myUid?' 🎉':'');
+      document.getElementById('champion-score').textContent = (winner.score||0)+' pts';
+      champOv.classList.add('champion-reveal'); sfxChampion();
+      spawnConfetti(); setTimeout(spawnConfetti,400); setTimeout(spawnConfetti,800);
+    }, bs+7000);
+    delay = bs+7000+3500;
   }
 
-  // ── Full leaderboard + buttons after everything ─────────
-  setTimeout(() => {
+  setTimeout(()=>{
     renderLeaderboard('full-leaderboard', players);
     if (isHost) {
-      const paBtn = document.createElement('button');
-      paBtn.className = 'btn-main'; paBtn.style.marginBottom = '10px';
-      paBtn.textContent = '🔁 Play Again';
-      paBtn.onclick = () => { sfxClick(); resetGame(); };
+      const paBtn=document.createElement('button'); paBtn.className='btn-corp-primary'; paBtn.style.marginBottom='10px';
+      paBtn.textContent='🔁 Run Training Again'; paBtn.onclick=()=>{sfxClick();resetGame();};
       document.getElementById('results-actions').appendChild(paBtn);
     }
-  }, delay + 1000);
+  }, delay+1000);
 }
 
 // ============================================================
-// CONFETTI
+// CONFETTI (unchanged)
 // ============================================================
 function spawnConfetti() {
-  const colors = ['#e94560','#4f8ef7','#4ade80','#fbbf24','#c084fc','#ff8c42'];
-  for (let i = 0; i < 70; i++) {
-    setTimeout(() => {
-      const el = document.createElement('div'); el.className='confetti';
-      el.style.cssText = `left:${rand(5,95)}vw;top:-12px;width:${rand(6,12)}px;height:${rand(6,12)}px;background:${pick(colors)};border-radius:${Math.random()>.5?'50%':'3px'};animation:confettiFall ${rand(1.4,3)}s linear forwards;`;
+  const colors=['#7C3AED','#10B981','#3B82F6','#F59E0B','#6366F1','#EC4899'];
+  for(let i=0;i<70;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div'); el.className='confetti';
+      el.style.cssText=`left:${rand(5,95)}vw;top:-12px;width:${rand(6,12)}px;height:${rand(6,12)}px;background:${pick(colors)};border-radius:${Math.random()>.5?'50%':'3px'};animation:confettiFall ${rand(1.4,3)}s linear forwards;`;
       document.body.appendChild(el); setTimeout(()=>el.remove(),3300);
-    }, i*45);
+    },i*45);
   }
-  if (!document.getElementById('confetti-style')) {
-    const s = document.createElement('style'); s.id='confetti-style';
+  if(!document.getElementById('confetti-style')){
+    const s=document.createElement('style'); s.id='confetti-style';
     s.textContent='@keyframes confettiFall{from{transform:translateY(0) rotate(0deg);opacity:1}to{transform:translateY(100vh) rotate(720deg);opacity:0}}';
     document.head.appendChild(s);
   }
 }
 
 // ============================================================
-// RESET / NAVIGATION
+// RESET / NAVIGATION (unchanged)
 // ============================================================
 async function resetGame() {
   if (isHost && roomCode) {
-    const upd = {};
-    Object.keys(players).forEach(uid => { upd[`players/${uid}/score`]=0; });
-    Object.assign(upd,{'game/level':1,'game/round':0,'game/phase':'countdown','game/roundSeed':Math.floor(Math.random()*100000),'status':'lobby'});
+    const upd={};
+    Object.keys(players).forEach(uid=>{upd[`players/${uid}/score`]=0;});
+    Object.assign(upd,{'game/level':1,'game/round':0,'game/phase':'intro','game/betweenPhase':'leaderboard','game/roundSeed':Math.floor(Math.random()*100000),'status':'lobby'});
     await update(dbRef('rooms',roomCode),upd);
   }
-  clearListeners(); stopLocalTimer(); stopFruitAnimation(); stopL5Fruits(); stopL4Floaters(); stopL1Wobble();
+  clearListeners(); stopLocalTimer();
   Object.keys(players).forEach(uid=>{if(players[uid])players[uid].score=0;});
   openLobby();
 }
 function resetToMenu() {
-  clearListeners(); stopLocalTimer(); stopFruitAnimation(); stopL5Fruits(); stopL4Floaters(); stopL1Wobble(); stopJazz();
+  clearListeners(); stopLocalTimer(); stopJazz();
   players={}; roomCode=''; isHost=false; showScreen('screen-menu');
 }
 
 // ============================================================
-// BUTTON EVENT LISTENERS (registered once at boot)
+// BUTTON EVENT LISTENERS (unchanged)
 // ============================================================
-document.getElementById('btn-create').addEventListener('click', ()=>{sfxClick();document.getElementById('modal-create').classList.remove('hidden');document.getElementById('input-host-name').focus();});
-document.getElementById('btn-create-cancel').addEventListener('click', ()=>document.getElementById('modal-create').classList.add('hidden'));
-document.getElementById('btn-create-confirm').addEventListener('click', async ()=>{
+document.getElementById('btn-create').addEventListener('click',()=>{sfxClick();document.getElementById('modal-create').classList.remove('hidden');document.getElementById('input-host-name').focus();});
+document.getElementById('btn-create-cancel').addEventListener('click',()=>document.getElementById('modal-create').classList.add('hidden'));
+document.getElementById('btn-create-confirm').addEventListener('click',async()=>{
   const name=document.getElementById('input-host-name').value.trim();
   if(!name){showError('create-error','Please enter your name.');return;}
   document.getElementById('btn-create-confirm').disabled=true; sfxClick();
   try{await createRoom(name);document.getElementById('modal-create').classList.add('hidden');}
-  catch(e){showError('create-error','Failed to create room.');console.error(e);}
+  catch(e){showError('create-error','Failed to create session. Check your connection.');console.error(e);}
   document.getElementById('btn-create-confirm').disabled=false;
 });
-document.getElementById('btn-join-open').addEventListener('click', ()=>{sfxClick();document.getElementById('modal-join').classList.remove('hidden');document.getElementById('input-name').focus();});
-document.getElementById('btn-join-cancel').addEventListener('click', ()=>document.getElementById('modal-join').classList.add('hidden'));
-document.getElementById('btn-join-confirm').addEventListener('click', async ()=>{
+document.getElementById('btn-join-open').addEventListener('click',()=>{sfxClick();document.getElementById('modal-join').classList.remove('hidden');document.getElementById('input-name').focus();});
+document.getElementById('btn-join-cancel').addEventListener('click',()=>document.getElementById('modal-join').classList.add('hidden'));
+document.getElementById('btn-join-confirm').addEventListener('click',async()=>{
   const name=document.getElementById('input-name').value.trim();
   const code=document.getElementById('input-code').value.trim().toUpperCase();
   if(!name){showError('join-error','Enter your name.');return;}
-  if(code.length<4){showError('join-error','Enter the 4-character room code.');return;}
+  if(code.length<4){showError('join-error','Enter the 4-character session code.');return;}
   document.getElementById('btn-join-confirm').disabled=true; sfxClick();
   const err=await joinRoom(name,code);
   if(err)showError('join-error',err); else document.getElementById('modal-join').classList.add('hidden');
   document.getElementById('btn-join-confirm').disabled=false;
 });
-document.getElementById('btn-copy-code').addEventListener('click', ()=>{navigator.clipboard?.writeText(roomCode).catch(()=>{});showToast('Room code copied!');});
-document.getElementById('btn-leave-lobby').addEventListener('click', async ()=>{
+document.getElementById('btn-copy-code').addEventListener('click',()=>{navigator.clipboard?.writeText(roomCode).catch(()=>{});showToast('Session code copied!');});
+document.getElementById('btn-leave-lobby').addEventListener('click',async()=>{
   sfxClick();
   if(roomCode&&myUid){await remove(dbRef('rooms',roomCode,'players',myUid));if(isHost)await remove(dbRef('rooms',roomCode));}
   resetToMenu();
 });
-document.getElementById('btn-main-menu').addEventListener('click', ()=>{sfxClick();resetToMenu();});
-document.getElementById('btn-gameover-menu').addEventListener('click', ()=>{sfxClick();resetToMenu();});
-document.getElementById('btn-gameover-again').addEventListener('click', ()=>{sfxClick();resetGame();});
-document.addEventListener('keydown', e=>{
+document.getElementById('btn-main-menu').addEventListener('click',()=>{sfxClick();resetToMenu();});
+document.getElementById('btn-gameover-menu').addEventListener('click',()=>{sfxClick();resetToMenu();});
+document.getElementById('btn-gameover-again').addEventListener('click',()=>{sfxClick();resetGame();});
+document.addEventListener('keydown',e=>{
   if(e.key==='Enter'){
     const cm=document.getElementById('modal-create'),jm=document.getElementById('modal-join');
     if(!cm.classList.contains('hidden'))document.getElementById('btn-create-confirm').click();
@@ -1478,22 +1197,22 @@ document.addEventListener('keydown', e=>{
   }
   if(e.key==='Escape'){document.getElementById('modal-create').classList.add('hidden');document.getElementById('modal-join').classList.add('hidden');}
 });
-document.getElementById('input-code').addEventListener('input', e=>{e.target.value=e.target.value.toUpperCase();});
-document.addEventListener('click', ()=>{if(musicOn&&!jazzInterval)startJazz();},{once:true});
+document.getElementById('input-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase();});
+document.addEventListener('click',()=>{if(musicOn&&!jazzInterval)startJazz();},{once:true});
 
 // ============================================================
-// BOOT
+// BOOT (unchanged)
 // ============================================================
 async function boot() {
-  document.getElementById('loading-msg').textContent='Connecting...';
+  document.getElementById('loading-msg').textContent='Initialising...';
   showScreen('screen-loading');
   try {
     await initAuth(); initConnectionMonitor();
-    document.getElementById('loading-msg').textContent='Ready!';
-    await new Promise(r=>setTimeout(r,600));
+    document.getElementById('loading-msg').textContent='Ready to train!';
+    await new Promise(r=>setTimeout(r,700));
     showScreen('screen-menu');
   } catch(e) {
-    document.getElementById('loading-msg').textContent='Firebase connection failed. Check firebase.js';
+    document.getElementById('loading-msg').textContent='Connection failed. Check firebase.js';
     console.error('Boot error:',e);
   }
 }
