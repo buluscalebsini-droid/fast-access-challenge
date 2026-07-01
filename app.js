@@ -390,21 +390,20 @@ function showStageIntro(n, cb) {
 
 // ── STAGE 1: Service or Product? ────────────────────────────
 const S1_DATA = [
-  { scenario: 'Medication arrived with crushed packaging. ICS arranged the shipment; FedEx physically transported it. Products appear unusable.', answer: 'service', hint: 'ICS arranged and managed the shipment. Even though FedEx physically transported the goods, any issue during an ICS-managed shipment is a Service Complaint. The deciding factor is who managed the shipment, not who physically drove the van.' },
-  { scenario: 'A patient reports that the insulin pen does not deliver the correct dose due to a device mechanism failure.', answer: 'product', hint: 'The issue originates from the device itself, not from transportation or ICS handling. This is a Product Complaint → Contact Client (Manufacturer).' },
-  { scenario: 'A hospital received 50 units instead of the ordered 100. The picking error was identified at the ICS warehouse before the shipment was handed to the carrier.', answer: 'service', hint: 'The error happened inside the ICS warehouse during pick-and-pack — before the carrier was involved. ICS managed the entire process → Service Complaint → Claims Team.' },
-  { scenario: 'A batch of syringes shows visible contamination. The batch record traces the issue directly to the manufacturing facility.', answer: 'product', hint: 'Contamination originated at the manufacturing facility — nothing to do with ICS shipment or handling. The issue is with the product itself → Product Complaint → Contact Client (Manufacturer).' },
-  { scenario: 'Temperature-sensitive vaccines arrived outside the required range. ICS arranged and managed the shipment. The contracted carrier (UPS) transported the goods on behalf of ICS, and data loggers show the breach occurred during transit.', answer: 'service', hint: 'ICS arranged and managed this shipment. UPS operated under ICS direction as a contracted carrier. The cold-chain breach occurred during an ICS-managed shipment — it does not matter that UPS physically moved the goods. Service Complaint → Claims Team investigates and creates the Quality Case.' },
+  { scenario: 'A hospital calls: they received 8 boxes but ordered 10. ICS arranged and managed the shipment using FedEx.', answer: 'service', hint: 'Shortage on an ICS-managed shipment = Service Complaint. Route to Claims Initiation — they investigate and create the Quality Case. FedEx transported the goods but ICS managed the shipment.' },
+  { scenario: 'Tracking shows a package was delivered, but the customer says nobody signed for it and it cannot be located anywhere on site.', answer: 'service', hint: 'Tracking-shows-delivered but customer cannot locate = Service Complaint. This is a Claims case — Claims Initiation investigates and creates the QC.' },
+  { scenario: 'A pharmacy received a product that shows visible contamination. The batch record traces the contamination to the manufacturing facility — not to transit.', answer: 'product', hint: 'Contamination traced to the manufacturing facility = Product Complaint. Returns contacts the Client (Manufacturer). No Quality Case is created by Claims.' },
+  { scenario: 'A customer received the wrong product — they ordered Product A but received Product B. ICS picked and packed this order at the distribution centre.', answer: 'service', hint: 'Wrong product picked by ICS = Service Complaint. Route to Claims Initiation. Claims creates the QC and investigates.' },
+  { scenario: 'An insulin device has a documented mechanism failure causing incorrect dosing. The failure is traced to the manufacturing process.', answer: 'product', hint: 'Device malfunction from the manufacturing process = Product Complaint. Returns contacts the Client (Manufacturer) and follows their direction. No QC created by Claims.' },
 ];
 
-// ── STAGE 2: Who Owns It? ───────────────────────────────────
+// ── STAGE 2: Is This a Claims Case? ────────────────────────
 const S2_DATA = [
-  { scenario: 'Service complaint confirmed: carrier damaged products during ICS-managed transit.', question: 'Who owns this complaint?', answer: 'claims', hint: 'Service Complaints are owned by the Claims Team (ICS). They create and investigate the Quality Case.' },
-  { scenario: 'Product complaint received: a medical device has a manufacturing defect reported by the end user.', question: 'Who should Returns contact?', answer: 'am', hint: 'Product Complaints belong to the Source Client. Returns contacts the Client (Manufacturer). No Quality Case.' },
-  { scenario: 'ICS warehouse dispatched the wrong product line to a hospital.', question: 'Who investigates this?', answer: 'claims', hint: 'Wrong product from ICS warehouse = Service Complaint → Claims Team investigates.' },
-  { scenario: 'A patient reports an adverse effect from using the product as directed by the prescription.', question: 'Who does Returns contact?', answer: 'am', hint: 'Adverse effects = Product Complaint → Contact Client (Manufacturer), follow Source Client direction.' },
-  { scenario: 'Cold-chain excursion confirmed during an ICS-managed delivery run.', question: 'Who creates the Quality Case?', answer: 'claims', hint: 'Transport excursion = Service Complaint → Claims Team creates the Quality Case.' },
-  { scenario: 'Product contamination traced to the manufacturing facility batch production.', question: 'What does Returns do?', answer: 'am', hint: 'Manufacturing contamination = Product Complaint → Contact Client (Manufacturer). Returns does NOT create a Quality Case.' },
+  { scenario: 'Customer reports a shortage — they ordered 20 units and received 15. ICS managed the shipment.', question: 'Does this go to Claims Initiation?', answer: 'claims', hint: 'YES — Shortage on an ICS-managed shipment → Claims Initiation. Claims investigates and creates the Quality Case. Returns routes it, never investigates.' },
+  { scenario: 'A medical device is reported to malfunction. The failure is traced to a defective motor assembled incorrectly at the factory.', question: 'Does this go to Claims Initiation?', answer: 'am', hint: 'NO — Manufacturing defect = Product Complaint. Returns contacts the Client (Manufacturer) and follows their direction. Claims Initiation does not handle Product Complaints.' },
+  { scenario: 'A customer received another customer\'s order. ICS arranged the shipment and the pick-and-pack error occurred at the ICS facility.', question: 'Does this go to Claims Initiation?', answer: 'claims', hint: 'YES — Customer received another customer\'s order = Service Complaint → Claims Initiation. This is one of the standard Claims cases. Claims creates the QC and investigates.' },
+  { scenario: 'Temperature-sensitive product arrived outside the required 2–8°C range. ICS arranged and managed the entire shipment.', question: 'Does this go to Claims Initiation?', answer: 'claims', hint: 'YES — Temperature excursion on an ICS-managed shipment = Service Complaint → Claims Initiation. ICS managed the shipment, so Claims investigates and creates the QC.' },
+  { scenario: 'A customer reports that their invoice shows an incorrect price. The billing error occurred in the ICS system.', question: 'Does this go to Claims Initiation?', answer: 'claims', hint: 'YES — Incorrect billing/pricing on an ICS-managed transaction → Claims Initiation. Billing and pricing errors are Claims cases. Claims creates the QC and investigates.' },
 ];
 
 // ── STAGE 3: True or False ──────────────────────────────────
@@ -423,18 +422,22 @@ const S3_DATA = [
 
 // ── STAGE 3: Complaint Sorting (Drag & Drop) ────────────────
 const DRAG_CARDS = [
-  { id:'d1',  text:'Wrong product line shipped by ICS warehouse',          answer:'service' },
-  { id:'d2',  text:'Temperature excursion on a cold-chain shipment managed by ICS', answer:'service' },
-  { id:'d3',  text:'Product packaging damaged during ICS transit',         answer:'service' },
-  { id:'d4',  text:'Manufacturer defect found in device mechanism',        answer:'product' },
-  { id:'d5',  text:'Adverse reaction reported at prescribed dose',         answer:'product' },
-  { id:'d6',  text:'Product contamination traced to production batch',     answer:'product' },
-  { id:'d7',  text:'Incorrect quantity dispatched from ICS facility',      answer:'service' },
-  { id:'d8',  text:'Manufacturing packaging seal defect on blister pack',  answer:'product' },
-  { id:'d9',  text:'Device malfunction due to faulty internal component',  answer:'product' },
-  { id:'d10', text:'Wrong delivery address on an ICS-managed shipment',    answer:'service' },
-  { id:'d11', text:'Batch manufacturing quality issue at factory',         answer:'product' },
-  { id:'d12', text:'Product recall due to stability issue at manufacture', answer:'product' },
+  { id:'d1',  text:'Customer reports shortage',                              answer:'service' },
+  { id:'d2',  text:'Customer reports overage',                               answer:'service' },
+  { id:'d3',  text:'Customer received wrong product',                        answer:'service' },
+  { id:'d4',  text:'Damaged shipment on ICS-managed delivery',               answer:'service' },
+  { id:'d5',  text:'Missing shipment — not delivered',                       answer:'service' },
+  { id:'d6',  text:'Serial number mismatch on received goods',               answer:'service' },
+  { id:'d7',  text:'Incorrect pricing on ICS invoice',                       answer:'service' },
+  { id:'d8',  text:'Incorrect account used for shipment',                    answer:'service' },
+  { id:'d9',  text:'Missing EPCIS data on shipment',                         answer:'service' },
+  { id:'d10', text:'Temperature excursion on ICS-managed shipment',          answer:'service' },
+  { id:'d11', text:'Manufacturing defect found in product',                  answer:'product' },
+  { id:'d12', text:'Device malfunction from faulty component',               answer:'product' },
+  { id:'d13', text:'Product contamination traced to production batch',       answer:'product' },
+  { id:'d14', text:'Adverse reaction at prescribed dose',                    answer:'product' },
+  { id:'d15', text:'Stability issue traced to manufacturing',                answer:'product' },
+  { id:'d16', text:'Packaging defect from manufacturing process',            answer:'product' },
 ];
 
 let dragState = {};  // { cardId: 'service'|'product'|null }
@@ -562,157 +565,158 @@ window.submitDragStage = submitDragStage;
 
 // ── STAGE 4: Complete the Workflow ──────────────────────────
 const S4_DATA = [
-  { context: 'A complaint arrives. What is the Returns Team\'s FIRST action?',
-    flow: ['📥 Complaint Received', '❓ ???', '🔍 Determine Complaint Type', '📤 Route Complaint'],
-    options: ['Review Complaint', 'Create Quality Case', 'Contact Claims', 'Investigate', 'Contact Manufacturer'],
-    answer: 'Review Complaint',
-    hint: 'Returns always REVIEWS the complaint before determining its type.' },
-  { context: 'A temperature excursion occurred during transit. ICS arranged and managed the shipment (transported by a third-party carrier on behalf of ICS). What type of complaint is this?',
-    flow: ['🌡 Temperature Excursion Reported', '✅ ICS managed the shipment', '❓ ???', '📋 Claims Team creates Quality Case'],
-    options: ['Product Complaint', 'Service Complaint', 'No Complaint — Normal Variation', 'Contact Client — Client managed it'],
-    answer: 'Service Complaint',
-    hint: 'ICS arranged and managed this shipment. Even though a third-party carrier (FedEx/UPS) physically moved the goods, the carrier operated under ICS direction. The cold-chain breach happened during an ICS-managed shipment → Service Complaint → Claims Team investigates and creates the Quality Case. The deciding factor is always: WHO MANAGED THE SHIPMENT?' },
-  { context: 'The complaint is a Product Complaint. What is Returns\' next action?',
-    flow: ['📦 Product Complaint Identified', '📞 ???', '📋 Follow Source Client Direction', '🚫 No Quality Case'],
-    options: ['Create Quality Case', 'Contact Claims Team', 'Contact Client (Manufacturer)', 'Investigate Complaint'],
-    answer: 'Contact Client (Manufacturer)',
-    hint: 'Product Complaint → Returns contacts the Client (Manufacturer).' },
-  { context: 'A temperature excursion occurred. The Client (Manufacturer) arranged and managed this shipment — ICS did not manage it. What should Returns do?',
-    flow: ['🌡 Temperature Excursion Reported', '❌ ICS did NOT manage the shipment', '📞 Returns contacts ???', '📋 Follows Client direction — no QC'],
-    options: ['Route to Claims Team — create QC', 'Contact Client (Manufacturer) for direction', 'Classify as Service Complaint', 'Investigate the carrier directly'],
-    answer: 'Contact Client (Manufacturer) for direction',
-    hint: 'The Client (Manufacturer) managed this shipment — not ICS. Returns does NOT create a Quality Case, does NOT route to Claims, and does NOT investigate. Returns contacts the Client (Manufacturer) and follows their direction on next steps. The rule is simple: WHO MANAGED THE SHIPMENT determines who owns the complaint.' },
-  { context: 'Service complaint confirmed. Who creates the Quality Case?',
-    flow: ['✅ Service Complaint', '📞 Route to ???', '📋 Quality Case Created', '🔍 Investigate'],
-    options: ['Returns Team', 'Client (Manufacturer)', 'Claims Team (ICS)', 'Warehouse Team'],
-    answer: 'Claims Team (ICS)',
-    hint: 'Claims Team (ICS) creates and owns the Quality Case for Service Complaints.' },
+  { context: 'Customer reports an issue. What is the Returns Team's FIRST action?',
+    flow: ['📥 Customer Reports Issue', '❓ ???', '🔍 Service or Product?', '📤 Route Correctly'],
+    options: ['Review the complaint', 'Create a Quality Case', 'Call the carrier', 'Escalate to manager'],
+    answer: 'Review the complaint',
+    hint: 'Returns always REVIEWS the complaint first before classifying and routing. Never skip this step.' },
+  { context: 'The issue is a Service Complaint. Where does Returns route it?',
+    flow: ['✅ Service Complaint Identified', '📤 Route to ???', '🔍 Claims Initiation investigates', '📋 QC Created by Claims'],
+    options: ['Quality Team Queue', 'Claims Initiation Queue', 'Returns Team Leader', 'Client / Manufacturer'],
+    answer: 'Claims Initiation Queue',
+    hint: 'Service Complaints go to the Claims Initiation Queue — NOT the Quality Team queue. Claims Initiation investigates and creates the Quality Case. Returns does not create QCs.' },
+  { context: 'Service Complaint confirmed and routed to Claims. Who creates the Quality Case?',
+    flow: ['📋 Service Complaint Routed', '👥 Claims Initiation receives it', '❓ Who creates the QC?', '🔍 Investigation begins'],
+    options: ['Returns Team', 'Quality Team', 'Claims Initiation', 'The customer'],
+    answer: 'Claims Initiation',
+    hint: 'Claims Initiation creates the Quality Case — never Returns. Returns identifies and routes. Claims Initiation investigates and creates the QC.' },
+  { context: 'The issue is a Product Complaint. What does Returns do next?',
+    flow: ['📦 Product Complaint Identified', '📞 ???', '📋 Follow Client direction', '🚫 No QC by Returns'],
+    options: ['Route to Claims Initiation', 'Contact Client / Manufacturer', 'Create Quality Case', 'Investigate the product'],
+    answer: 'Contact Client / Manufacturer',
+    hint: 'Product Complaints → Returns contacts the Client (Manufacturer). Returns does NOT create a QC and does NOT route to Claims Initiation. The Client provides direction on next steps.' },
+  { context: 'Customer cannot find their package — tracking shows delivered, but recipient is unknown. ICS managed the shipment. Where does this go?',
+    flow: ['📦 Tracking: Delivered', '👤 Customer cannot locate package', '❓ ???', '📋 QC Created'],
+    options: ['Contact Client / Manufacturer', 'Claims Initiation Queue', 'Ignore — tracking shows delivered', 'Quality Team Queue'],
+    answer: 'Claims Initiation Queue',
+    hint: 'Tracking-shows-delivered but customer cannot locate = Service Complaint → Claims Initiation Queue. This is a standard Claims case. Always use Claims Initiation Queue, not the Quality Team queue.' },
 ];
 
-// ── STAGE 5: Investigation Challenge ────────────────────────
+// ── STAGE 5: Case Studies ──────────────────────────────────
 const S5_CASES = [
-  { title: 'Case #001 — Damaged Delivery',
-    desc: 'A hospital contacts the ICS Returns Team. They received an ICS-managed shipment but multiple packages arrived with visible crush damage. Products appear unusable.',
+  { title: 'Case #001 — Customer Received Wrong Product',
+    desc: 'A hospital calls ICS Returns. They ordered Product A (10mg tablets) but received Product B (20mg tablets). ICS arranged and managed the shipment using UPS as the contracted carrier.',
     questions: [
-      { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'YES', hint: 'The hospital confirms the shipment was managed by ICS.' },
-      { q: 'Where did the issue originate?', opts: ['During ICS Shipment / Handling', 'From the Manufacturer'], answer: 'During ICS Shipment / Handling', hint: 'Crush damage occurred during ICS-managed transit — a service issue.' },
-      { q: 'What type of complaint is this?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Service Complaint', hint: 'Damage during ICS-managed transit = Service Complaint.' },
-      { q: 'What should Returns do?', opts: ['Route to Claims Team', 'Contact Client (Manufacturer) — No QC', 'Create Quality Case', 'Investigate Warehouse'], answer: 'Route to Claims Team', hint: 'Service Complaints → Claims Team. Claims creates the Quality Case.' },
+      { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'YES', hint: 'ICS arranged and managed the shipment — UPS transported it as a contracted carrier on behalf of ICS.' },
+      { q: 'Is this a Service or Product Complaint?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Service Complaint', hint: 'Wrong product picked and shipped by ICS = Service Complaint. The issue occurred during ICS operations.' },
+      { q: 'Where does Returns route this?', opts: ['Claims Initiation Queue', 'Quality Team Queue', 'Contact Client / Manufacturer', 'Investigate internally'], answer: 'Claims Initiation Queue', hint: 'Service Complaint → Claims Initiation Queue. Never the Quality Team queue. Claims Initiation investigates and creates the Quality Case.' },
+      { q: 'Who creates the Quality Case?', opts: ['Returns Team', 'Claims Initiation', 'Quality Team', 'The hospital'], answer: 'Claims Initiation', hint: 'Claims Initiation creates the QC — never Returns. Returns routes, Claims Initiation investigates.' },
     ]
   },
-  { title: 'Case #002 — Device Malfunction',
-    desc: 'A pharmacy reports patients experiencing dosing errors with a specific insulin device. The device appears to have a mechanical failure. ICS delivered the products, manufactured by PharmaCo.',
+  { title: 'Case #002 — Incorrect Serial Numbers',
+    desc: 'A clinic contacts ICS Returns. The serial numbers on the received medical devices do not match the shipping documentation or the purchase order. ICS managed and dispatched this shipment.',
     questions: [
-      { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'YES', hint: 'ICS did deliver the products — but delivery is not the issue here.' },
-      { q: 'Where did the issue originate?', opts: ['During ICS Shipment / Handling', 'From the Manufacturer'], answer: 'From the Manufacturer', hint: 'Mechanical failure in the device originates from the manufacturer/product.' },
-      { q: 'What type of complaint is this?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Product Complaint', hint: 'Device malfunction from manufacturer = Product Complaint.' },
-      { q: 'What should Returns do?', opts: ['Route to Claims Team', 'Contact Client (Manufacturer) — No QC', 'Create Quality Case', 'Investigate'], answer: 'Contact Client (Manufacturer) — No QC', hint: 'Product Complaint → Contact Client (Manufacturer), follow Source Client direction, no Quality Case.' },
+      { q: 'Is this a Service or Product Complaint?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Service Complaint', hint: 'Serial number mismatch on ICS-managed shipment = Service Complaint. This is a standard Claims case.' },
+      { q: 'Is this a Claims case?', opts: ['YES — route to Claims Initiation', 'NO — contact Client / Manufacturer'], answer: 'YES — route to Claims Initiation', hint: 'Serial number mismatch is a listed Claims case. Route to Claims Initiation Queue.' },
+      { q: 'What does Returns do?', opts: ['Route to Claims Initiation Queue', 'Create the Quality Case', 'Investigate the serial numbers', 'Contact the manufacturer'], answer: 'Route to Claims Initiation Queue', hint: 'Returns routes. Claims Initiation investigates and creates the QC. Returns never investigates or creates QCs.' },
+      { q: 'Which queue does this go to?', opts: ['Claims Initiation Queue', 'Quality Team Queue', 'Returns Team Queue', 'Warehouse Queue'], answer: 'Claims Initiation Queue', hint: 'Always use the Claims Initiation Queue for Service Complaints — never the Quality Team queue.' },
     ]
   },
-  { title: 'Case #003 — Non-ICS Shipment',
-    desc: 'A clinic contacts ICS Returns with a complaint about damaged products. After review, Returns finds that the shipment was managed entirely by the client\'s own logistics team, not ICS.',
+  { title: 'Case #003 — Manufacturing Defect',
+    desc: 'A pharmacy reports that an insulin device fails to deliver the correct dose. The manufacturer has confirmed an assembly error at the production facility affecting this batch. ICS delivered the product.',
     questions: [
-      { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'NO', hint: 'The client\'s own logistics team managed this shipment — ICS was not responsible.' },
-      { q: 'What is the immediate next step?', opts: ['Contact Client (Manufacturer)', 'Create Quality Case', 'Route to Claims', 'Investigate the Carrier'], answer: 'Contact Client (Manufacturer)', hint: 'If ICS did not manage the shipment → contact Client (Manufacturer) immediately.' },
-      { q: 'Does Returns create a Quality Case?', opts: ['NO — Follow Source Client Direction', 'YES — Always Required', 'Only if Claims requests it', 'Only if severity is high'], answer: 'NO — Follow Source Client Direction', hint: 'No Quality Case when ICS did not manage the shipment. Follow Source Client direction.' },
-      { q: 'Who provides direction on next steps?', opts: ['Source Client via Client (Manufacturer)', 'Claims Team', 'Returns Team Leader', 'Warehouse Manager'], answer: 'Source Client via Client (Manufacturer)', hint: 'Contact Client (Manufacturer) → the Source Client provides direction when ICS was not involved.' },
+      { q: 'Where did the issue originate?', opts: ['During ICS Shipment / Handling', 'From the Manufacturer'], answer: 'From the Manufacturer', hint: 'The assembly error occurred at the production facility — this has nothing to do with ICS handling or transport.' },
+      { q: 'Is this a Service or Product Complaint?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Product Complaint', hint: 'Manufacturing defect from the production facility = Product Complaint.' },
+      { q: 'Does this go to Claims Initiation?', opts: ['NO — contact Client / Manufacturer', 'YES — Claims Initiation Queue'], answer: 'NO — contact Client / Manufacturer', hint: 'Product Complaints do NOT go to Claims Initiation. Returns contacts the Client (Manufacturer) and follows their direction. No QC is created by Claims for Product Complaints.' },
+      { q: 'What is the correct next step for Returns?', opts: ['Contact Client (Manufacturer) for direction', 'Create a Quality Case', 'Route to Claims Initiation Queue', 'Investigate the device'], answer: 'Contact Client (Manufacturer) for direction', hint: 'Returns contacts the Client (Manufacturer) and follows their instructions. No Quality Case unless the Client instructs otherwise.' },
     ]
   },
 ];
 
 
-// ── STAGE 6: Root Cause Timeline ────────────────────────────
-const S6_NODES = ['🏭 Manufacturing', '🏢 Warehouse', '🚚 Transportation', '🏥 Customer Site'];
+// ── STAGE 6: Where Did It Originate? ───────────────────────
+const S6_NODES = ['🏭 Manufacturing', '🏢 ICS Warehouse', '🚚 Transportation', '🗂 Billing / Data', '🏥 Customer Site'];
 const S6_DATA = [
-  { scenario: 'A patient reports medication tablets crumble when pressed from the blister pack. The batch code links to the production facility.', answer: '🏭 Manufacturing', hint: 'Tablet fragility from production = manufacturing defect.' },
-  { scenario: 'Products arrived correctly but 3 boxes were mixed with another client\'s order. The mix-up was identified to have occurred at the ICS facility during picking.', answer: '🏢 Warehouse', hint: 'Mix-up during picking at ICS facility = warehouse error.' },
-  { scenario: 'Temperature-sensitive vaccines arrived at 12°C instead of 2–8°C. Data logger shows the breach occurred during the truck journey.', answer: '🚚 Transportation', hint: 'Cold-chain breach during truck journey = transportation issue.' },
-  { scenario: 'A device was returned as non-functional. Engineering testing confirms the internal motor was assembled incorrectly at the production facility.', answer: '🏭 Manufacturing', hint: 'Incorrect motor assembly at production = manufacturing defect.' },
-  { scenario: 'Products were delivered correctly and in good condition. The clinic stored them at room temperature instead of refrigerated. When administered, they had degraded.', answer: '🏥 Customer Site', hint: 'Improper storage at the customer\'s site caused the issue.' },
+  { scenario: 'Customer received only 8 of 10 ordered boxes. ICS picked, packed, and dispatched the order. Carrier confirmed 8 boxes were collected from the ICS facility.', answer: '🏢 ICS Warehouse', hint: 'Shortage originated at the ICS warehouse during pick-and-pack. Service Complaint → Claims Initiation.' },
+  { scenario: 'An invoice shows the wrong price for a product. The billing team confirms the error was entered into the ICS order management system.', answer: '🗂 Billing / Data', hint: 'Pricing error in the ICS system = billing/data origin. Service Complaint → Claims Initiation.' },
+  { scenario: 'Temperature-sensitive vaccines arrived outside the required range. ICS arranged the shipment. Data loggers confirm the cold chain was broken during carrier transit.', answer: '🚚 Transportation', hint: 'Cold-chain breach during carrier transit on ICS-managed shipment. Origin = Transportation. Service Complaint → Claims Initiation.' },
+  { scenario: 'A patient reports adverse side effects at the prescribed dosage. The manufacturer confirms a formulation issue in this production batch.', answer: '🏭 Manufacturing', hint: 'Adverse reaction from a manufacturing formulation issue. Origin = Manufacturing. Product Complaint → Contact Client (Manufacturer).' },
+  { scenario: 'A customer cannot receive goods into their system because the PO number on the shipment documentation is incorrect. The error is traced to order entry at ICS.', answer: '🗂 Billing / Data', hint: 'Incorrect PO number from ICS order entry = billing/data origin. Service Complaint → Claims Initiation.' },
 ];
 
-// ── STAGE 7: Complaint Escape ────────────────────────────────
+// ── STAGE 7: End-to-End Routing ────────────────────────────
 const S7_STEPS = [
-  { step:1, situation:'📥 You receive a complaint: a hospital reports receiving 200 units of Product X, but ordered 300. ICS managed this delivery.', q:'What is your FIRST action as Returns Team?', opts:['Review the complaint details','Contact Claims immediately','Create a Quality Case','Escalate to management'], ans:0, hint:'Always REVIEW the complaint first before routing or escalating.' },
-  { step:2, situation:'✅ You have reviewed the complaint. The delivery was managed by ICS.', q:'Did ICS manage the shipment?', opts:['YES — continue classification','NO — contact Client (Manufacturer)'], ans:0, hint:'Yes, ICS managed the shipment. Continue the classification process.' },
-  { step:3, situation:'🔍 ICS managed the shipment. Determine where the issue originated.', q:'Where did the wrong-quantity issue originate?', opts:['During ICS shipment / warehouse handling','From the manufacturer'], ans:0, hint:'Wrong quantity from ICS warehouse = issue during ICS service handling.' },
-  { step:4, situation:'📋 The issue originated during ICS handling.', q:'How should this complaint be classified?', opts:['Service Complaint','Product Complaint','Customer Error'], ans:0, hint:'ICS handling error = Service Complaint.' },
-  { step:5, situation:'✅ Classified: Service Complaint. Route to the correct owner.', q:'Who OWNS this complaint?', opts:['Claims Team (ICS)','Client (Manufacturer)','Returns Team'], ans:0, hint:'Service Complaints are owned by the Claims Team (ICS).' },
+  { step:1, situation:'📞 A hospital calls: "We ordered 10 boxes of Product X but only received 8. The delivery was arranged by ICS using FedEx."', q:'What is your FIRST action?', opts:['Review the complaint details','Create a Quality Case immediately','Call FedEx directly','Escalate to your manager'], ans:0, hint:'Always REVIEW first. Gather all details before classifying or routing.' },
+  { step:2, situation:'✅ You have reviewed the complaint. ICS arranged and managed this shipment via FedEx.', q:'Did ICS manage the shipment?', opts:['YES — ICS arranged and managed it','NO — FedEx owns the complaint'], ans:0, hint:'YES — FedEx transported under ICS direction. ICS managed the shipment. FedEx is a contracted carrier, not the responsible party.' },
+  { step:3, situation:'✅ ICS managed the shipment. The shortage occurred during ICS operations.', q:'Is this a Service or Product Complaint?', opts:['Service Complaint','Product Complaint'], ans:0, hint:'Shortage on an ICS-managed shipment = Service Complaint. This is one of the standard Claims Initiation cases.' },
+  { step:4, situation:'📋 Classified: Service Complaint. Time to route it.', q:'Where do you route a Service Complaint?', opts:['Claims Initiation Queue','Quality Team Queue','Returns Team Queue','Manufacturer Queue'], ans:0, hint:'Service Complaints → Claims Initiation Queue. Never the Quality Team queue. Always Claims Initiation.' },
+  { step:5, situation:'📤 Routed to Claims Initiation Queue. They take over.', q:'Who creates the Quality Case?', opts:['Claims Initiation','Returns Team','Quality Team','Warehouse Manager'], ans:0, hint:'Claims Initiation creates and owns the Quality Case. Returns' role is complete once routed. Returns never creates QCs.' },
 ];
 
-// ── STAGE EXPLANATIONS ────────────────────────────────────────
+// ── STAGE EXPLANATIONS ────────────────────────────────────
 const STAGE_EXPLANATIONS = {
   1: {
-    title: 'Service vs Product — Key Rules',
+    title: 'Service vs Product — The Foundation',
     points: [
-      { icon:'🚚', color:'green',  text:'<strong>Service Complaint</strong> — Issue occurred during an ICS-managed shipment, warehouse process, or transportation. The carrier (FedEx/UPS) may physically transport the goods, but if ICS arranged and managed the shipment, it is a Service Complaint.' },
-      { icon:'🏭', color:'blue',   text:'<strong>Product Complaint</strong> — Issue originated from the MANUFACTURER or the PRODUCT ITSELF (defect, contamination, adverse effect, malfunction).' },
-      { icon:'💡', color:'orange', text:'<strong>Key question: Did ICS manage the shipment?</strong> Not "who drove the truck?" — the deciding factor is whether ICS arranged and managed the shipment.' },
+      { icon:'🚚', color:'green',  text:'<strong>Service Complaint</strong> — Shortage, overage, wrong product, damaged shipment, missing shipment, serial number mismatch, billing error, missing EPCIS, incorrect PO, wrong account, incorrect transport method, temperature excursion on ICS-managed shipment, tracking-shows-delivered but customer cannot locate. All of these → Claims Initiation.' },
+      { icon:'🏭', color:'blue',   text:'<strong>Product Complaint</strong> — Manufacturing defect, device malfunction, product contamination, stability issue, packaging defect from manufacturing, adverse reaction. These originate from the manufacturer → Contact Client (Manufacturer). No QC by Claims.' },
+      { icon:'💡', color:'orange', text:'<strong>Key rule:</strong> ICS uses third-party carriers (FedEx, UPS, DHL). If ICS arranged and managed the shipment, any shipping, handling, or delivery issue is a Service Complaint — regardless of which carrier physically moved the goods.' },
     ],
     diagram: 'service-product',
-    takeaway: 'FedEx or UPS may carry the package — but if ICS managed the shipment, ICS owns any service issue.'
+    takeaway: 'Not every customer report is a simple return — many are Claims that require Claims Initiation to investigate and create a Quality Case.'
   },
   2: {
-    title: 'Ownership — Who Handles What',
+    title: 'Claims Initiation — When to Route There',
     points: [
-      { icon:'👥', color:'green',  text:'<strong>Service Complaint → Claims Team (ICS)</strong> — Claims investigates and creates the Quality Case.' },
-      { icon:'📞', color:'blue',   text:'<strong>Product Complaint → Client (Manufacturer)</strong> — Returns contacts AM. Source Client provides direction. No Quality Case.' },
-      { icon:'📋', color:'purple', text:'<strong>Returns Team</strong> reviews and ROUTES. Returns does NOT investigate or create Quality Cases.' },
+      { icon:'✅', color:'green',  text:'<strong>Route to Claims Initiation for:</strong> Shortage, overage, wrong product, another customer's order, damaged shipment, missing shipment, serial number mismatch, billing/pricing error, missing EPCIS, incorrect PO, incorrect account, incorrect transport method, temperature excursion (ICS-managed), tracking delivered but unlocatable.' },
+      { icon:'❌', color:'blue',   text:'<strong>Do NOT route to Claims Initiation for:</strong> Manufacturing defects, device malfunctions, product contamination, adverse reactions, stability issues, packaging defects from manufacturing. These are Product Complaints — contact the Client (Manufacturer).' },
+      { icon:'📋', color:'purple', text:'<strong>Returns Team role:</strong> Receive → Review → Classify (Service or Product) → Route correctly. Returns does NOT create Quality Cases and does NOT investigate.' },
     ],
     diagram: 'ownership',
-    takeaway: 'Route correctly the first time — the wrong owner wastes time and creates compliance risk.'
+    takeaway: 'Returns identifies and routes. Claims Initiation investigates. Claims Initiation creates the QC. Never the Quality Team queue.'
   },
   3: {
-    title: 'Core Rules — Quick Reference',
+    title: 'Sorting — Service vs Product',
     points: [
-      { icon:'✅', color:'green',  text:'Returns: <strong>receives → reviews → determines type → routes</strong>.' },
-      { icon:'❌', color:'red',    text:'Returns does NOT: investigate, create Quality Cases, or contact the manufacturer directly.' },
-      { icon:'📋', color:'blue',   text:'Quality Cases are created by <strong>Claims Team only</strong>, for Service Complaints only.' },
+      { icon:'🚚', color:'green',  text:'<strong>Service Complaints (→ Claims Initiation):</strong> Shortage, overage, wrong product, damaged shipment, missing shipment, serial number mismatch, incorrect pricing, incorrect account, missing EPCIS, temperature excursion (ICS-managed).' },
+      { icon:'🏭', color:'blue',   text:'<strong>Product Complaints (→ Client/Manufacturer):</strong> Manufacturing defect, device malfunction, product contamination, adverse reaction, stability issue, packaging defect from manufacturing.' },
+      { icon:'💡', color:'orange', text:'<strong>Quick rule:</strong> Did ICS manage the shipment and did the issue happen during ICS operations? → Service. Did the issue originate from the product or manufacturer? → Product.' },
     ],
-    diagram: 'rules',
-    takeaway: 'Know your lane: Returns routes, Claims investigates.'
+    diagram: 'service-product',
+    takeaway: 'When in doubt: if ICS touched it and something went wrong during ICS operations, it's a Service Complaint.'
   },
   4: {
-    title: 'The Routing Workflow — Including Temperature Excursions',
+    title: 'The Claims Workflow',
     points: [
-      { icon:'1️⃣', color:'purple', text:'<strong>The first question is always: Did ICS manage the shipment?</strong>' },
-      { icon:'🌡', color:'green',  text:'<strong>Temperature excursion — ICS managed the shipment:</strong> Service Complaint → Route to Claims Team → Claims creates the Quality Case and investigates.' },
-      { icon:'🌡', color:'orange', text:'<strong>Temperature excursion — Client managed the shipment:</strong> Returns does NOT create a QC. Returns contacts the Client (Manufacturer) and follows their direction.' },
+      { icon:'1️⃣', color:'purple', text:'<strong>Customer reports issue → Returns reviews it → Service or Product?</strong>' },
+      { icon:'2️⃣', color:'green',  text:'<strong>Service Complaint → Claims Initiation Queue</strong> → Claims Initiation investigates → Claims Initiation creates the Quality Case → Resolution.' },
+      { icon:'3️⃣', color:'blue',   text:'<strong>Product Complaint → Contact Client (Manufacturer)</strong> → Follow client instructions → No Quality Case (unless client instructs).' },
+      { icon:'⚠️', color:'orange', text:'<strong>Important:</strong> Always use the Claims Initiation Queue — never the Quality Team queue. Returns does not create QCs. Claims Initiation creates QCs.' },
     ],
     diagram: 'workflow',
-    takeaway: 'Who managed the shipment determines who owns the issue — not the type of problem.'
+    takeaway: 'Returns routes to Claims Initiation Queue. Claims Initiation owns the investigation and the Quality Case — not Returns, not the Quality Team.'
   },
   5: {
-    title: 'Investigation — Applying All Three Questions',
+    title: 'Case Studies — Key Lessons',
     points: [
-      { icon:'❓', color:'purple', text:'Q1: <strong>Did ICS manage the shipment?</strong> — If NO → Contact Client (Manufacturer) immediately.' },
-      { icon:'❓', color:'orange', text:'Q2: <strong>Where did it originate?</strong> — Service (ICS handling) or Product (manufacturer).' },
-      { icon:'❓', color:'green',  text:'Q3: <strong>Who owns it?</strong> — Claims (Service) or Source Client via AM (Product).' },
+      { icon:'✅', color:'green',  text:'<strong>Wrong product, shortage, serial number mismatch</strong> on ICS-managed shipments = Service Complaints → Claims Initiation Queue.' },
+      { icon:'✅', color:'blue',   text:'<strong>Manufacturing defects</strong> (assembly errors, formulation issues, contamination at factory) = Product Complaints → Contact Client (Manufacturer). Not Claims.' },
+      { icon:'💡', color:'orange', text:'<strong>Remember:</strong> Even if ICS delivered the product, if the issue comes from manufacturing, it is a Product Complaint. The carrier does not change this — the origin of the issue determines the type.' },
     ],
     diagram: 'three-questions',
-    takeaway: 'Always answer all three questions systematically — never skip steps.'
+    takeaway: 'Classify first (Service or Product), then route to the right queue. Claims Initiation creates the QC — Returns never does.'
   },
   6: {
-    title: 'Root Cause — Supply Chain Origins',
+    title: 'Origin → Classification → Routing',
     points: [
-      { icon:'🏭', color:'blue',   text:'<strong>Manufacturing</strong> defects → Product Complaint → Contact Client (Manufacturer).' },
-      { icon:'🏢', color:'purple', text:'<strong>Warehouse</strong> errors (ICS facility) → Service Complaint → Claims Team.' },
-      { icon:'🚚', color:'green',  text:'<strong>Transportation</strong> damage (carrier on ICS-managed shipment) → Service Complaint → Claims Team.' },
-      { icon:'🏥', color:'orange', text:'<strong>Customer site</strong> mishandling → may not be ICS responsibility → Contact Client (Manufacturer).' },
+      { icon:'🏢', color:'purple', text:'<strong>ICS Warehouse</strong> (shortage, wrong product, wrong account, serial mismatch) → Service Complaint → Claims Initiation.' },
+      { icon:'🚚', color:'green',  text:'<strong>Transportation</strong> (damaged, cold-chain breach, missing shipment, tracking issue) on ICS-managed shipment → Service Complaint → Claims Initiation.' },
+      { icon:'🗂', color:'orange', text:'<strong>Billing / Data</strong> (incorrect pricing, missing EPCIS, incorrect PO, wrong account) → Service Complaint → Claims Initiation.' },
+      { icon:'🏭', color:'blue',   text:'<strong>Manufacturing</strong> (defect, contamination, adverse reaction, stability, malfunction) → Product Complaint → Contact Client (Manufacturer).' },
     ],
     diagram: 'timeline',
-    takeaway: 'Trace every complaint back to its origin before classifying.'
+    takeaway: 'Trace the origin. If the issue happened within ICS operations (warehouse, transport, billing, data) — it's a Service Complaint for Claims Initiation.'
   },
   7: {
-    title: 'Complaint Escape — Full Routing Mastered',
+    title: 'End-to-End Routing — Complete',
     points: [
-      { icon:'📥', color:'purple', text:'<strong>Step 1:</strong> Receive complaint → REVIEW before any action.' },
-      { icon:'🔍', color:'orange', text:'<strong>Steps 2–4:</strong> Apply three questions → classify correctly.' },
-      { icon:'📤', color:'green',  text:'<strong>Steps 5–7:</strong> Route to correct owner → Claims or AM.' },
-      { icon:'🏆', color:'blue',   text:'<strong>Step 8:</strong> Returns\' role ends at routing — never investigate.' },
+      { icon:'📥', color:'purple', text:'<strong>Step 1:</strong> Review the complaint — gather all details before acting.' },
+      { icon:'❓', color:'orange', text:'<strong>Step 2:</strong> Did ICS manage the shipment? YES → continue. NO → Contact Client (Manufacturer).' },
+      { icon:'🔀', color:'green',  text:'<strong>Steps 3–4:</strong> Classify (Service or Product) → Route to Claims Initiation Queue (Service) or Client/Manufacturer (Product).' },
+      { icon:'📋', color:'blue',   text:'<strong>Step 5:</strong> Claims Initiation takes over — they investigate and create the Quality Case. Returns' role is complete.' },
     ],
     diagram: 'escape',
-    takeaway: 'The Returns Team is the gateway — accurate routing protects quality and compliance.'
+    takeaway: 'Returns receives, reviews, classifies, and routes. Claims Initiation investigates and creates the QC. That's the complete process.'
   },
 };
 
