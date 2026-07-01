@@ -713,7 +713,7 @@ const STAGE_EXPLANATIONS = {
       { icon:'📥', color:'purple', text:'<strong>Step 1:</strong> Review the complaint — gather all details before acting.' },
       { icon:'❓', color:'orange', text:'<strong>Step 2:</strong> Did ICS manage the shipment? YES → continue. NO → Contact Client (Manufacturer).' },
       { icon:'🔀', color:'green',  text:'<strong>Steps 3–4:</strong> Classify (Service or Product) → Route to Claims Initiation Queue (Service) or Client/Manufacturer (Product).' },
-      { icon:'📋', color:'blue',   text:'<strong>Step 5:</strong> Claims Initiation takes over — they investigate and create the Quality Case. Returns' role is complete.' },
+      { icon:'📋', color:'blue',   text:'<strong>Step 5:</strong> Claims Initiation takes over — they investigate and create the Quality Case. Returns\' role is complete.' },
     ],
     diagram: 'escape',
     takeaway: 'Returns receives, reviews, classifies, and routes. Claims Initiation investigates and creates the QC. That\'s the complete process.'
