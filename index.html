@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>Service vs Product Complaints — ICS Training</title>
+<title>Service vs Product Complaints — ICS Returns Team Knowledge Refresher</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -16,7 +16,7 @@
     <div class="ics-logo">ICS</div>
     <div class="spinner"></div>
     <div class="loader-title">Service vs Product<br>Complaints</div>
-    <div class="loader-org">ICS Returns Team Training</div>
+    <div class="loader-org">ICS Returns Team Knowledge Refresher</div>
     <div class="loader-sub" id="loading-msg">Initialising...</div>
   </div>
 </div>
@@ -26,9 +26,9 @@
   <div class="menu-inner">
     <div class="menu-logo">ICS</div>
     <h1 class="menu-title">Service vs Product<br>Complaints</h1>
-    <p class="menu-subtitle">ICS Returns Team Training Platform</p>
+    <p class="menu-subtitle">ICS Returns Team Knowledge Refresher Platform</p>
     <div class="menu-desc">
-      Master complaint classification and routing through<br>7 interactive stages of real-world scenarios.
+      Refresh your complaint classification skills across<br>7 interactive stages reinforcing real-world scenarios.
     </div>
     <button class="btn-corp-primary" id="btn-create">🏠 Create Session</button>
     <button class="btn-corp-outline" id="btn-join-open">🔗 Join Session</button>
@@ -43,7 +43,7 @@
 <!-- JOIN MODAL -->
 <div id="modal-join" class="modal-overlay hidden">
   <div class="modal-box">
-    <div class="modal-title">Join Training Session</div>
+    <div class="modal-title">Join Refresher Session</div>
     <input id="input-name" class="corp-input" type="text" placeholder="Your full name" maxlength="24" autocomplete="off">
     <input id="input-code" class="corp-input" type="text" placeholder="Session code (e.g. AB12)" maxlength="6" autocomplete="off" style="text-transform:uppercase">
     <button class="btn-corp-primary" id="btn-join-confirm">Join Session</button>
@@ -55,7 +55,7 @@
 <!-- CREATE MODAL -->
 <div id="modal-create" class="modal-overlay hidden">
   <div class="modal-box">
-    <div class="modal-title">Create Training Session</div>
+    <div class="modal-title">Create Refresher Session</div>
     <p class="modal-hint">You will be the Facilitator and control stage progression.</p>
     <input id="input-host-name" class="corp-input" type="text" placeholder="Your full name" maxlength="24" autocomplete="off">
     <button class="btn-corp-primary" id="btn-create-confirm">Create Session</button>
@@ -67,7 +67,7 @@
 <!-- LOBBY -->
 <div id="screen-lobby" class="screen">
   <div class="lobby-inner">
-    <div class="lobby-brand">ICS Training Platform</div>
+    <div class="lobby-brand">ICS Knowledge Refresher</div>
     <h2 class="lobby-title">Waiting Room</h2>
     <div class="room-code-wrap">
       <span class="room-code-label">Session Code</span>
@@ -77,7 +77,7 @@
     <div class="lobby-modules">
       <div class="module-card"><span class="module-icon">🔀</span><span>Stage 1: Service or Product?</span></div>
       <div class="module-card"><span class="module-icon">👤</span><span>Stage 2: Who Owns It?</span></div>
-      <div class="module-card"><span class="module-icon">✔</span><span>Stage 3: True or False</span></div>
+      <div class="module-card"><span class="module-icon">🃏</span><span>Stage 3: Complaint Sorting</span></div>
       <div class="module-card"><span class="module-icon">🔄</span><span>Stage 4: Complete the Workflow</span></div>
       <div class="module-card"><span class="module-icon">📋</span><span>Stage 5: Investigation Challenge</span></div>
       <div class="module-card"><span class="module-icon">🕐</span><span>Stage 6: Root Cause Timeline</span></div>
@@ -86,7 +86,7 @@
     <div class="player-list" id="lobby-player-list"></div>
     <div class="lobby-status" id="lobby-status">Waiting for participants...</div>
     <div class="lobby-actions">
-      <button class="btn-corp-primary hidden" id="btn-start-game">▶ Begin Training</button>
+      <button class="btn-corp-primary hidden" id="btn-start-game">▶ Begin Refresher</button>
       <button class="btn-corp-ghost" id="btn-leave-lobby">Leave</button>
     </div>
   </div>
@@ -181,28 +181,40 @@
         </button>
         <button class="choice-btn choice-am" onclick="handleS2('am')">
           <span class="choice-icon">📞</span>
-          <span class="choice-label">Contact AM</span>
-          <span class="choice-sub">No Quality Case</span>
+          <span class="choice-label">Contact Client</span>
+          <span class="choice-sub">(Manufacturer) — No QC</span>
         </button>
       </div>
       <div class="answer-feedback hidden" id="s2-feedback"></div>
     </div>
 
-    <!-- STAGE 3: True or False -->
+    <!-- STAGE 3: Complaint Sorting (Drag & Drop) -->
     <div id="s3-panel" class="stage-panel hidden">
-      <p class="panel-label">Is this statement TRUE or FALSE?</p>
-      <div class="statement-card" id="s3-statement"></div>
-      <div class="two-btn-row">
-        <button class="choice-btn choice-true" onclick="handleS3(true)">
-          <span class="choice-icon">✓</span>
-          <span class="choice-label">TRUE</span>
-        </button>
-        <button class="choice-btn choice-false" onclick="handleS3(false)">
-          <span class="choice-icon">✗</span>
-          <span class="choice-label">FALSE</span>
+      <p class="panel-label drag-instr">Drag each complaint into the correct column, then click <strong>Finish</strong>.</p>
+      <div class="drag-board">
+        <!-- Unplaced pool -->
+        <div class="drag-pool-wrap">
+          <div class="drag-pool-label">📋 Complaints</div>
+          <div class="drag-pool" id="s3-drag-pool" data-zone="pool"></div>
+        </div>
+        <!-- Drop zones -->
+        <div class="drag-zones">
+          <div class="drag-zone drag-zone-service" id="s3-zone-service" data-zone="service">
+            <div class="dz-header">🚚 Service Complaint</div>
+            <div class="dz-sub">ICS managed it</div>
+          </div>
+          <div class="drag-zone drag-zone-product" id="s3-zone-product" data-zone="product">
+            <div class="dz-header">🏭 Product Complaint</div>
+            <div class="dz-sub">From manufacturer</div>
+          </div>
+        </div>
+      </div>
+      <div class="drag-actions">
+        <button class="btn-corp-primary drag-finish-btn" id="s3-finish-btn" onclick="submitDragStage()" disabled>
+          ✅ Finish — Submit Answers
         </button>
       </div>
-      <div class="answer-feedback hidden" id="s3-feedback"></div>
+      <div class="drag-results hidden" id="s3-drag-results"></div>
     </div>
 
     <!-- STAGE 4: Complete the Workflow -->
@@ -294,7 +306,7 @@
 <!-- FINAL RESULTS -->
 <div id="screen-results" class="screen">
   <div class="results-inner">
-    <div class="results-org">ICS Returns Team Training</div>
+    <div class="results-org">ICS Returns Team Knowledge Refresher</div>
     <div class="results-title">🏆 Final Rankings</div>
     <div class="results-reveal-label">Revealing results — starting from 5th place...</div>
     <div class="podium" id="podium"></div>
