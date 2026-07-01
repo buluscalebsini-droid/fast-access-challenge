@@ -1,7 +1,7 @@
 // ============================================================
-// app.js — Service vs Product Complaints — ICS Training v1
+// app.js — Service vs Product Complaints — ICS Returns Team Knowledge Refresher
 // INFRASTRUCTURE: kept 100% identical to original
-// GAME CONTENT: replaced with 7 corporate training stages
+// GAME CONTENT: 7 refresher stages — reinforcing existing knowledge
 // ============================================================
 import {
   db, auth, ref, set, get, update, onValue, onDisconnect,
@@ -72,7 +72,7 @@ let myUid = null, myName = '', roomCode = '', isHost = false;
 let players = {}, gameState = {}, activeListeners = [];
 let localTimerId = null;
 
-// Training game state
+// Refresher game state
 let currentStage  = 1;   // 1-7
 let stageItem     = 0;   // current question index within stage
 let stageCanAct   = false;
@@ -159,18 +159,11 @@ function initConnectionMonitor() {
 async function createRoom(hostName) {
   console.log('[createRoom] start, uid=', myUid);
   myName = hostName.trim(); isHost = true; roomCode = genRoomCode();
-  // Bug fix: always recreate roomRef after potential collision so set() uses the correct path
-  let roomRef = dbRef('rooms', roomCode);
+  const roomRef = dbRef('rooms', roomCode);
   console.log('[createRoom] checking if room exists:', roomCode);
-  if ((await get(roomRef)).exists()) {
-    roomCode = genRoomCode();
-    roomRef  = dbRef('rooms', roomCode); // ← recreate so set() targets the new code
-    console.log('[createRoom] collision avoided, new code:', roomCode);
-  }
+  if ((await get(roomRef)).exists()) roomCode = genRoomCode();
   console.log('[createRoom] setting onDisconnect for:', roomCode);
-  // onDisconnect is non-fatal — if rules block it, we still proceed with the write
-  try { await onDisconnect(dbRef('rooms', roomCode, 'players', myUid)).remove(); }
-  catch(odErr) { console.warn('[createRoom] onDisconnect setup failed (non-critical):', odErr.code || odErr.message); }
+  await onDisconnect(dbRef('rooms', roomCode, 'players', myUid)).remove();
   console.log('[createRoom] writing room to Firebase...');
   await set(roomRef, {
     host: myUid, status: 'lobby', created: serverTimestamp(),
@@ -247,7 +240,7 @@ function renderLobbyPlayers() {
   if (isHost) {
     const btn = document.getElementById('btn-start-game');
     btn.disabled = count < 1;
-    btn.textContent = count < 2 ? '▶ Start Solo Session' : '▶ Begin Training';
+    btn.textContent = count < 2 ? '▶ Start Solo Session' : '▶ Begin Refresher';
   }
 }
 async function hostStartGame() {
@@ -356,13 +349,13 @@ function startTimerLocal(timerId, barId, seconds, onEnd) {
 // STAGE INTRO SYSTEM
 // ============================================================
 const STAGE_INTROS = {
-  1: { icon:'🔀', title:'Service or Product?',   sub:'Classify each complaint as a Service Complaint or a Product Complaint.', tip:'Service = ICS managed it. Product = from manufacturer.', badge:'8 Scenarios', color:'var(--c-purple)' },
-  2: { icon:'👤', title:'Who Owns It?',            sub:'Determine whether the Claims Team or the Account Manager should handle each complaint.', tip:'Service Complaints → Claims. Product Complaints → Contact AM.', badge:'6 Scenarios', color:'var(--c-green)' },
-  3: { icon:'✔',  title:'True or False',           sub:'Fast-paced: is each statement about complaint routing correct?', tip:'Apply your knowledge of the three key questions.', badge:'10 Statements', color:'var(--c-blue)' },
-  4: { icon:'🔄', title:'Complete the Workflow',   sub:'Fill in the missing step in each complaint routing workflow.', tip:'Think through the full routing process step by step.', badge:'6 Questions', color:'var(--c-orange)' },
-  5: { icon:'📋', title:'Investigation Challenge', sub:'Work through four complete complaint cases, answering all four routing questions per case.', tip:'Bonus points for getting all four questions right in a single case!', badge:'4 Cases', color:'var(--c-purple)' },
-  6: { icon:'🕐', title:'Root Cause Timeline',     sub:'Identify where on the supply chain timeline the complaint originated.', tip:'The origin point determines whether it\'s a Service or Product complaint.', badge:'6 Scenarios', color:'var(--c-green)' },
-  7: { icon:'🚪', title:'Complaint Escape',        sub:'Navigate a complete complaint from receipt to resolution by making correct decisions at every step.', tip:'Perfect score earns a bonus certificate!', badge:'8 Decisions', color:'var(--c-blue)' },
+  1: { icon:'🔀', title:'Service or Product?',   sub:'Quick check — classify each complaint as Service or Product.', tip:'You know this. Service = ICS managed it. Product = from the manufacturer.', badge:'5 Scenarios', color:'var(--c-purple)' },
+  2: { icon:'👤', title:'Who Owns It?',            sub:'Determine whether the Claims Team or the Client (Manufacturer) should handle each complaint.', tip:'Service Complaints → Claims. Product Complaints → Contact Client (Manufacturer).', badge:'5 Scenarios', color:'var(--c-green)' },
+  3: { icon:'🃏', title:'Complaint Sorting',        sub:'Drag each complaint into the correct column — Service or Product?', tip:'You know the difference. Sort them all, then click Finish.', badge:'12 Cards', color:'var(--c-blue)' },
+  4: { icon:'🔄', title:'Complete the Workflow',   sub:'Complete the routing workflow — fill in the missing step.', tip:'Recall the full routing process step by step.', badge:'5 Questions', color:'var(--c-orange)' },
+  5: { icon:'📋', title:'Investigation Challenge', sub:'Test your recall on four complete complaint cases — answer all four routing questions per case.', tip:'Bonus points for a perfect case. Let\'s see what you remember!', badge:'3 Cases', color:'var(--c-purple)' },
+  6: { icon:'🕐', title:'Root Cause Timeline',     sub:'Identify where in the supply chain the complaint originated.', tip:'Where it started tells you what type it is. Recall your supply chain knowledge.', badge:'5 Scenarios', color:'var(--c-green)' },
+  7: { icon:'🚪', title:'Complaint Escape',        sub:'Navigate a real complaint end-to-end — every decision counts.', tip:'A perfect run earns bonus points. How sharp is your recall?', badge:'5 Decisions', color:'var(--c-blue)' },
 };
 function showStageIntro(n, cb) {
   const info = STAGE_INTROS[n];
@@ -402,19 +395,16 @@ const S1_DATA = [
   { scenario: 'Hospital received 50 units instead of the ordered 100 — the picking error happened at the ICS warehouse.', answer: 'service', hint: 'Wrong quantity from ICS warehouse = handling error during ICS service → Service Complaint.' },
   { scenario: 'A batch of syringes shows visible contamination linked to the manufacturing facility batch record.', answer: 'product', hint: 'Contamination originating at the manufacturing stage → Product Complaint.' },
   { scenario: 'Temperature-sensitive vaccines exceeded cold-chain limits during the ICS truck delivery (GPS log confirms).', answer: 'service', hint: 'Temperature excursion during ICS-managed transit → Service Complaint.' },
-  { scenario: 'A patient experiences an adverse reaction after using the medication at the prescribed dosage.', answer: 'product', hint: 'Adverse effects relate to the product itself, not the service → Product Complaint.' },
-  { scenario: 'A medical device was shipped by ICS to the wrong hospital address.', answer: 'service', hint: 'Wrong-address delivery is an ICS service error → Service Complaint.' },
-  { scenario: 'A pharmacy discovers a manufacturing defect in the blister-pack seal upon opening.', answer: 'product', hint: 'Manufacturing defects originate from the manufacturer → Product Complaint.' },
 ];
 
 // ── STAGE 2: Who Owns It? ───────────────────────────────────
 const S2_DATA = [
   { scenario: 'Service complaint confirmed: carrier damaged products during ICS-managed transit.', question: 'Who owns this complaint?', answer: 'claims', hint: 'Service Complaints are owned by the Claims Team (ICS). They create and investigate the Quality Case.' },
-  { scenario: 'Product complaint received: a medical device has a manufacturing defect reported by the end user.', question: 'Who should Returns contact?', answer: 'am', hint: 'Product Complaints belong to the Source Client. Returns contacts the Account Manager (AM). No Quality Case.' },
+  { scenario: 'Product complaint received: a medical device has a manufacturing defect reported by the end user.', question: 'Who should Returns contact?', answer: 'am', hint: 'Product Complaints belong to the Source Client. Returns contacts the Client (Manufacturer). No Quality Case.' },
   { scenario: 'ICS warehouse dispatched the wrong product line to a hospital.', question: 'Who investigates this?', answer: 'claims', hint: 'Wrong product from ICS warehouse = Service Complaint → Claims Team investigates.' },
-  { scenario: 'A patient reports an adverse effect from using the product as directed by the prescription.', question: 'Who does Returns contact?', answer: 'am', hint: 'Adverse effects = Product Complaint → Contact AM, follow Source Client direction.' },
+  { scenario: 'A patient reports an adverse effect from using the product as directed by the prescription.', question: 'Who does Returns contact?', answer: 'am', hint: 'Adverse effects = Product Complaint → Contact Client (Manufacturer), follow Source Client direction.' },
   { scenario: 'Cold-chain excursion confirmed during an ICS-managed delivery run.', question: 'Who creates the Quality Case?', answer: 'claims', hint: 'Transport excursion = Service Complaint → Claims Team creates the Quality Case.' },
-  { scenario: 'Product contamination traced to the manufacturing facility batch production.', question: 'What does Returns do?', answer: 'am', hint: 'Manufacturing contamination = Product Complaint → Contact AM. Returns does NOT create a Quality Case.' },
+  { scenario: 'Product contamination traced to the manufacturing facility batch production.', question: 'What does Returns do?', answer: 'am', hint: 'Manufacturing contamination = Product Complaint → Contact Client (Manufacturer). Returns does NOT create a Quality Case.' },
 ];
 
 // ── STAGE 3: True or False ──────────────────────────────────
@@ -423,13 +413,149 @@ const S3_DATA = [
   { statement: 'Claims Team investigates Service Complaints and creates the Quality Case.', answer: true, hint: 'TRUE — Claims Team owns Service Complaints: they investigate and create the Quality Case.' },
   { statement: 'Product Complaints originate from the manufacturer or the product itself.', answer: true, hint: 'TRUE — Product Complaints include defects, adverse effects, and manufacturing issues.' },
   { statement: 'The Returns Team investigates every complaint it receives.', answer: false, hint: 'FALSE — Returns reviews and ROUTES complaints. Returns does NOT investigate.' },
-  { statement: 'If ICS did not manage the shipment, Returns should contact the Account Manager.', answer: true, hint: 'TRUE — No ICS involvement = contact AM and follow Source Client direction.' },
+  { statement: 'If ICS did not manage the shipment, Returns should contact the Client (Manufacturer).', answer: true, hint: 'TRUE — No ICS involvement = contact Client (Manufacturer) and follow Source Client direction.' },
   { statement: 'A temperature excursion during ICS delivery is a Product Complaint.', answer: false, hint: 'FALSE — Temperature excursion during ICS service = Service Complaint.' },
-  { statement: 'For Product Complaints, Returns contacts the Account Manager.', answer: true, hint: 'TRUE — Product Complaints: Returns contacts AM, follows Source Client direction. No Quality Case.' },
+  { statement: 'For Product Complaints, Returns contacts the Client (Manufacturer).', answer: true, hint: 'TRUE — Product Complaints: Returns contacts AM, follows Source Client direction. No Quality Case.' },
   { statement: 'Wrong quantity delivered by ICS is classified as a Product Complaint.', answer: false, hint: 'FALSE — Wrong quantity from ICS handling = Service Complaint.' },
   { statement: 'Claims Team is responsible for Service Complaints.', answer: true, hint: 'TRUE — Claims Team (ICS) owns all Service Complaints.' },
   { statement: 'Returns Team should create a Quality Case for Product Complaints.', answer: false, hint: 'FALSE — No Quality Case for Product Complaints. Returns contacts AM only.' },
 ];
+
+// ── STAGE 3: Complaint Sorting (Drag & Drop) ────────────────
+const DRAG_CARDS = [
+  { id:'d1',  text:'Wrong product line shipped by ICS warehouse',          answer:'service' },
+  { id:'d2',  text:'Temperature excursion during ICS cold-chain delivery', answer:'service' },
+  { id:'d3',  text:'Product packaging damaged during ICS transit',         answer:'service' },
+  { id:'d4',  text:'Manufacturer defect found in device mechanism',        answer:'product' },
+  { id:'d5',  text:'Adverse reaction reported at prescribed dose',         answer:'product' },
+  { id:'d6',  text:'Product contamination traced to production batch',     answer:'product' },
+  { id:'d7',  text:'Incorrect quantity dispatched from ICS facility',      answer:'service' },
+  { id:'d8',  text:'Manufacturing packaging seal defect on blister pack',  answer:'product' },
+  { id:'d9',  text:'Device malfunction due to faulty internal component',  answer:'product' },
+  { id:'d10', text:'Wrong delivery address by ICS carrier',                answer:'service' },
+  { id:'d11', text:'Batch manufacturing quality issue at factory',         answer:'product' },
+  { id:'d12', text:'Product recall due to stability issue at manufacture', answer:'product' },
+];
+
+let dragState = {};  // { cardId: 'service'|'product'|null }
+let dragSrcId  = null;
+
+function startS3Drag() {
+  dragState = {};
+  DRAG_CARDS.forEach(c => { dragState[c.id] = null; });
+  showGamePanel('s3-panel');
+  setItemProgress(1, 1);
+  startTimerLocal('train-timer','train-timer-bar',120,() => { submitDragStage(); });
+  renderDragBoard();
+}
+
+function renderDragBoard() {
+  const pool    = document.getElementById('s3-drag-pool');
+  const svcZone = document.getElementById('s3-zone-service');
+  const prdZone = document.getElementById('s3-zone-product');
+  pool.innerHTML = ''; svcZone.innerHTML = ''; prdZone.innerHTML = '';
+  DRAG_CARDS.forEach(card => {
+    const el = makeDragCard(card);
+    const placed = dragState[card.id];
+    if (placed === 'service')      svcZone.appendChild(el);
+    else if (placed === 'product') prdZone.appendChild(el);
+    else                           pool.appendChild(el);
+  });
+  updateFinishBtn();
+}
+
+function makeDragCard(card) {
+  const el = document.createElement('div');
+  el.className = 'drag-card';
+  el.dataset.id = card.id;
+  el.textContent = card.text;
+  el.draggable = true;
+
+  // Desktop drag
+  el.addEventListener('dragstart', e => {
+    dragSrcId = card.id; el.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', card.id);
+  });
+  el.addEventListener('dragend', () => el.classList.remove('dragging'));
+
+  // Touch drag (mobile)
+  el.addEventListener('touchstart', e => {
+    dragSrcId = card.id; el.classList.add('dragging');
+  }, {passive:true});
+  el.addEventListener('touchend', e => {
+    el.classList.remove('dragging');
+    const t = e.changedTouches[0];
+    const target = document.elementFromPoint(t.clientX, t.clientY);
+    const zone = target && target.closest('[data-zone]');
+    if (zone) dropOnZone(zone.dataset.zone);
+  }, {passive:true});
+
+  return el;
+}
+
+function setupDragZones() {
+  ['s3-zone-service','s3-zone-product','s3-drag-pool'].forEach(zoneId => {
+    const zone = document.getElementById(zoneId);
+    if (!zone) return;
+    const zoneName = zone.dataset.zone;
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      if (dragSrcId) dropOnZone(zoneName);
+    });
+  });
+}
+
+function dropOnZone(zoneName) {
+  if (!dragSrcId) return;
+  dragState[dragSrcId] = (zoneName === 'service' || zoneName === 'product') ? zoneName : null;
+  dragSrcId = null;
+  renderDragBoard();
+}
+
+function updateFinishBtn() {
+  const allPlaced = DRAG_CARDS.every(c => dragState[c.id] !== null);
+  const btn = document.getElementById('s3-finish-btn');
+  if (btn) { btn.disabled = !allPlaced; btn.style.opacity = allPlaced ? '1' : '0.45'; }
+}
+
+function submitDragStage() {
+  stopLocalTimer();
+  const btn = document.getElementById('s3-finish-btn');
+  if (btn) btn.disabled = true;
+  let correct = 0;
+  ['s3-zone-service','s3-zone-product','s3-drag-pool'].forEach(zoneId => {
+    const zone = document.getElementById(zoneId);
+    if (!zone) return;
+    zone.querySelectorAll('.drag-card').forEach(el => {
+      const card = DRAG_CARDS.find(c => c.id === el.dataset.id);
+      const placed = dragState[el.dataset.id];
+      if (placed === card.answer) { el.classList.add('drag-correct'); correct++; }
+      else el.classList.add('drag-wrong');
+    });
+  });
+  const wrong = DRAG_CARDS.length - correct;
+  const pts = Math.max(0, correct * 15 - wrong * 2);
+  if (pts > 0) addMyScore(pts);
+  if (wrong > 0) sfxWrong(); else sfxBonus();
+  const resultsEl = document.getElementById('s3-drag-results');
+  if (resultsEl) {
+    resultsEl.innerHTML = `<div class="drag-result-summary ${wrong===0?'all-correct':''}">
+      <span class="dr-icon">${wrong===0?'🏆':'📊'}</span>
+      <span class="dr-score">${correct}/${DRAG_CARDS.length} correct</span>
+      <span class="dr-pts">+${pts} pts</span>
+      ${wrong>0?`<span class="dr-wrong">${wrong} incorrect (−${wrong*2} pts)</span>`:''}
+    </div>`;
+    resultsEl.classList.remove('hidden');
+  }
+  showToast(wrong===0 ? '🏆 Perfect sort! All correct.' : `📊 ${correct}/${DRAG_CARDS.length} correct — +${pts} pts`);
+  setTimeout(() => finishStage(3), 2800);
+}
+window.submitDragStage = submitDragStage;
+
+
 
 // ── STAGE 4: Complete the Workflow ──────────────────────────
 const S4_DATA = [
@@ -445,24 +571,19 @@ const S4_DATA = [
     hint: 'Issue during ICS-managed transit = Service Complaint.' },
   { context: 'The complaint is a Product Complaint. What is Returns\' next action?',
     flow: ['📦 Product Complaint Identified', '📞 ???', '📋 Follow Source Client Direction', '🚫 No Quality Case'],
-    options: ['Create Quality Case', 'Contact Claims Team', 'Contact Account Manager (AM)', 'Investigate Complaint'],
-    answer: 'Contact Account Manager (AM)',
-    hint: 'Product Complaint → Returns contacts the Account Manager (AM).' },
+    options: ['Create Quality Case', 'Contact Claims Team', 'Contact Client (Manufacturer)', 'Investigate Complaint'],
+    answer: 'Contact Client (Manufacturer)',
+    hint: 'Product Complaint → Returns contacts the Client (Manufacturer).' },
   { context: 'ICS did NOT manage the shipment. What happens next?',
     flow: ['❓ Did ICS Manage Shipment?', '❌ NO', '???', '📋 Follow Source Client Direction'],
-    options: ['Create Quality Case', 'Contact Claims Team', 'Contact Account Manager (AM)', 'Classify as Service Complaint'],
-    answer: 'Contact Account Manager (AM)',
-    hint: 'If ICS did not manage the shipment → contact AM, follow Source Client direction, no QC.' },
+    options: ['Create Quality Case', 'Contact Claims Team', 'Contact Client (Manufacturer)', 'Classify as Service Complaint'],
+    answer: 'Contact Client (Manufacturer)',
+    hint: 'If ICS did not manage the shipment → contact Client (Manufacturer), follow Source Client direction, no QC.' },
   { context: 'Service complaint confirmed. Who creates the Quality Case?',
     flow: ['✅ Service Complaint', '📞 Route to ???', '📋 Quality Case Created', '🔍 Investigate'],
-    options: ['Returns Team', 'Account Manager', 'Claims Team (ICS)', 'Warehouse Team'],
+    options: ['Returns Team', 'Client (Manufacturer)', 'Claims Team (ICS)', 'Warehouse Team'],
     answer: 'Claims Team (ICS)',
     hint: 'Claims Team (ICS) creates and owns the Quality Case for Service Complaints.' },
-  { context: 'Where does a Product Complaint originate?',
-    flow: ['🏭 ???', '📦 Product Defect Found', '👤 Customer Reports Issue', '📋 Product Complaint'],
-    options: ['ICS Warehouse', 'Carrier / Transporter', 'Manufacturer', 'Claims Team'],
-    answer: 'Manufacturer',
-    hint: 'Product Complaints originate from the manufacturer or the product itself.' },
 ];
 
 // ── STAGE 5: Investigation Challenge ────────────────────────
@@ -473,7 +594,7 @@ const S5_CASES = [
       { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'YES', hint: 'The hospital confirms the shipment was managed by ICS.' },
       { q: 'Where did the issue originate?', opts: ['During ICS Shipment / Handling', 'From the Manufacturer'], answer: 'During ICS Shipment / Handling', hint: 'Crush damage occurred during ICS-managed transit — a service issue.' },
       { q: 'What type of complaint is this?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Service Complaint', hint: 'Damage during ICS-managed transit = Service Complaint.' },
-      { q: 'What should Returns do?', opts: ['Route to Claims Team', 'Contact AM — No Quality Case', 'Create Quality Case', 'Investigate Warehouse'], answer: 'Route to Claims Team', hint: 'Service Complaints → Claims Team. Claims creates the Quality Case.' },
+      { q: 'What should Returns do?', opts: ['Route to Claims Team', 'Contact Client (Manufacturer) — No QC', 'Create Quality Case', 'Investigate Warehouse'], answer: 'Route to Claims Team', hint: 'Service Complaints → Claims Team. Claims creates the Quality Case.' },
     ]
   },
   { title: 'Case #002 — Device Malfunction',
@@ -482,28 +603,20 @@ const S5_CASES = [
       { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'YES', hint: 'ICS did deliver the products — but delivery is not the issue here.' },
       { q: 'Where did the issue originate?', opts: ['During ICS Shipment / Handling', 'From the Manufacturer'], answer: 'From the Manufacturer', hint: 'Mechanical failure in the device originates from the manufacturer/product.' },
       { q: 'What type of complaint is this?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Product Complaint', hint: 'Device malfunction from manufacturer = Product Complaint.' },
-      { q: 'What should Returns do?', opts: ['Route to Claims Team', 'Contact AM — No Quality Case', 'Create Quality Case', 'Investigate'], answer: 'Contact AM — No Quality Case', hint: 'Product Complaint → Contact AM, follow Source Client direction, no Quality Case.' },
+      { q: 'What should Returns do?', opts: ['Route to Claims Team', 'Contact Client (Manufacturer) — No QC', 'Create Quality Case', 'Investigate'], answer: 'Contact Client (Manufacturer) — No QC', hint: 'Product Complaint → Contact Client (Manufacturer), follow Source Client direction, no Quality Case.' },
     ]
   },
   { title: 'Case #003 — Non-ICS Shipment',
     desc: 'A clinic contacts ICS Returns with a complaint about damaged products. After review, Returns finds that the shipment was managed entirely by the client\'s own logistics team, not ICS.',
     questions: [
       { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'NO', hint: 'The client\'s own logistics team managed this shipment — ICS was not responsible.' },
-      { q: 'What is the immediate next step?', opts: ['Contact Account Manager', 'Create Quality Case', 'Route to Claims', 'Investigate the Carrier'], answer: 'Contact Account Manager', hint: 'If ICS did not manage the shipment → contact AM immediately.' },
+      { q: 'What is the immediate next step?', opts: ['Contact Client (Manufacturer)', 'Create Quality Case', 'Route to Claims', 'Investigate the Carrier'], answer: 'Contact Client (Manufacturer)', hint: 'If ICS did not manage the shipment → contact Client (Manufacturer) immediately.' },
       { q: 'Does Returns create a Quality Case?', opts: ['NO — Follow Source Client Direction', 'YES — Always Required', 'Only if Claims requests it', 'Only if severity is high'], answer: 'NO — Follow Source Client Direction', hint: 'No Quality Case when ICS did not manage the shipment. Follow Source Client direction.' },
-      { q: 'Who provides direction on next steps?', opts: ['Source Client via Account Manager', 'Claims Team', 'Returns Team Leader', 'Warehouse Manager'], answer: 'Source Client via Account Manager', hint: 'Contact AM → the Source Client provides direction when ICS was not involved.' },
-    ]
-  },
-  { title: 'Case #004 — Temperature Excursion',
-    desc: 'A hospital reports that a temperature-sensitive product arrived outside the required 2–8°C range. ICS managed the entire cold-chain delivery. Data loggers confirm the excursion occurred during the truck journey.',
-    questions: [
-      { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'YES', hint: 'ICS managed the full cold-chain delivery.' },
-      { q: 'Where did the issue originate?', opts: ['During ICS Shipment / Handling', 'From the Manufacturer'], answer: 'During ICS Shipment / Handling', hint: 'Cold-chain breach occurred during ICS-managed transportation.' },
-      { q: 'What type of complaint is this?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Service Complaint', hint: 'Temperature excursion during ICS service = Service Complaint.' },
-      { q: 'Who creates the Quality Case?', opts: ['Claims Team (ICS)', 'Returns Team', 'Account Manager', 'Warehouse Manager'], answer: 'Claims Team (ICS)', hint: 'Service Complaints → Claims Team creates and owns the Quality Case.' },
+      { q: 'Who provides direction on next steps?', opts: ['Source Client via Client (Manufacturer)', 'Claims Team', 'Returns Team Leader', 'Warehouse Manager'], answer: 'Source Client via Client (Manufacturer)', hint: 'Contact Client (Manufacturer) → the Source Client provides direction when ICS was not involved.' },
     ]
   },
 ];
+
 
 // ── STAGE 6: Root Cause Timeline ────────────────────────────
 const S6_NODES = ['🏭 Manufacturing', '🏢 Warehouse', '🚚 Transportation', '🏥 Customer Site'];
@@ -513,19 +626,15 @@ const S6_DATA = [
   { scenario: 'Temperature-sensitive vaccines arrived at 12°C instead of 2–8°C. Data logger shows the breach occurred during the truck journey.', answer: '🚚 Transportation', hint: 'Cold-chain breach during truck journey = transportation issue.' },
   { scenario: 'A device was returned as non-functional. Engineering testing confirms the internal motor was assembled incorrectly at the production facility.', answer: '🏭 Manufacturing', hint: 'Incorrect motor assembly at production = manufacturing defect.' },
   { scenario: 'Products were delivered correctly and in good condition. The clinic stored them at room temperature instead of refrigerated. When administered, they had degraded.', answer: '🏥 Customer Site', hint: 'Improper storage at the customer\'s site caused the issue.' },
-  { scenario: 'Packages arrived crushed with clear external impact marks. Carrier tracking data shows the damage occurred during carrier transit.', answer: '🚚 Transportation', hint: 'External impact damage by carrier = transportation issue.' },
 ];
 
 // ── STAGE 7: Complaint Escape ────────────────────────────────
 const S7_STEPS = [
   { step:1, situation:'📥 You receive a complaint: a hospital reports receiving 200 units of Product X, but ordered 300. ICS managed this delivery.', q:'What is your FIRST action as Returns Team?', opts:['Review the complaint details','Contact Claims immediately','Create a Quality Case','Escalate to management'], ans:0, hint:'Always REVIEW the complaint first before routing or escalating.' },
-  { step:2, situation:'✅ You have reviewed the complaint. The delivery was managed by ICS.', q:'Did ICS manage the shipment?', opts:['YES — continue classification','NO — contact AM'], ans:0, hint:'Yes, ICS managed the shipment. Continue the classification process.' },
+  { step:2, situation:'✅ You have reviewed the complaint. The delivery was managed by ICS.', q:'Did ICS manage the shipment?', opts:['YES — continue classification','NO — contact Client (Manufacturer)'], ans:0, hint:'Yes, ICS managed the shipment. Continue the classification process.' },
   { step:3, situation:'🔍 ICS managed the shipment. Determine where the issue originated.', q:'Where did the wrong-quantity issue originate?', opts:['During ICS shipment / warehouse handling','From the manufacturer'], ans:0, hint:'Wrong quantity from ICS warehouse = issue during ICS service handling.' },
   { step:4, situation:'📋 The issue originated during ICS handling.', q:'How should this complaint be classified?', opts:['Service Complaint','Product Complaint','Customer Error'], ans:0, hint:'ICS handling error = Service Complaint.' },
-  { step:5, situation:'✅ Classified: Service Complaint.', q:'Who OWNS this complaint?', opts:['Claims Team (ICS)','Account Manager','Returns Team'], ans:0, hint:'Service Complaints are owned by the Claims Team (ICS).' },
-  { step:6, situation:'📞 Routing to the Claims Team.', q:'What does the Returns Team do with this complaint?', opts:['Route it to the Claims Team','Create the Quality Case ourselves','Investigate the warehouse picking error'], ans:0, hint:'Returns routes the complaint. Returns does NOT investigate or create QC.' },
-  { step:7, situation:'📬 Complaint handed to Claims Team. They take ownership.', q:'Who creates the Quality Case?', opts:['Claims Team (ICS)','Returns Team','Account Manager'], ans:0, hint:'Claims Team creates the Quality Case for Service Complaints.' },
-  { step:8, situation:'🎯 All steps completed successfully!', q:'Which principle did you apply throughout this investigation?', opts:['Returns reviews & routes — Claims investigates & creates Quality Case','Returns investigates all complaints end-to-end','Returns creates Quality Cases for Service Complaints'], ans:0, hint:'Returns: review and route. Claims: investigate and create Quality Case.' },
+  { step:5, situation:'✅ Classified: Service Complaint. Route to the correct owner.', q:'Who OWNS this complaint?', opts:['Claims Team (ICS)','Client (Manufacturer)','Returns Team'], ans:0, hint:'Service Complaints are owned by the Claims Team (ICS).' },
 ];
 
 // ── STAGE EXPLANATIONS ────────────────────────────────────────
@@ -544,7 +653,7 @@ const STAGE_EXPLANATIONS = {
     title: 'Ownership — Who Handles What',
     points: [
       { icon:'👥', color:'green',  text:'<strong>Service Complaint → Claims Team (ICS)</strong> — Claims investigates and creates the Quality Case.' },
-      { icon:'📞', color:'blue',   text:'<strong>Product Complaint → Account Manager</strong> — Returns contacts AM. Source Client provides direction. No Quality Case.' },
+      { icon:'📞', color:'blue',   text:'<strong>Product Complaint → Client (Manufacturer)</strong> — Returns contacts AM. Source Client provides direction. No Quality Case.' },
       { icon:'📋', color:'purple', text:'<strong>Returns Team</strong> reviews and ROUTES. Returns does NOT investigate or create Quality Cases.' },
     ],
     diagram: 'ownership',
@@ -565,7 +674,7 @@ const STAGE_EXPLANATIONS = {
     points: [
       { icon:'1️⃣', color:'purple', text:'<strong>Receive</strong> → <strong>Review</strong> → <strong>Did ICS manage it?</strong>' },
       { icon:'2️⃣', color:'orange', text:'If YES: <strong>Where did it originate?</strong> → Service or Product type.' },
-      { icon:'3️⃣', color:'green',  text:'<strong>Service</strong> → Claims Team (creates QC). <strong>Product</strong> → Contact AM (no QC).' },
+      { icon:'3️⃣', color:'green',  text:'<strong>Service</strong> → Claims Team (creates QC). <strong>Product</strong> → Contact Client (Manufacturer) (no QC).' },
     ],
     diagram: 'workflow',
     takeaway: 'Three questions, two paths, clear ownership — every time.'
@@ -573,7 +682,7 @@ const STAGE_EXPLANATIONS = {
   5: {
     title: 'Investigation — Applying All Three Questions',
     points: [
-      { icon:'❓', color:'purple', text:'Q1: <strong>Did ICS manage the shipment?</strong> — If NO → AM immediately.' },
+      { icon:'❓', color:'purple', text:'Q1: <strong>Did ICS manage the shipment?</strong> — If NO → Contact Client (Manufacturer) immediately.' },
       { icon:'❓', color:'orange', text:'Q2: <strong>Where did it originate?</strong> — Service (ICS handling) or Product (manufacturer).' },
       { icon:'❓', color:'green',  text:'Q3: <strong>Who owns it?</strong> — Claims (Service) or Source Client via AM (Product).' },
     ],
@@ -583,10 +692,10 @@ const STAGE_EXPLANATIONS = {
   6: {
     title: 'Root Cause — Supply Chain Origins',
     points: [
-      { icon:'🏭', color:'blue',   text:'<strong>Manufacturing</strong> defects → Product Complaint → Contact AM.' },
+      { icon:'🏭', color:'blue',   text:'<strong>Manufacturing</strong> defects → Product Complaint → Contact Client (Manufacturer).' },
       { icon:'🏢', color:'purple', text:'<strong>Warehouse</strong> errors (ICS facility) → Service Complaint → Claims Team.' },
       { icon:'🚚', color:'green',  text:'<strong>Transportation</strong> damage (ICS carrier) → Service Complaint → Claims Team.' },
-      { icon:'🏥', color:'orange', text:'<strong>Customer site</strong> mishandling → may not be ICS responsibility → Contact AM.' },
+      { icon:'🏥', color:'orange', text:'<strong>Customer site</strong> mishandling → may not be ICS responsibility → Contact Client (Manufacturer).' },
     ],
     diagram: 'timeline',
     takeaway: 'Trace every complaint back to its origin before classifying.'
@@ -623,7 +732,7 @@ function startStage(n) {
 
   if      (n === 1) nextS1();
   else if (n === 2) nextS2();
-  else if (n === 3) nextS3();
+  else if (n === 3) { nextS3(); setTimeout(setupDragZones, 60); }
   else if (n === 4) nextS4();
   else if (n === 5) startS5();
   else if (n === 6) nextS6();
@@ -659,7 +768,7 @@ function nextS1() {
   document.getElementById('s1-feedback').className = 'answer-feedback hidden';
   document.getElementById('s1-feedback').textContent = '';
   stageCanAct = true;
-  startTimerLocal('train-timer','train-timer-bar',14,() => {
+  startTimerLocal('train-timer','train-timer-bar',20,() => {
     stageCanAct = false;
     showAnswerFeedback(false, d.hint, 's1', 1400);
     stageItem++; setTimeout(nextS1,1800);
@@ -671,7 +780,7 @@ function handleS1(chosen) {
   const d = S1_DATA[stageItem];
   const correct = chosen === d.answer;
   if (correct) { addMyScore(100); sfxCorrect(); }
-  else sfxWrong();
+  else { sfxWrong(); deductScore(2); }
   showAnswerFeedback(correct, d.hint, 's1', 1200);
   stageItem++; setTimeout(nextS1, 1600);
 }
@@ -688,7 +797,7 @@ function nextS2() {
   document.getElementById('s2-question').textContent = d.question;
   document.getElementById('s2-feedback').className = 'answer-feedback hidden';
   stageCanAct = true;
-  startTimerLocal('train-timer','train-timer-bar',12,() => {
+  startTimerLocal('train-timer','train-timer-bar',30,() => {
     stageCanAct = false;
     showAnswerFeedback(false, d.hint, 's2', 1400);
     stageItem++; setTimeout(nextS2,1800);
@@ -699,37 +808,15 @@ function handleS2(chosen) {
   stageCanAct = false; stopLocalTimer();
   const d = S2_DATA[stageItem];
   const correct = chosen === d.answer;
-  if (correct) { addMyScore(100); sfxCorrect(); } else sfxWrong();
+  if (correct) { addMyScore(100); sfxCorrect(); } else { sfxWrong(); deductScore(2); }
   showAnswerFeedback(correct, d.hint, 's2', 1200);
   stageItem++; setTimeout(nextS2, 1600);
 }
 window.handleS2 = handleS2;
 
-// ── STAGE 3 ──────────────────────────────────────────────────
-function nextS3() {
-  stopLocalTimer();
-  if (stageItem >= S3_DATA.length) { finishStage(3); return; }
-  const d = S3_DATA[stageItem];
-  setItemProgress(stageItem+1, S3_DATA.length);
-  showGamePanel('s3-panel');
-  document.getElementById('s3-statement').textContent = d.statement;
-  document.getElementById('s3-feedback').className = 'answer-feedback hidden';
-  stageCanAct = true;
-  startTimerLocal('train-timer','train-timer-bar',9,() => {
-    stageCanAct = false;
-    showAnswerFeedback(false, d.hint, 's3', 1400);
-    stageItem++; setTimeout(nextS3,1800);
-  });
-}
-function handleS3(chosen) {
-  if (!stageCanAct) return;
-  stageCanAct = false; stopLocalTimer();
-  const d = S3_DATA[stageItem];
-  const correct = chosen === d.answer;
-  if (correct) { addMyScore(80); sfxCorrect(); } else sfxWrong();
-  showAnswerFeedback(correct, d.hint, 's3', 1200);
-  stageItem++; setTimeout(nextS3, 1600);
-}
+// ── STAGE 3: Complaint Sorting (Drag & Drop) ─────────────────
+function nextS3() { startS3Drag(); }
+function handleS3() {}   // retained for HTML compat
 window.handleS3 = handleS3;
 
 // ── STAGE 4 ──────────────────────────────────────────────────
@@ -756,7 +843,7 @@ function nextS4() {
   });
   document.getElementById('s4-feedback').className = 'answer-feedback hidden';
   stageCanAct = true;
-  startTimerLocal('train-timer','train-timer-bar',13,() => {
+  startTimerLocal('train-timer','train-timer-bar',20,() => {
     stageCanAct = false;
     document.querySelectorAll('#s4-options .option-btn').forEach(b => b.disabled = true);
     showAnswerFeedback(false, d.hint, 's4', 1400);
@@ -769,7 +856,7 @@ function handleS4(chosen) {
   document.querySelectorAll('#s4-options .option-btn').forEach(b => b.disabled = true);
   const d = S4_DATA[stageItem];
   const correct = chosen === d.answer;
-  if (correct) { addMyScore(120); sfxCorrect(); } else sfxWrong();
+  if (correct) { addMyScore(120); sfxCorrect(); } else { sfxWrong(); deductScore(2); }
   showAnswerFeedback(correct, d.hint, 's4', 1200);
   stageItem++; setTimeout(nextS4, 1600);
 }
@@ -817,7 +904,7 @@ function nextS5Question() {
   });
   document.getElementById('s5-feedback').className = 'answer-feedback hidden';
   stageCanAct = true;
-  startTimerLocal('train-timer','train-timer-bar',11,() => {
+  startTimerLocal('train-timer','train-timer-bar',20,() => {
     stageCanAct = false;
     document.querySelectorAll('#s5-opts .option-btn').forEach(b => b.disabled=true);
     showAnswerFeedback(false, q.hint, 's5', 1400);
@@ -829,7 +916,7 @@ function handleS5(chosen, q) {
   stageCanAct = false; stopLocalTimer();
   document.querySelectorAll('#s5-opts .option-btn').forEach(b => b.disabled=true);
   const correct = chosen === q.answer;
-  if (correct) { addMyScore(100); s5CaseCorrect++; sfxCorrect(); } else sfxWrong();
+  if (correct) { addMyScore(100); s5CaseCorrect++; sfxCorrect(); } else { sfxWrong(); deductScore(2); }
   showAnswerFeedback(correct, q.hint, 's5', 1200);
   s5QuestionIdx++; setTimeout(nextS5Question, 1600);
 }
@@ -857,7 +944,7 @@ function nextS6() {
   });
   document.getElementById('s6-feedback').className = 'answer-feedback hidden';
   stageCanAct = true;
-  startTimerLocal('train-timer','train-timer-bar',12,() => {
+  startTimerLocal('train-timer','train-timer-bar',30,() => {
     stageCanAct = false;
     document.querySelectorAll('.timeline-node').forEach(b => b.disabled=true);
     showAnswerFeedback(false, d.hint, 's6', 1400);
@@ -869,7 +956,7 @@ function handleS6(chosen, d) {
   stageCanAct = false; stopLocalTimer();
   document.querySelectorAll('.timeline-node').forEach(b => b.disabled=true);
   const correct = chosen === d.answer;
-  if (correct) { addMyScore(100); sfxCorrect(); } else sfxWrong();
+  if (correct) { addMyScore(100); sfxCorrect(); } else { sfxWrong(); deductScore(2); }
   showAnswerFeedback(correct, d.hint, 's6', 1200);
   stageItem++; setTimeout(nextS6, 1600);
 }
@@ -886,7 +973,7 @@ function nextS7Step() {
   stopLocalTimer();
   if (s7Step >= S7_STEPS.length) {
     // Bonus for perfect run
-    if (s7Mistakes === 0) { addMyScore(500); sfxBonus(); showToast('🏆 Perfect Investigation! +500 bonus pts'); }
+    if (s7Mistakes === 0) { addMyScore(300); sfxBonus(); showToast('🏆 Perfect Routing! +300 bonus pts'); }
     setTimeout(() => finishStage(7), 1200);
     return;
   }
@@ -907,7 +994,7 @@ function nextS7Step() {
   });
   document.getElementById('s7-feedback').className = 'answer-feedback hidden';
   stageCanAct = true;
-  startTimerLocal('train-timer','train-timer-bar',13,() => {
+  startTimerLocal('train-timer','train-timer-bar',20,() => {
     stageCanAct = false;
     document.querySelectorAll('#s7-opts .option-btn').forEach(b=>b.disabled=true);
     s7Mistakes++;
@@ -921,7 +1008,7 @@ function handleS7(idx, d) {
   document.querySelectorAll('#s7-opts .option-btn').forEach(b=>b.disabled=true);
   const correct = idx === d.ans;
   if (correct) { addMyScore(150); sfxCorrect(); }
-  else { sfxWrong(); s7Mistakes++; }
+  else { sfxWrong(); deductScore(2); s7Mistakes++; }
   showAnswerFeedback(correct, d.hint, 's7', 1200);
   s7Step++; setTimeout(nextS7Step, 1600);
 }
@@ -938,10 +1025,10 @@ function finishStage(n) {
 
 function showStageBetween(n) {
   const isLast = n >= 7;
-  document.getElementById('between-title').textContent = isLast ? 'Training Complete! 🏆' : `Stage ${n} Complete! ✅`;
+  document.getElementById('between-title').textContent = isLast ? 'Refresher Complete! 🏆' : `Stage ${n} Complete! ✅`;
   document.getElementById('between-sub').textContent = isLast
     ? 'Final leaderboard — facilitator will start the winner reveal'
-    : `Results after Stage ${n} — facilitator will show the learning points`;
+    : `Results after Stage ${n} — facilitator will show the key reminders`;
   renderLeaderboard('leaderboard-between', players);
   showScreen('screen-between');
 
@@ -950,7 +1037,7 @@ function showStageBetween(n) {
 
   if (isHost) {
     nextBtn.classList.remove('hidden'); nextBtn.disabled = false;
-    nextBtn.textContent = isLast ? '🏆 Reveal Winners →' : '💡 Show Learning Points →';
+    nextBtn.textContent = isLast ? '🏆 Reveal Winners →' : '💡 Show Key Reminders →';
     nextBtn.onclick = () => {
       nextBtn.disabled = true; sfxClick();
       if (isLast) {
@@ -964,7 +1051,7 @@ function showStageBetween(n) {
     cd.textContent = '';
   } else {
     nextBtn.classList.add('hidden');
-    cd.textContent = isLast ? 'Waiting for facilitator to start winner reveal...' : 'Waiting for facilitator to show learning points...';
+    cd.textContent = isLast ? 'Waiting for facilitator to start winner reveal...' : 'Waiting for facilitator to show key reminders...';
     clearListeners();
     listenOn(`rooms/${roomCode}/game/betweenPhase`, snap => {
       const bp = snap.val();
@@ -984,7 +1071,7 @@ function showExplanation(n) {
   const exp = STAGE_EXPLANATIONS[n];
   if (!exp) { advanceToNextStage(n); return; }
   showScreen('screen-explanation');
-  document.getElementById('exp-stage-label').textContent = `Stage ${n} of 7 — Learning Points`;
+  document.getElementById('exp-stage-label').textContent = `Stage ${n} of 7 — Key Reminders`;
   document.getElementById('exp-title').textContent = exp.title;
 
   // Build explanation content
@@ -1036,18 +1123,18 @@ function buildExpDiagram(n, container) {
   const diagrams = {
     'service-product': [
       { text:'Issue during ICS Service', cls:'diag-green', arrow:'→ Service Complaint → Claims Team' },
-      { text:'Issue from Manufacturer / Product', cls:'diag-blue', arrow:'→ Product Complaint → Contact AM' },
+      { text:'Issue from Manufacturer / Product', cls:'diag-blue', arrow:'→ Product Complaint → Contact Client (Manufacturer)' },
     ],
     'ownership': [
       { text:'Returns Team', cls:'diag-purple', arrow:'Reviews & Routes Only' },
       { text:'Claims Team (ICS)', cls:'diag-green', arrow:'Owns Service Complaints + Quality Case' },
-      { text:'Account Manager', cls:'diag-blue', arrow:'Receives Product Complaints' },
+      { text:'Client (Manufacturer)', cls:'diag-blue', arrow:'Receives Product Complaints (from Returns)' },
     ],
     'workflow': [
       { text:'Complaint Received', cls:'diag-gray', arrow:'↓' },
       { text:'Returns Reviews', cls:'diag-purple', arrow:'↓' },
-      { text:'Did ICS manage shipment?', cls:'diag-orange', arrow:'YES ↓ / NO → AM' },
-      { text:'Where did it originate?', cls:'diag-orange', arrow:'Service ↓ / Product → AM' },
+      { text:'Did ICS manage shipment?', cls:'diag-orange', arrow:'YES ↓ / NO → Contact Client (Manufacturer)' },
+      { text:'Where did it originate?', cls:'diag-orange', arrow:'Service ↓ / Product → Contact Client (Manufacturer)' },
       { text:'Service → Claims | Product → AM', cls:'diag-green', arrow:'' },
     ],
   };
@@ -1131,7 +1218,7 @@ function renderResults() {
     renderLeaderboard('full-leaderboard', players);
     if (isHost) {
       const paBtn=document.createElement('button'); paBtn.className='btn-corp-primary'; paBtn.style.marginBottom='10px';
-      paBtn.textContent='🔁 Run Training Again'; paBtn.onclick=()=>{sfxClick();resetGame();};
+      paBtn.textContent='🔁 Run Refresher Again'; paBtn.onclick=()=>{sfxClick();resetGame();};
       document.getElementById('results-actions').appendChild(paBtn);
     }
   }, delay+1000);
@@ -1185,18 +1272,7 @@ document.getElementById('btn-create-confirm').addEventListener('click',async()=>
   if(!name){showError('create-error','Please enter your name.');return;}
   document.getElementById('btn-create-confirm').disabled=true; sfxClick();
   try{await createRoom(name);document.getElementById('modal-create').classList.add('hidden');}
-  catch(e){
-    console.error('[createRoom] FAILED:', e);
-    let msg = 'Unknown error';
-    if (e && e.code === 'PERMISSION_DENIED') {
-      msg = 'Permission denied — Firebase Database Rules have expired. Go to Firebase Console → Realtime Database → Rules and update them to allow writes (auth != null).';
-    } else if (e && e.code) {
-      msg = `Firebase error: ${e.code}`;
-    } else if (e && e.message) {
-      msg = e.message.slice(0, 120);
-    }
-    showError('create-error', msg);
-  }
+  catch(e){const msg = e && e.code ? `Firebase error: ${e.code}` : (e && e.message ? e.message.slice(0,80) : 'Unknown error'); showError('create-error', `Failed to create session: ${msg}`); console.error('createRoom error:', e);}
   document.getElementById('btn-create-confirm').disabled=false;
 });
 document.getElementById('btn-join-open').addEventListener('click',()=>{sfxClick();document.getElementById('modal-join').classList.remove('hidden');document.getElementById('input-name').focus();});
@@ -1239,7 +1315,7 @@ async function boot() {
   showScreen('screen-loading');
   try {
     await initAuth(); initConnectionMonitor();
-    document.getElementById('loading-msg').textContent='Ready to train!';
+    document.getElementById('loading-msg').textContent='Ready to refresh!';
     await new Promise(r=>setTimeout(r,700));
     showScreen('screen-menu');
   } catch(e) {
