@@ -390,11 +390,11 @@ function showStageIntro(n, cb) {
 
 // ── STAGE 1: Service or Product? ────────────────────────────
 const S1_DATA = [
-  { scenario: 'Medication arrived with crushed packaging after an ICS-managed delivery. Products appear unusable.', answer: 'service', hint: 'Damage occurred during ICS-managed transportation → Service Complaint.' },
-  { scenario: 'A patient reports the insulin pen does not deliver the correct dose due to a device mechanism failure.', answer: 'product', hint: 'Device malfunction originates from the manufacturer → Product Complaint.' },
-  { scenario: 'Hospital received 50 units instead of the ordered 100 — the picking error happened at the ICS warehouse.', answer: 'service', hint: 'Wrong quantity from ICS warehouse = handling error during ICS service → Service Complaint.' },
-  { scenario: 'A batch of syringes shows visible contamination linked to the manufacturing facility batch record.', answer: 'product', hint: 'Contamination originating at the manufacturing stage → Product Complaint.' },
-  { scenario: 'Temperature-sensitive vaccines exceeded cold-chain limits during the ICS truck delivery (GPS log confirms).', answer: 'service', hint: 'Temperature excursion during ICS-managed transit → Service Complaint.' },
+  { scenario: 'Medication arrived with crushed packaging. ICS arranged the shipment; FedEx physically transported it. Products appear unusable.', answer: 'service', hint: 'ICS arranged and managed the shipment. Even though FedEx physically transported the goods, any issue during an ICS-managed shipment is a Service Complaint. The deciding factor is who managed the shipment, not who physically drove the van.' },
+  { scenario: 'A patient reports that the insulin pen does not deliver the correct dose due to a device mechanism failure.', answer: 'product', hint: 'The issue originates from the device itself, not from transportation or ICS handling. This is a Product Complaint → Contact Client (Manufacturer).' },
+  { scenario: 'A hospital received 50 units instead of the ordered 100. The picking error was identified at the ICS warehouse before the shipment was handed to the carrier.', answer: 'service', hint: 'The error happened inside the ICS warehouse during pick-and-pack — before the carrier was involved. ICS managed the entire process → Service Complaint → Claims Team.' },
+  { scenario: 'A batch of syringes shows visible contamination. The batch record traces the issue directly to the manufacturing facility.', answer: 'product', hint: 'Contamination originated at the manufacturing facility — nothing to do with ICS shipment or handling. The issue is with the product itself → Product Complaint → Contact Client (Manufacturer).' },
+  { scenario: 'Temperature-sensitive vaccines arrived outside the required range. ICS arranged and managed the shipment. The contracted carrier (UPS) transported the goods on behalf of ICS, and data loggers show the breach occurred during transit.', answer: 'service', hint: 'ICS arranged and managed this shipment. UPS operated under ICS direction as a contracted carrier. The cold-chain breach occurred during an ICS-managed shipment — it does not matter that UPS physically moved the goods. Service Complaint → Claims Team investigates and creates the Quality Case.' },
 ];
 
 // ── STAGE 2: Who Owns It? ───────────────────────────────────
@@ -424,7 +424,7 @@ const S3_DATA = [
 // ── STAGE 3: Complaint Sorting (Drag & Drop) ────────────────
 const DRAG_CARDS = [
   { id:'d1',  text:'Wrong product line shipped by ICS warehouse',          answer:'service' },
-  { id:'d2',  text:'Temperature excursion during ICS cold-chain delivery', answer:'service' },
+  { id:'d2',  text:'Temperature excursion on a cold-chain shipment managed by ICS', answer:'service' },
   { id:'d3',  text:'Product packaging damaged during ICS transit',         answer:'service' },
   { id:'d4',  text:'Manufacturer defect found in device mechanism',        answer:'product' },
   { id:'d5',  text:'Adverse reaction reported at prescribed dose',         answer:'product' },
@@ -432,7 +432,7 @@ const DRAG_CARDS = [
   { id:'d7',  text:'Incorrect quantity dispatched from ICS facility',      answer:'service' },
   { id:'d8',  text:'Manufacturing packaging seal defect on blister pack',  answer:'product' },
   { id:'d9',  text:'Device malfunction due to faulty internal component',  answer:'product' },
-  { id:'d10', text:'Wrong delivery address by ICS carrier',                answer:'service' },
+  { id:'d10', text:'Wrong delivery address on an ICS-managed shipment',    answer:'service' },
   { id:'d11', text:'Batch manufacturing quality issue at factory',         answer:'product' },
   { id:'d12', text:'Product recall due to stability issue at manufacture', answer:'product' },
 ];
@@ -453,7 +453,10 @@ function renderDragBoard() {
   const pool    = document.getElementById('s3-drag-pool');
   const svcZone = document.getElementById('s3-zone-service');
   const prdZone = document.getElementById('s3-zone-product');
-  pool.innerHTML = ''; svcZone.innerHTML = ''; prdZone.innerHTML = '';
+  // Clear only drag-card children — preserve the static dz-header/dz-sub label divs
+  pool.innerHTML = '';
+  svcZone.querySelectorAll('.drag-card').forEach(el => el.remove());
+  prdZone.querySelectorAll('.drag-card').forEach(el => el.remove());
   DRAG_CARDS.forEach(card => {
     const el = makeDragCard(card);
     const placed = dragState[card.id];
@@ -564,21 +567,21 @@ const S4_DATA = [
     options: ['Review Complaint', 'Create Quality Case', 'Contact Claims', 'Investigate', 'Contact Manufacturer'],
     answer: 'Review Complaint',
     hint: 'Returns always REVIEWS the complaint before determining its type.' },
-  { context: 'ICS managed the shipment and damage occurred during transit. What type of complaint?',
-    flow: ['🚚 Damage During ICS Transit', '❓ ???', '👥 Claims Team', '📋 Quality Case Created'],
-    options: ['Product Complaint', 'Service Complaint', 'Manufacturer Issue', 'Customer Complaint'],
+  { context: 'A temperature excursion occurred during transit. ICS arranged and managed the shipment (transported by a third-party carrier on behalf of ICS). What type of complaint is this?',
+    flow: ['🌡 Temperature Excursion Reported', '✅ ICS managed the shipment', '❓ ???', '📋 Claims Team creates Quality Case'],
+    options: ['Product Complaint', 'Service Complaint', 'No Complaint — Normal Variation', 'Contact Client — Client managed it'],
     answer: 'Service Complaint',
-    hint: 'Issue during ICS-managed transit = Service Complaint.' },
+    hint: 'ICS arranged and managed this shipment. Even though a third-party carrier (FedEx/UPS) physically moved the goods, the carrier operated under ICS direction. The cold-chain breach happened during an ICS-managed shipment → Service Complaint → Claims Team investigates and creates the Quality Case. The deciding factor is always: WHO MANAGED THE SHIPMENT?' },
   { context: 'The complaint is a Product Complaint. What is Returns\' next action?',
     flow: ['📦 Product Complaint Identified', '📞 ???', '📋 Follow Source Client Direction', '🚫 No Quality Case'],
     options: ['Create Quality Case', 'Contact Claims Team', 'Contact Client (Manufacturer)', 'Investigate Complaint'],
     answer: 'Contact Client (Manufacturer)',
     hint: 'Product Complaint → Returns contacts the Client (Manufacturer).' },
-  { context: 'ICS did NOT manage the shipment. What happens next?',
-    flow: ['❓ Did ICS Manage Shipment?', '❌ NO', '???', '📋 Follow Source Client Direction'],
-    options: ['Create Quality Case', 'Contact Claims Team', 'Contact Client (Manufacturer)', 'Classify as Service Complaint'],
-    answer: 'Contact Client (Manufacturer)',
-    hint: 'If ICS did not manage the shipment → contact Client (Manufacturer), follow Source Client direction, no QC.' },
+  { context: 'A temperature excursion occurred. The Client (Manufacturer) arranged and managed this shipment — ICS did not manage it. What should Returns do?',
+    flow: ['🌡 Temperature Excursion Reported', '❌ ICS did NOT manage the shipment', '📞 Returns contacts ???', '📋 Follows Client direction — no QC'],
+    options: ['Route to Claims Team — create QC', 'Contact Client (Manufacturer) for direction', 'Classify as Service Complaint', 'Investigate the carrier directly'],
+    answer: 'Contact Client (Manufacturer) for direction',
+    hint: 'The Client (Manufacturer) managed this shipment — not ICS. Returns does NOT create a Quality Case, does NOT route to Claims, and does NOT investigate. Returns contacts the Client (Manufacturer) and follows their direction on next steps. The rule is simple: WHO MANAGED THE SHIPMENT determines who owns the complaint.' },
   { context: 'Service complaint confirmed. Who creates the Quality Case?',
     flow: ['✅ Service Complaint', '📞 Route to ???', '📋 Quality Case Created', '🔍 Investigate'],
     options: ['Returns Team', 'Client (Manufacturer)', 'Claims Team (ICS)', 'Warehouse Team'],
@@ -642,12 +645,12 @@ const STAGE_EXPLANATIONS = {
   1: {
     title: 'Service vs Product — Key Rules',
     points: [
-      { icon:'🚚', color:'green',  text:'<strong>Service Complaint</strong> — Issue occurred DURING ICS-managed shipment, warehouse, or transportation.' },
-      { icon:'🏭', color:'blue',   text:'<strong>Product Complaint</strong> — Issue originated from the MANUFACTURER or the PRODUCT ITSELF.' },
-      { icon:'💡', color:'orange', text:'<strong>Key question:</strong> "Where did the issue occur?" — during ICS service, or at the product source?' },
+      { icon:'🚚', color:'green',  text:'<strong>Service Complaint</strong> — Issue occurred during an ICS-managed shipment, warehouse process, or transportation. The carrier (FedEx/UPS) may physically transport the goods, but if ICS arranged and managed the shipment, it is a Service Complaint.' },
+      { icon:'🏭', color:'blue',   text:'<strong>Product Complaint</strong> — Issue originated from the MANUFACTURER or the PRODUCT ITSELF (defect, contamination, adverse effect, malfunction).' },
+      { icon:'💡', color:'orange', text:'<strong>Key question: Did ICS manage the shipment?</strong> Not "who drove the truck?" — the deciding factor is whether ICS arranged and managed the shipment.' },
     ],
     diagram: 'service-product',
-    takeaway: 'The origin point — not the severity — determines the complaint type.'
+    takeaway: 'FedEx or UPS may carry the package — but if ICS managed the shipment, ICS owns any service issue.'
   },
   2: {
     title: 'Ownership — Who Handles What',
@@ -670,14 +673,14 @@ const STAGE_EXPLANATIONS = {
     takeaway: 'Know your lane: Returns routes, Claims investigates.'
   },
   4: {
-    title: 'The Routing Workflow',
+    title: 'The Routing Workflow — Including Temperature Excursions',
     points: [
-      { icon:'1️⃣', color:'purple', text:'<strong>Receive</strong> → <strong>Review</strong> → <strong>Did ICS manage it?</strong>' },
-      { icon:'2️⃣', color:'orange', text:'If YES: <strong>Where did it originate?</strong> → Service or Product type.' },
-      { icon:'3️⃣', color:'green',  text:'<strong>Service</strong> → Claims Team (creates QC). <strong>Product</strong> → Contact Client (Manufacturer) (no QC).' },
+      { icon:'1️⃣', color:'purple', text:'<strong>The first question is always: Did ICS manage the shipment?</strong>' },
+      { icon:'🌡', color:'green',  text:'<strong>Temperature excursion — ICS managed the shipment:</strong> Service Complaint → Route to Claims Team → Claims creates the Quality Case and investigates.' },
+      { icon:'🌡', color:'orange', text:'<strong>Temperature excursion — Client managed the shipment:</strong> Returns does NOT create a QC. Returns contacts the Client (Manufacturer) and follows their direction.' },
     ],
     diagram: 'workflow',
-    takeaway: 'Three questions, two paths, clear ownership — every time.'
+    takeaway: 'Who managed the shipment determines who owns the issue — not the type of problem.'
   },
   5: {
     title: 'Investigation — Applying All Three Questions',
@@ -694,7 +697,7 @@ const STAGE_EXPLANATIONS = {
     points: [
       { icon:'🏭', color:'blue',   text:'<strong>Manufacturing</strong> defects → Product Complaint → Contact Client (Manufacturer).' },
       { icon:'🏢', color:'purple', text:'<strong>Warehouse</strong> errors (ICS facility) → Service Complaint → Claims Team.' },
-      { icon:'🚚', color:'green',  text:'<strong>Transportation</strong> damage (ICS carrier) → Service Complaint → Claims Team.' },
+      { icon:'🚚', color:'green',  text:'<strong>Transportation</strong> damage (carrier on ICS-managed shipment) → Service Complaint → Claims Team.' },
       { icon:'🏥', color:'orange', text:'<strong>Customer site</strong> mishandling → may not be ICS responsibility → Contact Client (Manufacturer).' },
     ],
     diagram: 'timeline',
