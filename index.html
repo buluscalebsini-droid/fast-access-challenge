@@ -76,12 +76,12 @@
     </div>
     <div class="lobby-modules">
       <div class="module-card"><span class="module-icon">🔀</span><span>Stage 1: Service or Product?</span></div>
-      <div class="module-card"><span class="module-icon">👤</span><span>Stage 2: Who Owns It?</span></div>
-      <div class="module-card"><span class="module-icon">🃏</span><span>Stage 3: Complaint Sorting</span></div>
+      <div class="module-card"><span class="module-icon">📋</span><span>Stage 2: Is This a Claims Case?</span></div>
+      <div class="module-card"><span class="module-icon">🃏</span><span>Stage 3: Sort — Service or Product?</span></div>
       <div class="module-card"><span class="module-icon">🔄</span><span>Stage 4: Complete the Workflow</span></div>
       <div class="module-card"><span class="module-icon">📋</span><span>Stage 5: Investigation Challenge</span></div>
-      <div class="module-card"><span class="module-icon">🕐</span><span>Stage 6: Root Cause Timeline</span></div>
-      <div class="module-card"><span class="module-icon">🚪</span><span>Stage 7: Complaint Escape</span></div>
+      <div class="module-card"><span class="module-icon">📍</span><span>Stage 6: Where Did It Originate?</span></div>
+      <div class="module-card"><span class="module-icon">🚪</span><span>Stage 7: End-to-End Routing</span></div>
     </div>
     <div class="player-list" id="lobby-player-list"></div>
     <div class="lobby-status" id="lobby-status">Waiting for participants...</div>
@@ -168,21 +168,21 @@
       <div class="answer-feedback hidden" id="s1-feedback"></div>
     </div>
 
-    <!-- STAGE 2: Who Owns It -->
+    <!-- STAGE 2: Is This a Claims Case? -->
     <div id="s2-panel" class="stage-panel hidden">
-      <p class="panel-label">Read the scenario:</p>
+      <p class="panel-label">Read the scenario and decide:</p>
       <div class="scenario-card" id="s2-scenario"></div>
       <p class="question-text" id="s2-question"></p>
       <div class="two-btn-row">
         <button class="choice-btn choice-claims" onclick="handleS2('claims')">
-          <span class="choice-icon">👥</span>
-          <span class="choice-label">Claims Team (ICS)</span>
-          <span class="choice-sub">Creates Quality Case</span>
+          <span class="choice-icon">✅</span>
+          <span class="choice-label">YES — Claims Initiation</span>
+          <span class="choice-sub">Route to Claims Initiation Queue</span>
         </button>
         <button class="choice-btn choice-am" onclick="handleS2('am')">
-          <span class="choice-icon">📞</span>
-          <span class="choice-label">Contact Client</span>
-          <span class="choice-sub">(Manufacturer) — No QC</span>
+          <span class="choice-icon">❌</span>
+          <span class="choice-label">NO — Product Complaint</span>
+          <span class="choice-sub">Contact Client / Manufacturer</span>
         </button>
       </div>
       <div class="answer-feedback hidden" id="s2-feedback"></div>
@@ -200,12 +200,12 @@
         <!-- Drop zones -->
         <div class="drag-zones">
           <div class="drag-zone drag-zone-service" id="s3-zone-service" data-zone="service">
-            <div class="dz-header dz-header-sticky">🚚 Service Complaint</div>
-            <div class="dz-sub">ICS managed the shipment</div>
+            <div class="dz-header dz-header-sticky">🚚 SERVICE COMPLAINT</div>
+            <div class="dz-sub">ICS-managed issue → Claims Initiation</div>
           </div>
           <div class="drag-zone drag-zone-product" id="s3-zone-product" data-zone="product">
-            <div class="dz-header dz-header-sticky">🏭 Product Complaint</div>
-            <div class="dz-sub">Product / manufacturer issue</div>
+            <div class="dz-header dz-header-sticky">🏭 PRODUCT COMPLAINT</div>
+            <div class="dz-sub">Manufacturer issue → Contact Client</div>
           </div>
         </div>
       </div>
