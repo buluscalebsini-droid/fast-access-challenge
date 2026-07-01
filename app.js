@@ -137,9 +137,16 @@ function stopLocalTimer() { if (localTimerId) { clearInterval(localTimerId); loc
 // ============================================================
 async function initAuth() {
   document.getElementById('loading-msg').textContent = 'Authenticating...';
+  console.log('[initAuth] calling signInAnonymously...');
   await signInAnonymously(auth);
   return new Promise(resolve => {
-    const unsub = onAuthStateChanged(auth, user => { if (user) { myUid = user.uid; unsub(); resolve(); } });
+    const unsub = onAuthStateChanged(auth, user => {
+      if (user) {
+        myUid = user.uid;
+        console.log('[initAuth] authenticated, uid=', myUid);
+        unsub(); resolve();
+      }
+    });
   });
 }
 function initConnectionMonitor() {
@@ -150,16 +157,22 @@ function initConnectionMonitor() {
 // ROOM CREATION / JOINING (unchanged)
 // ============================================================
 async function createRoom(hostName) {
+  console.log('[createRoom] start, uid=', myUid);
   myName = hostName.trim(); isHost = true; roomCode = genRoomCode();
   const roomRef = dbRef('rooms', roomCode);
+  console.log('[createRoom] checking if room exists:', roomCode);
   if ((await get(roomRef)).exists()) roomCode = genRoomCode();
+  console.log('[createRoom] setting onDisconnect for:', roomCode);
   await onDisconnect(dbRef('rooms', roomCode, 'players', myUid)).remove();
+  console.log('[createRoom] writing room to Firebase...');
   await set(roomRef, {
     host: myUid, status: 'lobby', created: serverTimestamp(),
     players: { [myUid]: { name: myName, score: 0, color: 0, ready: true } },
     game: { level: 0, round: 0, roundSeed: 0, phase: 'waiting', betweenPhase: 'leaderboard' }
   });
+  console.log('[createRoom] Firebase write success, opening lobby...');
   openLobby();
+  console.log('[createRoom] openLobby() returned OK');
 }
 async function joinRoom(name, code) {
   myName = name.trim();
@@ -1165,7 +1178,7 @@ document.getElementById('btn-create-confirm').addEventListener('click',async()=>
   if(!name){showError('create-error','Please enter your name.');return;}
   document.getElementById('btn-create-confirm').disabled=true; sfxClick();
   try{await createRoom(name);document.getElementById('modal-create').classList.add('hidden');}
-  catch(e){showError('create-error','Failed to create session. Check your connection.');console.error(e);}
+  catch(e){const msg = e && e.code ? `Firebase error: ${e.code}` : (e && e.message ? e.message.slice(0,80) : 'Unknown error'); showError('create-error', `Failed to create session: ${msg}`); console.error('createRoom error:', e);}
   document.getElementById('btn-create-confirm').disabled=false;
 });
 document.getElementById('btn-join-open').addEventListener('click',()=>{sfxClick();document.getElementById('modal-join').classList.remove('hidden');document.getElementById('input-name').focus();});
