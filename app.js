@@ -159,11 +159,18 @@ function initConnectionMonitor() {
 async function createRoom(hostName) {
   console.log('[createRoom] start, uid=', myUid);
   myName = hostName.trim(); isHost = true; roomCode = genRoomCode();
-  const roomRef = dbRef('rooms', roomCode);
+  // Bug fix: always recreate roomRef after potential collision so set() uses the correct path
+  let roomRef = dbRef('rooms', roomCode);
   console.log('[createRoom] checking if room exists:', roomCode);
-  if ((await get(roomRef)).exists()) roomCode = genRoomCode();
+  if ((await get(roomRef)).exists()) {
+    roomCode = genRoomCode();
+    roomRef  = dbRef('rooms', roomCode); // ← recreate so set() targets the new code
+    console.log('[createRoom] collision avoided, new code:', roomCode);
+  }
   console.log('[createRoom] setting onDisconnect for:', roomCode);
-  await onDisconnect(dbRef('rooms', roomCode, 'players', myUid)).remove();
+  // onDisconnect is non-fatal — if rules block it, we still proceed with the write
+  try { await onDisconnect(dbRef('rooms', roomCode, 'players', myUid)).remove(); }
+  catch(odErr) { console.warn('[createRoom] onDisconnect setup failed (non-critical):', odErr.code || odErr.message); }
   console.log('[createRoom] writing room to Firebase...');
   await set(roomRef, {
     host: myUid, status: 'lobby', created: serverTimestamp(),
@@ -1178,7 +1185,18 @@ document.getElementById('btn-create-confirm').addEventListener('click',async()=>
   if(!name){showError('create-error','Please enter your name.');return;}
   document.getElementById('btn-create-confirm').disabled=true; sfxClick();
   try{await createRoom(name);document.getElementById('modal-create').classList.add('hidden');}
-  catch(e){const msg = e && e.code ? `Firebase error: ${e.code}` : (e && e.message ? e.message.slice(0,80) : 'Unknown error'); showError('create-error', `Failed to create session: ${msg}`); console.error('createRoom error:', e);}
+  catch(e){
+    console.error('[createRoom] FAILED:', e);
+    let msg = 'Unknown error';
+    if (e && e.code === 'PERMISSION_DENIED') {
+      msg = 'Permission denied — Firebase Database Rules have expired. Go to Firebase Console → Realtime Database → Rules and update them to allow writes (auth != null).';
+    } else if (e && e.code) {
+      msg = `Firebase error: ${e.code}`;
+    } else if (e && e.message) {
+      msg = e.message.slice(0, 120);
+    }
+    showError('create-error', msg);
+  }
   document.getElementById('btn-create-confirm').disabled=false;
 });
 document.getElementById('btn-join-open').addEventListener('click',()=>{sfxClick();document.getElementById('modal-join').classList.remove('hidden');document.getElementById('input-name').focus();});
