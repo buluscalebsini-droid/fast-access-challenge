@@ -404,3 +404,18 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .dr-pts { font-size:18px; font-weight:800; color:#10B981; }
 .dr-wrong { font-size:13px; color:#FCA5A5; margin-left:8px; }
 @media(max-width:480px){ .drag-zones{grid-template-columns:1fr} .drag-zone{min-height:90px} .drag-card{font-size:12px;padding:8px 10px} }
+
+/* ── Sticky drag zone headers — always visible ── */
+.drag-zone { position: relative; overflow-y: auto; max-height: 280px; }
+.dz-header-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);   /* solid so it covers cards underneath */
+  margin: -10px -10px 8px -10px;  /* bleed to zone edges */
+  padding: 8px 14px 6px;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.drag-zone-service .dz-header-sticky { background: #0d1f18; color: var(--c-green); }
+.drag-zone-product .dz-header-sticky { background: #0d1525; color: #93C5FD; }
