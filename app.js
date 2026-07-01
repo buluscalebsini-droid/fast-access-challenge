@@ -565,7 +565,7 @@ window.submitDragStage = submitDragStage;
 
 // ── STAGE 4: Complete the Workflow ──────────────────────────
 const S4_DATA = [
-  { context: 'Customer reports an issue. What is the Returns Team's FIRST action?',
+  { context: 'Customer reports an issue. What is the Returns Team\'s FIRST action?',
     flow: ['📥 Customer Reports Issue', '❓ ???', '🔍 Service or Product?', '📤 Route Correctly'],
     options: ['Review the complaint', 'Create a Quality Case', 'Call the carrier', 'Escalate to manager'],
     answer: 'Review the complaint',
@@ -640,7 +640,7 @@ const S7_STEPS = [
   { step:2, situation:'✅ You have reviewed the complaint. ICS arranged and managed this shipment via FedEx.', q:'Did ICS manage the shipment?', opts:['YES — ICS arranged and managed it','NO — FedEx owns the complaint'], ans:0, hint:'YES — FedEx transported under ICS direction. ICS managed the shipment. FedEx is a contracted carrier, not the responsible party.' },
   { step:3, situation:'✅ ICS managed the shipment. The shortage occurred during ICS operations.', q:'Is this a Service or Product Complaint?', opts:['Service Complaint','Product Complaint'], ans:0, hint:'Shortage on an ICS-managed shipment = Service Complaint. This is one of the standard Claims Initiation cases.' },
   { step:4, situation:'📋 Classified: Service Complaint. Time to route it.', q:'Where do you route a Service Complaint?', opts:['Claims Initiation Queue','Quality Team Queue','Returns Team Queue','Manufacturer Queue'], ans:0, hint:'Service Complaints → Claims Initiation Queue. Never the Quality Team queue. Always Claims Initiation.' },
-  { step:5, situation:'📤 Routed to Claims Initiation Queue. They take over.', q:'Who creates the Quality Case?', opts:['Claims Initiation','Returns Team','Quality Team','Warehouse Manager'], ans:0, hint:'Claims Initiation creates and owns the Quality Case. Returns' role is complete once routed. Returns never creates QCs.' },
+  { step:5, situation:'📤 Routed to Claims Initiation Queue. They take over.', q:'Who creates the Quality Case?', opts:['Claims Initiation','Returns Team','Quality Team','Warehouse Manager'], ans:0, hint:'Claims Initiation creates and owns the Quality Case. Returns\' role is complete once routed. Returns never creates QCs.' },
 ];
 
 // ── STAGE EXPLANATIONS ────────────────────────────────────
@@ -658,7 +658,7 @@ const STAGE_EXPLANATIONS = {
   2: {
     title: 'Claims Initiation — When to Route There',
     points: [
-      { icon:'✅', color:'green',  text:'<strong>Route to Claims Initiation for:</strong> Shortage, overage, wrong product, another customer's order, damaged shipment, missing shipment, serial number mismatch, billing/pricing error, missing EPCIS, incorrect PO, incorrect account, incorrect transport method, temperature excursion (ICS-managed), tracking delivered but unlocatable.' },
+      { icon:'✅', color:'green',  text:'<strong>Route to Claims Initiation for:</strong> Shortage, overage, wrong product, another customer\'s order, damaged shipment, missing shipment, serial number mismatch, billing/pricing error, missing EPCIS, incorrect PO, incorrect account, incorrect transport method, temperature excursion (ICS-managed), tracking delivered but unlocatable.' },
       { icon:'❌', color:'blue',   text:'<strong>Do NOT route to Claims Initiation for:</strong> Manufacturing defects, device malfunctions, product contamination, adverse reactions, stability issues, packaging defects from manufacturing. These are Product Complaints — contact the Client (Manufacturer).' },
       { icon:'📋', color:'purple', text:'<strong>Returns Team role:</strong> Receive → Review → Classify (Service or Product) → Route correctly. Returns does NOT create Quality Cases and does NOT investigate.' },
     ],
@@ -673,7 +673,7 @@ const STAGE_EXPLANATIONS = {
       { icon:'💡', color:'orange', text:'<strong>Quick rule:</strong> Did ICS manage the shipment and did the issue happen during ICS operations? → Service. Did the issue originate from the product or manufacturer? → Product.' },
     ],
     diagram: 'service-product',
-    takeaway: 'When in doubt: if ICS touched it and something went wrong during ICS operations, it's a Service Complaint.'
+    takeaway: 'When in doubt: if ICS touched it and something went wrong during ICS operations, it\'s a Service Complaint.'
   },
   4: {
     title: 'The Claims Workflow',
@@ -705,7 +705,7 @@ const STAGE_EXPLANATIONS = {
       { icon:'🏭', color:'blue',   text:'<strong>Manufacturing</strong> (defect, contamination, adverse reaction, stability, malfunction) → Product Complaint → Contact Client (Manufacturer).' },
     ],
     diagram: 'timeline',
-    takeaway: 'Trace the origin. If the issue happened within ICS operations (warehouse, transport, billing, data) — it's a Service Complaint for Claims Initiation.'
+    takeaway: 'Trace the origin. If the issue happened within ICS operations (warehouse, transport, billing, data) — it\'s a Service Complaint for Claims Initiation.'
   },
   7: {
     title: 'End-to-End Routing — Complete',
@@ -716,7 +716,7 @@ const STAGE_EXPLANATIONS = {
       { icon:'📋', color:'blue',   text:'<strong>Step 5:</strong> Claims Initiation takes over — they investigate and create the Quality Case. Returns' role is complete.' },
     ],
     diagram: 'escape',
-    takeaway: 'Returns receives, reviews, classifies, and routes. Claims Initiation investigates and creates the QC. That's the complete process.'
+    takeaway: 'Returns receives, reviews, classifies, and routes. Claims Initiation investigates and creates the QC. That\'s the complete process.'
   },
 };
 
