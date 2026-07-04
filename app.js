@@ -1264,6 +1264,18 @@ function buildExpDiagram(n, container) {
 // ============================================================
 // LEADERBOARD + RESULTS (unchanged structure)
 // ============================================================
+// Animate a number from 0 to target over ~800ms
+function animateCount(el, target) {
+  const dur = 900, start = performance.now();
+  const tick = now => {
+    const t = Math.min((now - start) / dur, 1);
+    const eased = 1 - Math.pow(1 - t, 3);  // ease-out cubic
+    el.textContent = Math.round(eased * target) + ' pts';
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 function renderLeaderboard(id, playerData) {
   const container = document.getElementById(id); if (!container) return;
   container.innerHTML = '';
@@ -1271,10 +1283,20 @@ function renderLeaderboard(id, playerData) {
   const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',...Array.from({length:30},(_,i)=>`${i+11}`)];
   sorted.forEach(([uid,p],i) => {
     const row = document.createElement('div'); row.className = `lb-row rank-${i+1}`;
-    row.innerHTML = `<span class="lb-rank">${medals[i]||i+1}</span>
+    row.style.animationDelay = `${i * 80}ms`;
+    row.classList.add('lb-row-enter');
+    const initials = (p.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const avClass = `av-${i % 10}`;
+    const scoreVal = p.score || 0;
+    row.innerHTML = `
+      <span class="lb-avatar ${avClass}">${initials}</span>
+      <span class="lb-rank">${medals[i]||i+1}</span>
       <span class="lb-name${uid===myUid?' you-tag':''}">${p.name}</span>
-      <span class="lb-score">${p.score||0} pts</span>`;
+      <span class="lb-score" data-score="${scoreVal}">0 pts</span>`;
     container.appendChild(row);
+    // Animate score after short delay
+    const scoreEl = row.querySelector('.lb-score');
+    setTimeout(() => animateCount(scoreEl, scoreVal), 200 + i * 80);
   });
 }
 
@@ -1342,7 +1364,7 @@ function renderResults() {
 // CONFETTI (unchanged)
 // ============================================================
 function spawnConfetti() {
-  const colors=['#7C3AED','#10B981','#3B82F6','#F59E0B','#6366F1','#EC4899'];
+  const colors=['#7C3AED','#10B981','#3B82F6','#F59E0B','#EC4899','#EF4444','#14B8A6','#F472B6'];
   for(let i=0;i<70;i++){
     setTimeout(()=>{
       const el=document.createElement('div'); el.className='confetti';
