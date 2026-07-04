@@ -350,7 +350,7 @@ function startTimerLocal(timerId, barId, seconds, onEnd) {
 // ============================================================
 const STAGE_INTROS = {
   1: { icon:'🔀', title:'Service or Product?',   sub:'Quick check — classify each complaint as Service or Product.', tip:'You know this. Service = ICS managed it. Product = from the manufacturer.', badge:'5 Scenarios', color:'var(--c-purple)' },
-  2: { icon:'👤', title:'Who Owns It?',            sub:'Determine whether the Claims Team or the Client (Manufacturer) should handle each complaint.', tip:'Service Complaints → Claims. Product Complaints → Contact Client (Manufacturer).', badge:'5 Scenarios', color:'var(--c-green)' },
+  2: { icon:'👤', title:'Who Owns It?',            sub:'Determine whether the Claims Team or the AM should handle each complaint.', tip:'Service Complaints → Claims. Product Complaints → Contact AM.', badge:'5 Scenarios', color:'var(--c-green)' },
   3: { icon:'🃏', title:'Complaint Sorting',        sub:'Drag each complaint into the correct column — Service or Product?', tip:'You know the difference. Sort them all, then click Finish.', badge:'12 Cards', color:'var(--c-blue)' },
   4: { icon:'🔄', title:'Complete the Workflow',   sub:'Complete the routing workflow — fill in the missing step.', tip:'Recall the full routing process step by step.', badge:'5 Questions', color:'var(--c-orange)' },
   5: { icon:'📋', title:'Investigation Challenge', sub:'Test your recall on four complete complaint cases — answer all four routing questions per case.', tip:'Bonus points for a perfect case. Let\'s see what you remember!', badge:'3 Cases', color:'var(--c-purple)' },
@@ -392,15 +392,15 @@ function showStageIntro(n, cb) {
 const S1_DATA = [
   { scenario: 'A hospital calls: they received 8 boxes but ordered 10. ICS arranged and managed the shipment using FedEx.', answer: 'service', hint: 'Shortage on an ICS-managed shipment = Service Complaint. Route to Claims Initiation — they investigate and create the Quality Case. FedEx transported the goods but ICS managed the shipment.' },
   { scenario: 'Tracking shows a package was delivered, but the customer says nobody signed for it and it cannot be located anywhere on site.', answer: 'service', hint: 'Tracking-shows-delivered but customer cannot locate = Service Complaint. This is a Claims case — Claims Initiation investigates and creates the QC.' },
-  { scenario: 'A pharmacy received a product that shows visible contamination. The batch record traces the contamination to the manufacturing facility — not to transit.', answer: 'product', hint: 'Contamination traced to the manufacturing facility = Product Complaint. Returns contacts the Client (Manufacturer). No Quality Case is created by Claims.' },
+  { scenario: 'A pharmacy received a product that shows visible contamination. The batch record traces the contamination to the manufacturing facility — not to transit.', answer: 'product', hint: 'Contamination traced to the manufacturing facility = Product Complaint. Returns contacts the AM. No Quality Case is created by Claims.' },
   { scenario: 'A customer received the wrong product — they ordered Product A but received Product B. ICS picked and packed this order at the distribution centre.', answer: 'service', hint: 'Wrong product picked by ICS = Service Complaint. Route to Claims Initiation. Claims creates the QC and investigates.' },
-  { scenario: 'An insulin device has a documented mechanism failure causing incorrect dosing. The failure is traced to the manufacturing process.', answer: 'product', hint: 'Device malfunction from the manufacturing process = Product Complaint. Returns contacts the Client (Manufacturer) and follows their direction. No QC created by Claims.' },
+  { scenario: 'An insulin device has a documented mechanism failure causing incorrect dosing. The failure is traced to the manufacturing process.', answer: 'product', hint: 'Device malfunction from the manufacturing process = Product Complaint. Returns contacts the AM and follows their direction. No QC created by Claims.' },
 ];
 
 // ── STAGE 2: Is This a Claims Case? ────────────────────────
 const S2_DATA = [
   { scenario: 'Customer reports a shortage — they ordered 20 units and received 15. ICS managed the shipment.', question: 'Does this go to Claims Initiation?', answer: 'claims', hint: 'YES — Shortage on an ICS-managed shipment → Claims Initiation. Claims investigates and creates the Quality Case. Returns routes it, never investigates.' },
-  { scenario: 'A medical device is reported to malfunction. The failure is traced to a defective motor assembled incorrectly at the factory.', question: 'Does this go to Claims Initiation?', answer: 'am', hint: 'NO — Manufacturing defect = Product Complaint. Returns contacts the Client (Manufacturer) and follows their direction. Claims Initiation does not handle Product Complaints.' },
+  { scenario: 'A medical device is reported to malfunction. The failure is traced to a defective motor assembled incorrectly at the factory.', question: 'Does this go to Claims Initiation?', answer: 'am', hint: 'NO — Manufacturing defect = Product Complaint. Returns contacts the AM and follows their direction. Claims Initiation does not handle Product Complaints.' },
   { scenario: 'A customer received another customer\'s order. ICS arranged the shipment and the pick-and-pack error occurred at the ICS facility.', question: 'Does this go to Claims Initiation?', answer: 'claims', hint: 'YES — Customer received another customer\'s order = Service Complaint → Claims Initiation. This is one of the standard Claims cases. Claims creates the QC and investigates.' },
   { scenario: 'Temperature-sensitive product arrived outside the required 2–8°C range. ICS arranged and managed the entire shipment.', question: 'Does this go to Claims Initiation?', answer: 'claims', hint: 'YES — Temperature excursion on an ICS-managed shipment = Service Complaint → Claims Initiation. ICS managed the shipment, so Claims investigates and creates the QC.' },
   { scenario: 'A customer reports that their invoice shows an incorrect price. The billing error occurred in the ICS system.', question: 'Does this go to Claims Initiation?', answer: 'claims', hint: 'YES — Incorrect billing/pricing on an ICS-managed transaction → Claims Initiation. Billing and pricing errors are Claims cases. Claims creates the QC and investigates.' },
@@ -412,9 +412,9 @@ const S3_DATA = [
   { statement: 'Claims Team investigates Service Complaints and creates the Quality Case.', answer: true, hint: 'TRUE — Claims Team owns Service Complaints: they investigate and create the Quality Case.' },
   { statement: 'Product Complaints originate from the manufacturer or the product itself.', answer: true, hint: 'TRUE — Product Complaints include defects, adverse effects, and manufacturing issues.' },
   { statement: 'The Returns Team investigates every complaint it receives.', answer: false, hint: 'FALSE — Returns reviews and ROUTES complaints. Returns does NOT investigate.' },
-  { statement: 'If ICS did not manage the shipment, Returns should contact the Client (Manufacturer).', answer: true, hint: 'TRUE — No ICS involvement = contact Client (Manufacturer) and follow Source Client direction.' },
+  { statement: 'If ICS did not manage the shipment, Returns should contact AM.', answer: true, hint: 'TRUE — No ICS involvement = contact AM and follow Source Client direction.' },
   { statement: 'A temperature excursion during ICS delivery is a Product Complaint.', answer: false, hint: 'FALSE — Temperature excursion during ICS service = Service Complaint.' },
-  { statement: 'For Product Complaints, Returns contacts the Client (Manufacturer).', answer: true, hint: 'TRUE — Product Complaints: Returns contacts AM, follows Source Client direction. No Quality Case.' },
+  { statement: 'For Product Complaints, Returns contacts the AM.', answer: true, hint: 'TRUE — Product Complaints: Returns contacts AM, follows Source Client direction. No Quality Case.' },
   { statement: 'Wrong quantity delivered by ICS is classified as a Product Complaint.', answer: false, hint: 'FALSE — Wrong quantity from ICS handling = Service Complaint.' },
   { statement: 'Claims Team is responsible for Service Complaints.', answer: true, hint: 'TRUE — Claims Team (ICS) owns all Service Complaints.' },
   { statement: 'Returns Team should create a Quality Case for Product Complaints.', answer: false, hint: 'FALSE — No Quality Case for Product Complaints. Returns contacts AM only.' },
@@ -563,33 +563,45 @@ window.submitDragStage = submitDragStage;
 
 
 
-// ── STAGE 4: Complete the Workflow ──────────────────────────
+// ── STAGE 4: Complete the Workflow (Flowchart) ─────────────
+// flow[] entries:  plain text = filled node
+//                 '???' = blank drop zone (must contain exactly '???')
+//                 '→'   = arrow (rendered as arrow, no box)
 const S4_DATA = [
-  { context: 'Customer reports an issue. What is the Returns Team\'s FIRST action?',
-    flow: ['📥 Customer Reports Issue', '❓ ???', '🔍 Service or Product?', '📤 Route Correctly'],
-    options: ['Review the complaint', 'Create a Quality Case', 'Call the carrier', 'Escalate to manager'],
-    answer: 'Review the complaint',
-    hint: 'Returns always REVIEWS the complaint first before classifying and routing. Never skip this step.' },
-  { context: 'The issue is a Service Complaint. Where does Returns route it?',
-    flow: ['✅ Service Complaint Identified', '📤 Route to ???', '🔍 Claims Initiation investigates', '📋 QC Created by Claims'],
-    options: ['Quality Team Queue', 'Claims Initiation Queue', 'Returns Team Leader', 'Client / Manufacturer'],
-    answer: 'Claims Initiation Queue',
-    hint: 'Service Complaints go to the Claims Initiation Queue — NOT the Quality Team queue. Claims Initiation investigates and creates the Quality Case. Returns does not create QCs.' },
-  { context: 'Service Complaint confirmed and routed to Claims. Who creates the Quality Case?',
-    flow: ['📋 Service Complaint Routed', '👥 Claims Initiation receives it', '❓ Who creates the QC?', '🔍 Investigation begins'],
-    options: ['Returns Team', 'Quality Team', 'Claims Initiation', 'The customer'],
-    answer: 'Claims Initiation',
-    hint: 'Claims Initiation creates the Quality Case — never Returns. Returns identifies and routes. Claims Initiation investigates and creates the QC.' },
-  { context: 'The issue is a Product Complaint. What does Returns do next?',
-    flow: ['📦 Product Complaint Identified', '📞 ???', '📋 Follow Client direction', '🚫 No QC by Returns'],
-    options: ['Route to Claims Initiation', 'Contact Client / Manufacturer', 'Create Quality Case', 'Investigate the product'],
-    answer: 'Contact Client / Manufacturer',
-    hint: 'Product Complaints → Returns contacts the Client (Manufacturer). Returns does NOT create a QC and does NOT route to Claims Initiation. The Client provides direction on next steps.' },
-  { context: 'Customer cannot find their package — tracking shows delivered, but recipient is unknown. ICS managed the shipment. Where does this go?',
-    flow: ['📦 Tracking: Delivered', '👤 Customer cannot locate package', '❓ ???', '📋 QC Created'],
-    options: ['Contact Client / Manufacturer', 'Claims Initiation Queue', 'Ignore — tracking shows delivered', 'Quality Team Queue'],
-    answer: 'Claims Initiation Queue',
-    hint: 'Tracking-shows-delivered but customer cannot locate = Service Complaint → Claims Initiation Queue. This is a standard Claims case. Always use Claims Initiation Queue, not the Quality Team queue.' },
+  // Q1 — 1 blank: first step of Returns workflow
+  { context: 'A customer reports an issue. What is the Returns Team\'s first step?',
+    flow: ['⚠️ Customer Reports Issue','→','???','→','🔍 Service or Product?','→','📤 Route Correctly'],
+    options: ['📋 Review the Complaint','🚀 Create a Quality Case','📞 Call the Carrier','📤 Escalate Immediately'],
+    answer: '📋 Review the Complaint',
+    explain: 'Returns always reviews the complaint first — gather all details before classifying or routing. Never skip this step.' },
+
+  // Q2 — 1 blank: routing a Service Complaint
+  { context: 'The issue is confirmed as a Service Complaint. Where does Returns route it?',
+    flow: ['✅ Service Complaint','→','???','→','🔍 Claims Initiation Investigates','→','📋 QC Created'],
+    options: ['🗂 Claims Initiation Queue','❌ Quality Team Queue','📋 Returns Team','📞 Contact AM'],
+    answer: '🗂 Claims Initiation Queue',
+    explain: 'Service Complaints always go to the Claims Initiation Queue — never the Quality Team queue. Claims Initiation investigates and creates the Quality Case. Returns does NOT create QCs.' },
+
+  // Q3 — 1 blank: who creates the QC
+  { context: 'The Service Complaint has been routed. Who creates the Quality Case?',
+    flow: ['📤 Service Complaint Routed','→','👥 Claims Initiation Receives It','→','???','→','🔍 Investigation Begins'],
+    options: ['📋 Claims Initiation','❌ Returns Team','❌ Quality Team','🏥 The Customer'],
+    answer: '📋 Claims Initiation',
+    explain: 'Claims Initiation creates the Quality Case — never Returns. Returns identifies and routes. Claims Initiation investigates and owns the QC.' },
+
+  // Q4 — 1 blank: Product Complaint routing
+  { context: 'The issue is a Product Complaint (manufacturer defect). What does Returns do next?',
+    flow: ['🏭 Product Complaint Identified','→','???','→','📋 Follow AM Direction','→','🚫 No QC by Returns'],
+    options: ['📞 Contact AM','🗂 Claims Initiation Queue','📋 Create Quality Case','🔍 Investigate Product'],
+    answer: '📞 Contact AM',
+    explain: 'Product Complaints are not routed to Claims Initiation. Returns contacts AM and follows their direction. No Quality Case is created by Returns or Claims for Product Complaints.' },
+
+  // Q5 — 2 blanks: full service path with two steps missing
+  { context: 'Complete the full workflow for a Service Complaint from start to finish.',
+    flow: ['⚠️ Customer Reports Issue','→','📋 Returns Reviews','→','✅ Service Complaint','→','???','→','🔍 Claims Investigates','→','???'],
+    options: ['🗂 Claims Initiation Queue','📋 QC Created by Claims','📞 Contact AM','❌ Quality Team'],
+    answer: '🗂 Claims Initiation Queue|||📋 QC Created by Claims',
+    explain: 'The complete Service path: Customer reports → Returns reviews → Service Complaint → Claims Initiation Queue → Claims investigates → QC created by Claims. Returns\' role ends at routing.' },
 ];
 
 // ── STAGE 5: Case Studies ──────────────────────────────────
@@ -599,7 +611,7 @@ const S5_CASES = [
     questions: [
       { q: 'Did ICS manage the shipment?', opts: ['YES', 'NO'], answer: 'YES', hint: 'ICS arranged and managed the shipment — UPS transported it as a contracted carrier on behalf of ICS.' },
       { q: 'Is this a Service or Product Complaint?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Service Complaint', hint: 'Wrong product picked and shipped by ICS = Service Complaint. The issue occurred during ICS operations.' },
-      { q: 'Where does Returns route this?', opts: ['Claims Initiation Queue', 'Quality Team Queue', 'Contact Client / Manufacturer', 'Investigate internally'], answer: 'Claims Initiation Queue', hint: 'Service Complaint → Claims Initiation Queue. Never the Quality Team queue. Claims Initiation investigates and creates the Quality Case.' },
+      { q: 'Where does Returns route this?', opts: ['Claims Initiation Queue', 'Quality Team Queue', 'Contact AM', 'Investigate internally'], answer: 'Claims Initiation Queue', hint: 'Service Complaint → Claims Initiation Queue. Never the Quality Team queue. Claims Initiation investigates and creates the Quality Case.' },
       { q: 'Who creates the Quality Case?', opts: ['Returns Team', 'Claims Initiation', 'Quality Team', 'The hospital'], answer: 'Claims Initiation', hint: 'Claims Initiation creates the QC — never Returns. Returns routes, Claims Initiation investigates.' },
     ]
   },
@@ -607,7 +619,7 @@ const S5_CASES = [
     desc: 'A clinic contacts ICS Returns. The serial numbers on the received medical devices do not match the shipping documentation or the purchase order. ICS managed and dispatched this shipment.',
     questions: [
       { q: 'Is this a Service or Product Complaint?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Service Complaint', hint: 'Serial number mismatch on ICS-managed shipment = Service Complaint. This is a standard Claims case.' },
-      { q: 'Is this a Claims case?', opts: ['YES — route to Claims Initiation', 'NO — contact Client / Manufacturer'], answer: 'YES — route to Claims Initiation', hint: 'Serial number mismatch is a listed Claims case. Route to Claims Initiation Queue.' },
+      { q: 'Is this a Claims case?', opts: ['YES — route to Claims Initiation', 'NO — contact AM'], answer: 'YES — route to Claims Initiation', hint: 'Serial number mismatch is a listed Claims case. Route to Claims Initiation Queue.' },
       { q: 'What does Returns do?', opts: ['Route to Claims Initiation Queue', 'Create the Quality Case', 'Investigate the serial numbers', 'Contact the manufacturer'], answer: 'Route to Claims Initiation Queue', hint: 'Returns routes. Claims Initiation investigates and creates the QC. Returns never investigates or creates QCs.' },
       { q: 'Which queue does this go to?', opts: ['Claims Initiation Queue', 'Quality Team Queue', 'Returns Team Queue', 'Warehouse Queue'], answer: 'Claims Initiation Queue', hint: 'Always use the Claims Initiation Queue for Service Complaints — never the Quality Team queue.' },
     ]
@@ -617,8 +629,8 @@ const S5_CASES = [
     questions: [
       { q: 'Where did the issue originate?', opts: ['During ICS Shipment / Handling', 'From the Manufacturer'], answer: 'From the Manufacturer', hint: 'The assembly error occurred at the production facility — this has nothing to do with ICS handling or transport.' },
       { q: 'Is this a Service or Product Complaint?', opts: ['Service Complaint', 'Product Complaint'], answer: 'Product Complaint', hint: 'Manufacturing defect from the production facility = Product Complaint.' },
-      { q: 'Does this go to Claims Initiation?', opts: ['NO — contact Client / Manufacturer', 'YES — Claims Initiation Queue'], answer: 'NO — contact Client / Manufacturer', hint: 'Product Complaints do NOT go to Claims Initiation. Returns contacts the Client (Manufacturer) and follows their direction. No QC is created by Claims for Product Complaints.' },
-      { q: 'What is the correct next step for Returns?', opts: ['Contact Client (Manufacturer) for direction', 'Create a Quality Case', 'Route to Claims Initiation Queue', 'Investigate the device'], answer: 'Contact Client (Manufacturer) for direction', hint: 'Returns contacts the Client (Manufacturer) and follows their instructions. No Quality Case unless the Client instructs otherwise.' },
+      { q: 'Does this go to Claims Initiation?', opts: ['NO — contact AM', 'YES — Claims Initiation Queue'], answer: 'NO — contact AM', hint: 'Product Complaints do NOT go to Claims Initiation. Returns contacts the AM and follows their direction. No QC is created by Claims for Product Complaints.' },
+      { q: 'What is the correct next step for Returns?', opts: ['Contact AM for direction', 'Create a Quality Case', 'Route to Claims Initiation Queue', 'Investigate the device'], answer: 'Contact AM for direction', hint: 'Returns contacts the AM and follows their instructions. No Quality Case unless the Client instructs otherwise.' },
     ]
   },
 ];
@@ -630,7 +642,7 @@ const S6_DATA = [
   { scenario: 'Customer received only 8 of 10 ordered boxes. ICS picked, packed, and dispatched the order. Carrier confirmed 8 boxes were collected from the ICS facility.', answer: '🏢 ICS Warehouse', hint: 'Shortage originated at the ICS warehouse during pick-and-pack. Service Complaint → Claims Initiation.' },
   { scenario: 'An invoice shows the wrong price for a product. The billing team confirms the error was entered into the ICS order management system.', answer: '🗂 Billing / Data', hint: 'Pricing error in the ICS system = billing/data origin. Service Complaint → Claims Initiation.' },
   { scenario: 'Temperature-sensitive vaccines arrived outside the required range. ICS arranged the shipment. Data loggers confirm the cold chain was broken during carrier transit.', answer: '🚚 Transportation', hint: 'Cold-chain breach during carrier transit on ICS-managed shipment. Origin = Transportation. Service Complaint → Claims Initiation.' },
-  { scenario: 'A patient reports adverse side effects at the prescribed dosage. The manufacturer confirms a formulation issue in this production batch.', answer: '🏭 Manufacturing', hint: 'Adverse reaction from a manufacturing formulation issue. Origin = Manufacturing. Product Complaint → Contact Client (Manufacturer).' },
+  { scenario: 'A patient reports adverse side effects at the prescribed dosage. The manufacturer confirms a formulation issue in this production batch.', answer: '🏭 Manufacturing', hint: 'Adverse reaction from a manufacturing formulation issue. Origin = Manufacturing. Product Complaint → Contact AM.' },
   { scenario: 'A customer cannot receive goods into their system because the PO number on the shipment documentation is incorrect. The error is traced to order entry at ICS.', answer: '🗂 Billing / Data', hint: 'Incorrect PO number from ICS order entry = billing/data origin. Service Complaint → Claims Initiation.' },
 ];
 
@@ -649,7 +661,7 @@ const STAGE_EXPLANATIONS = {
     title: 'Service vs Product — The Foundation',
     points: [
       { icon:'🚚', color:'green',  text:'<strong>Service Complaint</strong> — Shortage, overage, wrong product, damaged shipment, missing shipment, serial number mismatch, billing error, missing EPCIS, incorrect PO, wrong account, incorrect transport method, temperature excursion on ICS-managed shipment, tracking-shows-delivered but customer cannot locate. All of these → Claims Initiation.' },
-      { icon:'🏭', color:'blue',   text:'<strong>Product Complaint</strong> — Manufacturing defect, device malfunction, product contamination, stability issue, packaging defect from manufacturing, adverse reaction. These originate from the manufacturer → Contact Client (Manufacturer). No QC by Claims.' },
+      { icon:'🏭', color:'blue',   text:'<strong>Product Complaint</strong> — Manufacturing defect, device malfunction, product contamination, stability issue, packaging defect from manufacturing, adverse reaction. These originate from the manufacturer → Contact AM. No QC by Claims.' },
       { icon:'💡', color:'orange', text:'<strong>Key rule:</strong> ICS uses third-party carriers (FedEx, UPS, DHL). If ICS arranged and managed the shipment, any shipping, handling, or delivery issue is a Service Complaint — regardless of which carrier physically moved the goods.' },
     ],
     diagram: 'service-product',
@@ -659,7 +671,7 @@ const STAGE_EXPLANATIONS = {
     title: 'Claims Initiation — When to Route There',
     points: [
       { icon:'✅', color:'green',  text:'<strong>Route to Claims Initiation for:</strong> Shortage, overage, wrong product, another customer\'s order, damaged shipment, missing shipment, serial number mismatch, billing/pricing error, missing EPCIS, incorrect PO, incorrect account, incorrect transport method, temperature excursion (ICS-managed), tracking delivered but unlocatable.' },
-      { icon:'❌', color:'blue',   text:'<strong>Do NOT route to Claims Initiation for:</strong> Manufacturing defects, device malfunctions, product contamination, adverse reactions, stability issues, packaging defects from manufacturing. These are Product Complaints — contact the Client (Manufacturer).' },
+      { icon:'❌', color:'blue',   text:'<strong>Do NOT route to Claims Initiation for:</strong> Manufacturing defects, device malfunctions, product contamination, adverse reactions, stability issues, packaging defects from manufacturing. These are Product Complaints — contact AM.' },
       { icon:'📋', color:'purple', text:'<strong>Returns Team role:</strong> Receive → Review → Classify (Service or Product) → Route correctly. Returns does NOT create Quality Cases and does NOT investigate.' },
     ],
     diagram: 'ownership',
@@ -669,7 +681,7 @@ const STAGE_EXPLANATIONS = {
     title: 'Sorting — Service vs Product',
     points: [
       { icon:'🚚', color:'green',  text:'<strong>Service Complaints (→ Claims Initiation):</strong> Shortage, overage, wrong product, damaged shipment, missing shipment, serial number mismatch, incorrect pricing, incorrect account, missing EPCIS, temperature excursion (ICS-managed).' },
-      { icon:'🏭', color:'blue',   text:'<strong>Product Complaints (→ Client/Manufacturer):</strong> Manufacturing defect, device malfunction, product contamination, adverse reaction, stability issue, packaging defect from manufacturing.' },
+      { icon:'🏭', color:'blue',   text:'<strong>Product Complaints (→ AM):</strong> Manufacturing defect, device malfunction, product contamination, adverse reaction, stability issue, packaging defect from manufacturing.' },
       { icon:'💡', color:'orange', text:'<strong>Quick rule:</strong> Did ICS manage the shipment and did the issue happen during ICS operations? → Service. Did the issue originate from the product or manufacturer? → Product.' },
     ],
     diagram: 'service-product',
@@ -680,17 +692,17 @@ const STAGE_EXPLANATIONS = {
     points: [
       { icon:'1️⃣', color:'purple', text:'<strong>Customer reports issue → Returns reviews it → Service or Product?</strong>' },
       { icon:'2️⃣', color:'green',  text:'<strong>Service Complaint → Claims Initiation Queue</strong> → Claims Initiation investigates → Claims Initiation creates the Quality Case → Resolution.' },
-      { icon:'3️⃣', color:'blue',   text:'<strong>Product Complaint → Contact Client (Manufacturer)</strong> → Follow client instructions → No Quality Case (unless client instructs).' },
-      { icon:'⚠️', color:'orange', text:'<strong>Important:</strong> Always use the Claims Initiation Queue — never the Quality Team queue. Returns does not create QCs. Claims Initiation creates QCs.' },
+      { icon:'3️⃣', color:'blue',   text:'<strong>Product Complaint → Contact AM</strong> → Follow client instructions → No Quality Case (unless client instructs).' },
+      { icon:'⚠️', color:'orange', text:'<strong>Important:</strong> Always use the Claims Initiation Queue — never the Quality Team queue. For Product Complaints, contact AM. Returns never creates QCs.' },
     ],
     diagram: 'workflow',
-    takeaway: 'Returns routes to Claims Initiation Queue. Claims Initiation owns the investigation and the Quality Case — not Returns, not the Quality Team.'
+    takeaway: 'Service → Claims Initiation Queue. Product → Contact AM. Returns never creates QCs. Claims Initiation owns the investigation.'
   },
   5: {
     title: 'Case Studies — Key Lessons',
     points: [
       { icon:'✅', color:'green',  text:'<strong>Wrong product, shortage, serial number mismatch</strong> on ICS-managed shipments = Service Complaints → Claims Initiation Queue.' },
-      { icon:'✅', color:'blue',   text:'<strong>Manufacturing defects</strong> (assembly errors, formulation issues, contamination at factory) = Product Complaints → Contact Client (Manufacturer). Not Claims.' },
+      { icon:'✅', color:'blue',   text:'<strong>Manufacturing defects</strong> (assembly errors, formulation issues, contamination at factory) = Product Complaints → Contact AM. Not Claims.' },
       { icon:'💡', color:'orange', text:'<strong>Remember:</strong> Even if ICS delivered the product, if the issue comes from manufacturing, it is a Product Complaint. The carrier does not change this — the origin of the issue determines the type.' },
     ],
     diagram: 'three-questions',
@@ -702,7 +714,7 @@ const STAGE_EXPLANATIONS = {
       { icon:'🏢', color:'purple', text:'<strong>ICS Warehouse</strong> (shortage, wrong product, wrong account, serial mismatch) → Service Complaint → Claims Initiation.' },
       { icon:'🚚', color:'green',  text:'<strong>Transportation</strong> (damaged, cold-chain breach, missing shipment, tracking issue) on ICS-managed shipment → Service Complaint → Claims Initiation.' },
       { icon:'🗂', color:'orange', text:'<strong>Billing / Data</strong> (incorrect pricing, missing EPCIS, incorrect PO, wrong account) → Service Complaint → Claims Initiation.' },
-      { icon:'🏭', color:'blue',   text:'<strong>Manufacturing</strong> (defect, contamination, adverse reaction, stability, malfunction) → Product Complaint → Contact Client (Manufacturer).' },
+      { icon:'🏭', color:'blue',   text:'<strong>Manufacturing</strong> (defect, contamination, adverse reaction, stability, malfunction) → Product Complaint → Contact AM.' },
     ],
     diagram: 'timeline',
     takeaway: 'Trace the origin. If the issue happened within ICS operations (warehouse, transport, billing, data) — it\'s a Service Complaint for Claims Initiation.'
@@ -711,8 +723,8 @@ const STAGE_EXPLANATIONS = {
     title: 'End-to-End Routing — Complete',
     points: [
       { icon:'📥', color:'purple', text:'<strong>Step 1:</strong> Review the complaint — gather all details before acting.' },
-      { icon:'❓', color:'orange', text:'<strong>Step 2:</strong> Did ICS manage the shipment? YES → continue. NO → Contact Client (Manufacturer).' },
-      { icon:'🔀', color:'green',  text:'<strong>Steps 3–4:</strong> Classify (Service or Product) → Route to Claims Initiation Queue (Service) or Client/Manufacturer (Product).' },
+      { icon:'❓', color:'orange', text:'<strong>Step 2:</strong> Did ICS manage the shipment? YES → continue. NO → Contact AM.' },
+      { icon:'🔀', color:'green',  text:'<strong>Steps 3–4:</strong> Classify (Service or Product) → Route to Claims Initiation Queue (Service) or AM (Product).' },
       { icon:'📋', color:'blue',   text:'<strong>Step 5:</strong> Claims Initiation takes over — they investigate and create the Quality Case. Returns\' role is complete.' },
     ],
     diagram: 'escape',
@@ -826,7 +838,118 @@ function nextS3() { startS3Drag(); }
 function handleS3() {}   // retained for HTML compat
 window.handleS3 = handleS3;
 
-// ── STAGE 4 ──────────────────────────────────────────────────
+// ── STAGE 4 — Flowchart Workflow ─────────────────────────────
+// Supports 1-blank and 2-blank questions.
+// 2-blank answers encoded as 'ANSWER1|||ANSWER2'.
+
+let s4BlanksFilled = [];    // filled answers for 2-blank mode
+let s4BlanksNeeded = 1;     // how many blanks this question has
+
+function s4RenderFlow(d) {
+  const isTwo = d.answer.includes('|||');
+  s4BlanksNeeded = isTwo ? 2 : 1;
+  s4BlanksFilled = [];
+  const flowEl = document.getElementById('s4-flow');
+  const answers = isTwo ? d.answer.split('|||') : [d.answer];
+  let blankIdx = 0;
+  flowEl.innerHTML = '';
+  d.flow.forEach((step, i) => {
+    if (step === '→') {
+      const arr = document.createElement('div');
+      arr.className = 'fc-arrow'; arr.textContent = '↓';
+      flowEl.appendChild(arr);
+      return;
+    }
+    if (step === '???') {
+      const zone = document.createElement('div');
+      zone.className = 'fc-blank'; zone.dataset.blankIdx = blankIdx;
+      zone.dataset.expected = answers[blankIdx];
+      zone.innerHTML = '<span class="fc-blank-label">Drop here ↓</span>';
+      flowEl.appendChild(zone);
+      blankIdx++;
+      return;
+    }
+    // Determine node colour from emoji/content
+    let cls = 'fc-node-neutral';
+    if (/✅|📤|📋/.test(step)) cls = 'fc-node-green';
+    if (/🏭|🚫|❌/.test(step)) cls = 'fc-node-red';
+    if (/⚠️|❓/.test(step))  cls = 'fc-node-orange';
+    if (/🔍|👥/.test(step))  cls = 'fc-node-blue';
+    const node = document.createElement('div');
+    node.className = `fc-node ${cls}`;
+    node.textContent = step;
+    flowEl.appendChild(node);
+  });
+}
+
+function s4RenderOptions(d) {
+  const optsEl = document.getElementById('s4-options');
+  optsEl.innerHTML = '';
+  shuffle([...d.options]).forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'fc-option-btn'; btn.textContent = opt;
+    btn.onclick = () => handleS4Opt(btn, opt);
+    optsEl.appendChild(btn);
+  });
+}
+
+function handleS4Opt(btn, chosen) {
+  if (!stageCanAct) return;
+  const d = S4_DATA[stageItem];
+  const isTwo = d.answer.includes('|||');
+
+  // Find the first unfilled blank
+  const blanks = document.querySelectorAll('.fc-blank:not(.fc-blank-filled)');
+  if (!blanks.length) return;
+  const target = blanks[0];
+  const expected = target.dataset.expected;
+  const correct = (chosen === expected);
+
+  if (correct) {
+    // Fill the blank with green success node
+    target.classList.add('fc-blank-filled');
+    target.innerHTML = `<div class="fc-node fc-node-green fc-node-filled">${chosen}</div>`;
+    s4BlanksFilled.push(chosen);
+    btn.classList.add('fc-opt-used'); btn.disabled = true;
+    sfxCorrect();
+
+    if (s4BlanksFilled.length >= s4BlanksNeeded) {
+      // All blanks filled correctly
+      stageCanAct = false; stopLocalTimer();
+      addMyScore(120 * s4BlanksNeeded);
+      s4ShowExplain(true, d);
+      setTimeout(() => { stageItem++; nextS4(); }, 2600);
+    }
+  } else {
+    // Wrong — shake the button and deduct
+    sfxWrong(); deductScore(2);
+    btn.classList.add('fc-opt-shake');
+    setTimeout(() => btn.classList.remove('fc-opt-shake'), 500);
+    // Flash the blank zone red briefly
+    target.classList.add('fc-blank-wrong');
+    setTimeout(() => target.classList.remove('fc-blank-wrong'), 500);
+    s4ShowExplainWrong();
+  }
+}
+// Alias expected by old code path
+function handleS4(chosen) { handleS4Opt(null, chosen); }
+
+function s4ShowExplain(correct, d) {
+  const fb = document.getElementById('s4-feedback');
+  fb.className = 'answer-feedback ' + (correct ? 'correct' : 'wrong');
+  const icon = correct ? '✓' : '✗';
+  const txt  = d.explain || d.hint || '';
+  fb.innerHTML = `<span class="fb-icon">${icon}</span> ${txt}`;
+  fb.classList.remove('hidden');
+}
+function s4ShowExplainWrong() {
+  const fb = document.getElementById('s4-feedback');
+  fb.className = 'answer-feedback wrong';
+  fb.innerHTML = '<span class="fb-icon">✗</span> Not quite — try another option.';
+  fb.classList.remove('hidden');
+  setTimeout(() => { fb.classList.add('hidden'); }, 1200);
+}
+
 function nextS4() {
   stopLocalTimer();
   if (stageItem >= S4_DATA.length) { finishStage(4); return; }
@@ -834,38 +957,22 @@ function nextS4() {
   setItemProgress(stageItem+1, S4_DATA.length);
   showGamePanel('s4-panel');
   document.getElementById('s4-context').textContent = d.context;
-  // Render flow
-  const flowEl = document.getElementById('s4-flow');
-  flowEl.innerHTML = d.flow.map((step,i) =>
-    `<div class="flow-step ${step.includes('???')?'flow-missing':''}">${step}</div>${i<d.flow.length-1?'<div class="flow-arrow">↓</div>':''}`
-  ).join('');
-  // Render options
-  const optsEl = document.getElementById('s4-options');
-  optsEl.innerHTML = '';
-  shuffle([...d.options]).forEach(opt => {
-    const btn = document.createElement('button');
-    btn.className = 'option-btn'; btn.textContent = opt;
-    btn.onclick = () => handleS4(opt);
-    optsEl.appendChild(btn);
-  });
+  document.getElementById('s4-sublabel').textContent =
+    d.answer.includes('|||') ? 'Fill in BOTH blank steps:' : 'Fill in the missing step:';
+  s4RenderFlow(d);
+  s4RenderOptions(d);
   document.getElementById('s4-feedback').className = 'answer-feedback hidden';
   stageCanAct = true;
-  startTimerLocal('train-timer','train-timer-bar',20,() => {
+  startTimerLocal('train-timer','train-timer-bar',25,() => {
     stageCanAct = false;
-    document.querySelectorAll('#s4-options .option-btn').forEach(b => b.disabled = true);
-    showAnswerFeedback(false, d.hint, 's4', 1400);
-    stageItem++; setTimeout(nextS4,1800);
+    // Reveal correct answers in blanks
+    document.querySelectorAll('.fc-blank:not(.fc-blank-filled)').forEach(z => {
+      z.classList.add('fc-blank-filled');
+      z.innerHTML = `<div class="fc-node fc-node-reveal">${z.dataset.expected}</div>`;
+    });
+    s4ShowExplain(false, d);
+    stageItem++; setTimeout(nextS4, 2800);
   });
-}
-function handleS4(chosen) {
-  if (!stageCanAct) return;
-  stageCanAct = false; stopLocalTimer();
-  document.querySelectorAll('#s4-options .option-btn').forEach(b => b.disabled = true);
-  const d = S4_DATA[stageItem];
-  const correct = chosen === d.answer;
-  if (correct) { addMyScore(120); sfxCorrect(); } else { sfxWrong(); deductScore(2); }
-  showAnswerFeedback(correct, d.hint, 's4', 1200);
-  stageItem++; setTimeout(nextS4, 1600);
 }
 
 // ── STAGE 5 ──────────────────────────────────────────────────
@@ -1130,18 +1237,18 @@ function buildExpDiagram(n, container) {
   const diagrams = {
     'service-product': [
       { text:'Issue during ICS Service', cls:'diag-green', arrow:'→ Service Complaint → Claims Team' },
-      { text:'Issue from Manufacturer / Product', cls:'diag-blue', arrow:'→ Product Complaint → Contact Client (Manufacturer)' },
+      { text:'Issue from Manufacturer / Product', cls:'diag-blue', arrow:'→ Product Complaint → Contact AM' },
     ],
     'ownership': [
       { text:'Returns Team', cls:'diag-purple', arrow:'Reviews & Routes Only' },
       { text:'Claims Team (ICS)', cls:'diag-green', arrow:'Owns Service Complaints + Quality Case' },
-      { text:'Client (Manufacturer)', cls:'diag-blue', arrow:'Receives Product Complaints (from Returns)' },
+      { text:'AM', cls:'diag-blue', arrow:'Receives Product Complaints (from Returns)' },
     ],
     'workflow': [
       { text:'Complaint Received', cls:'diag-gray', arrow:'↓' },
       { text:'Returns Reviews', cls:'diag-purple', arrow:'↓' },
-      { text:'Did ICS manage shipment?', cls:'diag-orange', arrow:'YES ↓ / NO → Contact Client (Manufacturer)' },
-      { text:'Where did it originate?', cls:'diag-orange', arrow:'Service ↓ / Product → Contact Client (Manufacturer)' },
+      { text:'Did ICS manage shipment?', cls:'diag-orange', arrow:'YES ↓ / NO → Contact AM' },
+      { text:'Where did it originate?', cls:'diag-orange', arrow:'Service ↓ / Product → Contact AM' },
       { text:'Service → Claims | Product → AM', cls:'diag-green', arrow:'' },
     ],
   };
