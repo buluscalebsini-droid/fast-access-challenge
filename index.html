@@ -181,8 +181,8 @@
         </button>
         <button class="choice-btn choice-am" onclick="handleS2('am')">
           <span class="choice-icon">❌</span>
-          <span class="choice-label">NO — Product Complaint</span>
-          <span class="choice-sub">Contact Client / Manufacturer</span>
+          <span class="choice-label">NO — Contact AM</span>
+          <span class="choice-sub">Contact AM — No QC</span>
         </button>
       </div>
       <div class="answer-feedback hidden" id="s2-feedback"></div>
@@ -217,12 +217,14 @@
       <div class="drag-results hidden" id="s3-drag-results"></div>
     </div>
 
-    <!-- STAGE 4: Complete the Workflow -->
+    <!-- STAGE 4: Flowchart Workflow -->
     <div id="s4-panel" class="stage-panel hidden">
       <p class="panel-label" id="s4-context"></p>
-      <div class="workflow-flow" id="s4-flow"></div>
-      <p class="panel-sublabel">Select the missing step:</p>
-      <div class="option-grid" id="s4-options"></div>
+      <!-- Flowchart chain -->
+      <div class="fc-flow" id="s4-flow"></div>
+      <!-- Draggable / clickable option chips -->
+      <p class="panel-sublabel" id="s4-sublabel">Fill in the missing step:</p>
+      <div class="fc-options" id="s4-options"></div>
       <div class="answer-feedback hidden" id="s4-feedback"></div>
     </div>
 
