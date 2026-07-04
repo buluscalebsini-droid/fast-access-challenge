@@ -10,14 +10,29 @@
 </head>
 <body>
 
+<!-- Animated background -->
+<div class="bg-gradient-anim" aria-hidden="true"></div>
+<div class="bg-blobs" aria-hidden="true">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+</div>
+
 <!-- LOADING -->
 <div id="screen-loading" class="screen active">
   <div class="loader-wrap">
-    <div class="ics-logo">ICS</div>
-    <div class="spinner"></div>
-    <div class="loader-title">Service vs Product<br>Complaints</div>
-    <div class="loader-org">ICS Returns Team Knowledge Refresher</div>
-    <div class="loader-sub" id="loading-msg">Initialising...</div>
+    <div class="ics-logo-wrap">
+      <div class="ics-logo-badge">ICS</div>
+    </div>
+    <div class="loader-title">Service vs Product<br><span class="loader-title-accent">Complaints</span></div>
+    <div class="loader-org">Returns Team Knowledge Refresher</div>
+    <div class="loader-spinner-wrap">
+      <div class="loader-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+    <div class="loader-sub" id="loading-msg">Initialising</div>
   </div>
 </div>
 
