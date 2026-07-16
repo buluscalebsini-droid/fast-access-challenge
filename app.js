@@ -337,6 +337,7 @@ function startFruitSlicer(){
   const canvas=newCv;
   canvas.width=canvas.offsetWidth||360;
   canvas.height=canvas.offsetHeight||310;
+  const W=canvas.width, H=canvas.height;   // FIX: W/H used by launchFruit
   const ctx=canvas.getContext('2d');
 
   // ── Input ────────────────────────────────────────────────
