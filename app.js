@@ -242,7 +242,7 @@ function startTimerLocal(tid,bid,sec,onEnd){
 // STAGE INTROS
 // ============================================================
 const STAGE_INTROS={
-  1:{icon:'🍉',title:'Fruit Slicer',badge:'GAME 1',how:'Swipe or drag across flying fruits to slice them! Slice 🍉🍊🍋 for points. Slice 💣 bombs and lose a life. Build combos — waves get busier as time goes on!',color:'#ef4444'},
+  1:{icon:'🍉',title:'Fruit Slicer',badge:'GAME 1',how:'Swipe across fruits to slice them! Waves get bigger over 75 seconds — starts gentle, ends chaotic. Bombs cost a life, combos multiply points. Slice everything you can!',color:'#ef4444'},
   2:{icon:'🎨',title:'Odd Color Out',badge:'GAME 2',how:'One tile is a slightly different color from the others. Find it and tap it as fast as you can! Speed = bigger bonus points.',color:'#f59e0b'},
   3:{icon:'⚡',title:'Whack-a-Mole',badge:'GAME 3',how:'Moles 🐹 pop up from holes — smash them! Avoid bombs 💣 or lose points. Build a streak for a multiplier bonus!',color:'#10b981'},
   4:{icon:'🫧',title:'Bubble Pop',badge:'GAME 4',how:'The screen is PACKED with bubbles! Pop 🟢 green bubbles for points. Tap 🔴 red bombs and lose a life. Catch the rare 🌟 golden bonus bubbles for big scores!',color:'#06b6d4'},
@@ -325,28 +325,39 @@ function startFruitSlicer(){
   canvas.addEventListener('mousedown',onDown);canvas.addEventListener('mousemove',onMove);canvas.addEventListener('mouseup',onUp);
   canvas.addEventListener('touchstart',onDown,{passive:false});canvas.addEventListener('touchmove',onMove,{passive:false});canvas.addEventListener('touchend',onUp);
 
-  // --- Spawn: faster rate + multi-spawn waves for engagement ---
-  // Wave 1 (0-20s): relaxed, 1 fruit at a time every 650ms, bomb rate 12%
-  // Wave 2 (20-35s): 2 fruits sometimes, every 500ms, bomb rate 16%
-  // Wave 3 (35-52s): busier, occasional double-launch, bomb rate 18%
+  // --- Spawn: heavy fruit rain across 3 escalating waves ---
+  // Wave 1 (0-25s):  gentle intro — 1 fruit every 400ms, bombs only 6%
+  // Wave 2 (25-50s): busier — always 2 fruits, occasional 3rd, bombs 10%
+  // Wave 3 (50-75s): full chaos — 3 fruits at once, rapid triples, bombs 14%
   let elapsed=0;
   const spawnId=setInterval(()=>{
     if(!fruitActive)return;
-    elapsed+=0.55;
-    const bombChance = elapsed<20?0.12:elapsed<35?0.16:0.18;
-    const doubleChance = elapsed<20?0:elapsed<35?0.2:0.4;
-    // Always spawn at least one fruit
-    spawnOneFruit(canvas,bombChance);
-    // Sometimes spawn a second simultaneously for variety
-    if(Math.random()<doubleChance) setTimeout(()=>{if(fruitActive)spawnOneFruit(canvas,bombChance*0.5);},120);
-  },550);
+    elapsed+=0.4; // advances ~1s per real second at 400ms interval
+
+    let bombChance, count, triplePct;
+    if(elapsed<25){
+      bombChance=0.06; count=1; triplePct=0;       // Wave 1: chill, fruit everywhere
+    } else if(elapsed<50){
+      bombChance=0.10; count=2; triplePct=0.30;    // Wave 2: pairs + occasional 3rd
+    } else {
+      bombChance=0.14; count=3; triplePct=0.55;    // Wave 3: triple volleys
+    }
+
+    // Always spawn `count` fruits staggered by 80ms
+    for(let i=0;i<count;i++){
+      setTimeout(()=>{if(fruitActive)spawnOneFruit(canvas,bombChance);},i*80);
+    }
+    // Bonus extra fruit burst
+    if(Math.random()<triplePct){
+      setTimeout(()=>{if(fruitActive)spawnOneFruit(canvas,bombChance*0.4);},count*80+100);
+    }
+  },400);
   gameIntervals.push(spawnId);
 
   // --- Physics loop: single RAF id, never accumulates ---
-  const G=0.45;
+  const G=0.42;
   function loop(ts){
     if(!fruitActive){
-      // Game ended — clean up and transition (called exactly once)
       if(fruitRafId!==null){fruitRafId=null;endFruitSlicer();}
       return;
     }
@@ -372,12 +383,11 @@ function startFruitSlicer(){
       }
     });
     fruitObjs=fruitObjs.filter(f=>!f.dead);
-    // Keep single RAF id — overwrite previous (it was already executed)
     fruitRafId=requestAnimationFrame(loop);
   }
   fruitRafId=requestAnimationFrame(loop);
-  // Extended duration: ~52 seconds (35% longer than original 35s)
-  startTimerLocal('train-timer','train-timer-bar',52,()=>{fruitActive=false;});
+  // 75 seconds — ~75% longer than the original 35s
+  startTimerLocal('train-timer','train-timer-bar',75,()=>{fruitActive=false;});
 }
 
 function spawnOneFruit(canvas,bombChance){
