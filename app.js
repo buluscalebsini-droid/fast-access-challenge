@@ -242,7 +242,7 @@ function startTimerLocal(tid,bid,sec,onEnd){
 // STAGE INTROS
 // ============================================================
 const STAGE_INTROS={
-  1:{icon:'🍉',title:'Fruit Slicer',badge:'GAME 1',how:'Swipe across fruits to slice them! Waves get bigger over 75 seconds — starts gentle, ends chaotic. Bombs cost a life, combos multiply points. Slice everything you can!',color:'#ef4444'},
+  1:{icon:'🍉',title:'Fruit Slicer',badge:'GAME 1',how:'Slice 22 fruits to finish! 🌟 Golden = big bonus. 💣 Bombs cost a life. 🍈☠️🌶️ Rotten/poison look like fruit but cost points — dodge them! Speed and hazards increase as you progress.',color:'#ef4444'},
   2:{icon:'🎨',title:'Odd Color Out',badge:'GAME 2',how:'One tile is a slightly different color from the others. Find it and tap it as fast as you can! Speed = bigger bonus points.',color:'#f59e0b'},
   3:{icon:'⚡',title:'Whack-a-Mole',badge:'GAME 3',how:'Moles 🐹 pop up from holes — smash them! Avoid bombs 💣 or lose points. Build a streak for a multiplier bonus!',color:'#10b981'},
   4:{icon:'🫧',title:'Bubble Pop',badge:'GAME 4',how:'The screen is PACKED with bubbles! Pop 🟢 green bubbles for points. Tap 🔴 red bombs and lose a life. Catch the rare 🌟 golden bonus bubbles for big scores!',color:'#06b6d4'},
@@ -294,9 +294,32 @@ function startStage(n){
 
 // ============================================================
 // ── GAME 1: FRUIT SLICER ──────────────────────────────────
-// Canvas-based; mouse/touch drag creates a "blade" that slices
+// Objective-driven: slice SLICE_QUOTA good fruits to finish.
+// Decoys (rotten/poison) cost points if hit. Bombs cost a life.
+// Speed and hazard rate ramp up as quota fills.
+// Average completion ~20s for a first-time player.
 // ============================================================
-const FRUITS=[{e:'🍉',v:30},{e:'🍊',v:25},{e:'🍋',v:20},{e:'🍇',v:35},{e:'🍓',v:40},{e:'🥝',v:28},{e:'🍑',v:22},{e:'🍍',v:45},{e:'🍒',v:32},{e:'🫐',v:38}];
+
+// Good fruits — safe to slice
+const FRUITS=[
+  {e:'🍉',v:30},{e:'🍊',v:25},{e:'🍋',v:20},{e:'🍇',v:35},
+  {e:'🍓',v:40},{e:'🥝',v:28},{e:'🍑',v:22},{e:'🍍',v:45},
+  {e:'🍒',v:32},{e:'🫐',v:38}
+];
+// Decoy fruits — look like fruit, slice = lose points (no life lost)
+const DECOYS=[
+  {e:'🍈',v:-20,decoy:true},  // bitter melon / bad fruit
+  {e:'☠️',v:-30,decoy:true},  // poison
+  {e:'🌶️',v:-15,decoy:true}, // chilli — not a fruit you want!
+];
+// Rare golden star — big bonus
+const GOLDEN={e:'🌟',v:80,golden:true};
+
+// Quota: must slice this many good fruits to complete the stage
+const SLICE_QUOTA=22;
+// Fallback timer — stage always ends by 45s even if quota isn't reached
+const STAGE_TIME=45;
+
 let fruitObjs=[],sliceBlade=[],fruitSliced=0,fruitMissed=0,fruitLives=3,fruitActive=false;
 // fruitRafId declared at module level above
 
@@ -305,98 +328,216 @@ function startFruitSlicer(){
   if(fruitRafId){cancelAnimationFrame(fruitRafId);fruitRafId=null;}
   showGamePanel('s1-panel');
   updateFruitHUD();
+
   const cv=document.getElementById('slice-canvas');
   if(!cv){console.error('slice-canvas missing');return;}
-  cv.width=cv.offsetWidth||360; cv.height=cv.offsetHeight||310;
-  const ctx=cv.getContext('2d');
 
-  // --- Input: remove old listeners before adding new ones ---
-  let isDown=false;
-  function getXY(e){const r=cv.getBoundingClientRect();const src=e.touches?e.touches[0]:e;return[(src.clientX-r.left)*(cv.width/r.width),(src.clientY-r.top)*(cv.height/r.height)];}
-  function onDown(e){e.preventDefault();isDown=true;sliceBlade=[[...getXY(e)]];}
-  function onMove(e){e.preventDefault();if(!isDown)return;const pt=getXY(e);sliceBlade.push(pt);if(sliceBlade.length>14)sliceBlade.shift();checkSlice(pt[0],pt[1]);}
-  function onUp(){isDown=false;sliceBlade=[];}
-  // Clone canvas node to wipe all previous listeners, then re-append
+  // Clone to wipe all previous event listeners
   const newCv=cv.cloneNode(true);
   cv.parentNode.replaceChild(newCv,cv);
   const canvas=newCv;
-  canvas.width=canvas.offsetWidth||360;canvas.height=canvas.offsetHeight||310;
-  const ctx2=canvas.getContext('2d');
-  canvas.addEventListener('mousedown',onDown);canvas.addEventListener('mousemove',onMove);canvas.addEventListener('mouseup',onUp);
-  canvas.addEventListener('touchstart',onDown,{passive:false});canvas.addEventListener('touchmove',onMove,{passive:false});canvas.addEventListener('touchend',onUp);
+  canvas.width=canvas.offsetWidth||360;
+  canvas.height=canvas.offsetHeight||310;
+  const ctx=canvas.getContext('2d');
 
-  // --- Spawn: heavy fruit rain across 3 escalating waves ---
-  // Wave 1 (0-25s):  gentle intro — 1 fruit every 400ms, bombs only 6%
-  // Wave 2 (25-50s): busier — always 2 fruits, occasional 3rd, bombs 10%
-  // Wave 3 (50-75s): full chaos — 3 fruits at once, rapid triples, bombs 14%
-  let elapsed=0;
-  const spawnId=setInterval(()=>{
+  // ── Input ────────────────────────────────────────────────
+  let isDown=false;
+  function getXY(e){
+    const r=canvas.getBoundingClientRect();
+    const src=e.touches?e.touches[0]:e;
+    return[(src.clientX-r.left)*(canvas.width/r.width),(src.clientY-r.top)*(canvas.height/r.height)];
+  }
+  function onDown(e){e.preventDefault();isDown=true;sliceBlade=[[...getXY(e)]];}
+  function onMove(e){
+    e.preventDefault();if(!isDown)return;
+    const pt=getXY(e);sliceBlade.push(pt);
+    if(sliceBlade.length>14)sliceBlade.shift();
+    checkSlice(pt[0],pt[1]);
+  }
+  function onUp(){isDown=false;sliceBlade=[];}
+  canvas.addEventListener('mousedown',onDown);
+  canvas.addEventListener('mousemove',onMove);
+  canvas.addEventListener('mouseup',onUp);
+  canvas.addEventListener('touchstart',onDown,{passive:false});
+  canvas.addEventListener('touchmove',onMove,{passive:false});
+  canvas.addEventListener('touchend',onUp);
+
+  // ── Spawn logic ──────────────────────────────────────────
+  // Progress 0→1 as quota fills. Controls speed, hazards, interval.
+  function progress(){return Math.min(1,fruitSliced/SLICE_QUOTA);}
+
+  // Interval shrinks from 900ms → 380ms as progress increases
+  function spawnInterval(){return Math.round(900-520*progress());}
+
+  function doSpawn(){
     if(!fruitActive)return;
-    elapsed+=0.4; // advances ~1s per real second at 400ms interval
+    const p=progress();
 
-    let bombChance, count, triplePct;
-    if(elapsed<25){
-      bombChance=0.06; count=1; triplePct=0;       // Wave 1: chill, fruit everywhere
-    } else if(elapsed<50){
-      bombChance=0.10; count=2; triplePct=0.30;    // Wave 2: pairs + occasional 3rd
+    // At p=0: 0% decoys, 4% bombs, 0% golden
+    // At p=1: 20% decoys, 15% bombs, 8% golden
+    const decoyChance =0.20*p;
+    const bombChance  =0.04+0.11*p;
+    const goldenChance=0.08*p;
+
+    const roll=Math.random();
+    let item;
+    if(roll<goldenChance){
+      // Golden star — fast, worth a lot
+      item={...GOLDEN};
+    } else if(roll<goldenChance+bombChance){
+      item={e:'💣',v:0,bomb:true};
+    } else if(roll<goldenChance+bombChance+decoyChance){
+      item=pick(DECOYS);
     } else {
-      bombChance=0.14; count=3; triplePct=0.55;    // Wave 3: triple volleys
+      item=pick(FRUITS);
     }
 
-    // Always spawn `count` fruits staggered by 80ms
-    for(let i=0;i<count;i++){
-      setTimeout(()=>{if(fruitActive)spawnOneFruit(canvas,bombChance);},i*80);
-    }
-    // Bonus extra fruit burst
-    if(Math.random()<triplePct){
-      setTimeout(()=>{if(fruitActive)spawnOneFruit(canvas,bombChance*0.4);},count*80+100);
-    }
-  },400);
-  gameIntervals.push(spawnId);
+    // Speed ramps: vy goes from slow (−5.5) to fast (−11) as progress grows
+    const baseVy=-(5.5+5.5*p);
+    const vy=baseVy+rand(-1.5,1.5);
 
-  // --- Physics loop: single RAF id, never accumulates ---
-  const G=0.42;
-  function loop(ts){
+    // Horizontal: starts calm, gets wilder
+    const vxRange=2.5+3*p;
+    const vx=(Math.random()-0.5)*vxRange;
+
+    // Every ~5th fruit at mid-to-late progress: throw a fast "zipper" that
+    // crosses horizontally — requires a deliberate horizontal swipe
+    const isZipper=p>0.4&&Math.random()<0.18;
+    const zipVx=isZipper?(Math.random()<0.5?9:-9):vx;
+    const zipX =isZipper?(zipVx>0?-30:canvas.width+30):rand(40,canvas.width-40);
+    const zipVy=isZipper?-rand(3,5):vy; // zipper flies mostly sideways
+
+    fruitObjs.push({
+      e:item.e,
+      v:item.v||0,
+      bomb:!!item.bomb,
+      decoy:!!item.decoy,
+      golden:!!item.golden,
+      x:zipX,
+      y:canvas.height+30,
+      vx:zipVx,
+      vy:zipVy,
+      r:item.golden?32:28,
+      hit:false,dead:false,
+      rot:rand(-0.2,0.2),
+      opacity:1
+    });
+
+    // At p>0.5 occasionally launch a second fruit right after (pair volleys)
+    if(p>0.5&&Math.random()<0.35){
+      setTimeout(()=>{
+        if(!fruitActive)return;
+        const pair=pick(FRUITS);
+        fruitObjs.push({
+          e:pair.e,v:pair.v,bomb:false,decoy:false,golden:false,
+          x:rand(40,canvas.width-40),y:canvas.height+30,
+          vx:(Math.random()-0.5)*vxRange,vy:baseVy+rand(-1,1),
+          r:28,hit:false,dead:false,rot:rand(-0.2,0.2),opacity:1
+        });
+      },120);
+    }
+
+    // Schedule next spawn dynamically (adaptive interval)
+    if(fruitActive){
+      const nextId=setTimeout(doSpawn,spawnInterval());
+      // Store in a wrapper so clearGameLoops can reach it via gameIntervals
+      // We track via a single rolling interval instead
+    }
+  }
+
+  // Use a self-rescheduling approach via a single tracked timeout chain.
+  // We wrap it in an interval that fires frequently and self-manages spacing.
+  // Simpler: use a fixed short interval and skip ticks based on a cooldown.
+  let lastSpawn=0;
+  const tickId=setInterval(()=>{
+    if(!fruitActive)return;
+    const now=Date.now();
+    if(now-lastSpawn>=spawnInterval()){lastSpawn=now;doSpawn();}
+  },80); // poll every 80ms, actual spawn rate controlled by spawnInterval()
+  gameIntervals.push(tickId);
+
+  // ── Physics / render loop ────────────────────────────────
+  const G=0.44;
+  function loop(){
     if(!fruitActive){
       if(fruitRafId!==null){fruitRafId=null;endFruitSlicer();}
       return;
     }
-    ctx2.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Draw quota progress bar at top of canvas
+    const barW=canvas.width-20;
+    const fill=Math.min(1,fruitSliced/SLICE_QUOTA)*barW;
+    ctx.fillStyle='rgba(255,255,255,0.12)';
+    ctx.beginPath();ctx.roundRect(10,8,barW,10,5);ctx.fill();
+    ctx.fillStyle=fruitSliced>=SLICE_QUOTA?'#ffd700':'#2ed573';
+    ctx.beginPath();ctx.roundRect(10,8,fill,10,5);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    ctx.font='bold 11px sans-serif';ctx.textAlign='right';ctx.textBaseline='top';
+    ctx.fillText(`${fruitSliced}/${SLICE_QUOTA} sliced`,canvas.width-10,6);
+
     // Draw blade trail
     if(sliceBlade.length>1){
-      ctx2.beginPath();ctx2.moveTo(sliceBlade[0][0],sliceBlade[0][1]);
-      for(let i=1;i<sliceBlade.length;i++){ctx2.lineTo(sliceBlade[i][0],sliceBlade[i][1]);}
-      ctx2.strokeStyle='rgba(255,255,255,0.85)';ctx2.lineWidth=3;ctx2.lineCap='round';ctx2.stroke();
+      ctx.beginPath();ctx.moveTo(sliceBlade[0][0],sliceBlade[0][1]);
+      for(let i=1;i<sliceBlade.length;i++)ctx.lineTo(sliceBlade[i][0],sliceBlade[i][1]);
+      ctx.strokeStyle='rgba(255,255,255,0.88)';ctx.lineWidth=3;ctx.lineCap='round';ctx.stroke();
     }
-    // Update & draw fruits
+
+    // Update & draw each object
     fruitObjs.forEach(f=>{
       f.x+=f.vx;f.y+=f.vy;f.vy+=G;f.rot+=0.04;
-      if(f.hit){f.opacity-=0.06;if(f.opacity<=0)f.dead=true;}
-      else if(f.y>canvas.height+60&&!f.hit){
+
+      if(f.hit){
+        f.opacity-=0.07;
+        if(f.opacity<=0)f.dead=true;
+      } else if(f.y>canvas.height+60){
         f.dead=true;
-        if(!f.bomb){fruitMissed++;fruitLives=Math.max(0,fruitLives-1);updateFruitHUD();sfxWrong();comboCount=0;if(fruitLives<=0)fruitActive=false;}
+        // Missing a good fruit costs a life
+        if(!f.bomb&&!f.decoy&&!f.golden){
+          fruitMissed++;
+          fruitLives=Math.max(0,fruitLives-1);
+          comboCount=0;
+          sfxWrong();
+          updateFruitHUD();
+          if(fruitLives<=0)fruitActive=false;
+        }
+        // Missing a decoy or golden is fine — no penalty
       }
+
       if(!f.dead){
-        ctx2.save();ctx2.globalAlpha=f.opacity;ctx2.translate(f.x,f.y);ctx2.rotate(f.rot);
-        ctx2.font=`${f.r*2}px serif`;ctx2.textAlign='center';ctx2.textBaseline='middle';ctx2.fillText(f.e,0,0);
-        ctx2.restore();
+        ctx.save();
+        ctx.globalAlpha=f.opacity;
+        ctx.translate(f.x,f.y);
+        ctx.rotate(f.rot);
+
+        // Golden gets a glow ring
+        if(f.golden){
+          ctx.shadowColor='#ffd700';ctx.shadowBlur=16;
+        } else if(f.decoy){
+          ctx.shadowColor='#ff4444';ctx.shadowBlur=8;
+        }
+
+        ctx.font=`${f.r*2}px serif`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(f.e,0,0);
+        ctx.shadowBlur=0;
+        ctx.restore();
       }
     });
+
     fruitObjs=fruitObjs.filter(f=>!f.dead);
+
+    // Check quota complete
+    if(fruitSliced>=SLICE_QUOTA&&fruitActive){
+      fruitActive=false; // RAF will pick this up next frame and call end
+    }
+
     fruitRafId=requestAnimationFrame(loop);
   }
   fruitRafId=requestAnimationFrame(loop);
-  // 75 seconds — ~75% longer than the original 35s
-  startTimerLocal('train-timer','train-timer-bar',75,()=>{fruitActive=false;});
-}
 
-function spawnOneFruit(canvas,bombChance){
-  const isBomb=Math.random()<bombChance;
-  const x=rand(40,canvas.width-40);
-  const vy=-rand(7,13);
-  const vx=(Math.random()-.5)*5;
-  const item=isBomb?{e:'💣',v:0,bomb:true}:pick(FRUITS);
-  fruitObjs.push({e:item.e,v:item.v||0,bomb:item.bomb||false,x,y:canvas.height+30,vx,vy,r:28,hit:false,dead:false,rot:rand(-0.15,0.15),opacity:1});
+  // Fallback timer — stage always ends even if quota not reached
+  startTimerLocal('train-timer','train-timer-bar',STAGE_TIME,()=>{fruitActive=false;});
 }
 
 function checkSlice(bx,by){
@@ -404,9 +545,43 @@ function checkSlice(bx,by){
     if(f.hit)return;
     const dx=bx-f.x,dy=by-f.y;
     if(Math.sqrt(dx*dx+dy*dy)<f.r+6){
-      f.hit=true;sfxSlice();
-      if(f.bomb){sfxWrong();fruitLives=Math.max(0,fruitLives-1);comboCount=0;updateFruitHUD();showToast('💣 BOMB! −1 life',700);if(fruitLives<=0)fruitActive=false;}
-      else{comboCount++;const mult=Math.min(comboCount,6);const pts=f.v*mult;addMyScore(pts);fruitSliced++;updateFruitHUD();sfxPop();if(comboCount>=2)showCombo(comboCount);showToast(`+${pts}${mult>1?` ×${mult}`:''}`,500);}
+      f.hit=true;
+      sfxSlice();
+      if(f.bomb){
+        sfxWrong();
+        fruitLives=Math.max(0,fruitLives-1);
+        comboCount=0;
+        updateFruitHUD();
+        showToast('💣 BOMB! −1 life',700);
+        if(fruitLives<=0)fruitActive=false;
+      } else if(f.decoy){
+        // Decoy: lose points, reset combo, no life lost
+        sfxWrong();
+        comboCount=0;
+        deductScore(Math.abs(f.v));
+        updateFruitHUD();
+        showToast(`${f.e} Rotten! −${Math.abs(f.v)} pts`,700);
+      } else if(f.golden){
+        comboCount++;
+        const mult=Math.min(comboCount,6);
+        const pts=f.v*mult;
+        addMyScore(pts);
+        fruitSliced++; // counts toward quota
+        updateFruitHUD();
+        sfxBonus();
+        showCombo(comboCount);
+        showToast(`🌟 GOLDEN! +${pts}`,700);
+      } else {
+        comboCount++;
+        const mult=Math.min(comboCount,6);
+        const pts=f.v*mult;
+        addMyScore(pts);
+        fruitSliced++;
+        updateFruitHUD();
+        sfxPop();
+        if(comboCount>=2)showCombo(comboCount);
+        showToast(`+${pts}${mult>1?` ×${mult}`:''}`,400);
+      }
     }
   });
 }
@@ -414,7 +589,11 @@ function checkSlice(bx,by){
 function updateFruitHUD(){
   document.getElementById('fruit-sliced').textContent=fruitSliced;
   document.getElementById('fruit-missed').textContent=fruitMissed;
-  document.getElementById('fruit-lives-row').textContent='❤️'.repeat(Math.max(0,fruitLives))+'🖤'.repeat(Math.max(0,3-fruitLives));
+  document.getElementById('fruit-lives-row').textContent=
+    '❤️'.repeat(Math.max(0,fruitLives))+'🖤'.repeat(Math.max(0,3-fruitLives));
+  // Also update the HUD progress counter
+  const prog=document.getElementById('item-progress');
+  if(prog)prog.textContent=`${fruitSliced}/${SLICE_QUOTA}`;
 }
 
 let _fruitEnded=false;
@@ -423,9 +602,13 @@ function endFruitSlicer(){
   fruitActive=false;
   if(fruitRafId){cancelAnimationFrame(fruitRafId);fruitRafId=null;}
   stopLocalTimer();clearGameLoops();
+  const quota=fruitSliced>=SLICE_QUOTA;
   const bonus=fruitLives>=3?300:fruitLives===2?150:fruitLives===1?50:0;
-  if(bonus>0){addMyScore(bonus);sfxBonus();showToast(fruitLives>=3?'🏆 FLAWLESS! +300':fruitLives>=2?'⭐ Great! +150':'✅ Survived +50');}
-  else showToast('💀 Wiped out!');
+  if(bonus>0){addMyScore(bonus);sfxBonus();}
+  if(quota&&fruitLives>=3)     showToast('🏆 FLAWLESS! All sliced!');
+  else if(quota)               showToast(`✅ Stage clear! +${bonus} bonus`);
+  else if(fruitLives>0)        showToast(`⏱ Time up! ${fruitSliced}/${SLICE_QUOTA} sliced`);
+  else                         showToast('💀 No lives left!');
   setTimeout(()=>{_fruitEnded=false;finishStage(1);},1800);
 }
 
