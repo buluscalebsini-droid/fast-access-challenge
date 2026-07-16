@@ -81,9 +81,15 @@ let currentStage=1, stageScoreLocal=0, comboCount=0;
 
 // Per-game timers/intervals
 let gameIntervals=[], gameRafs=[];
+// Named RAF ids for canvas games — declared here so clearGameLoops can reach them
+let fruitRafId=null, bubbleRafId=null, dodgeRafId=null;
 function clearGameLoops(){
   gameIntervals.forEach(clearInterval); gameIntervals=[];
   gameRafs.forEach(cancelAnimationFrame); gameRafs=[];
+  // Cancel per-game named RAF ids (idempotent)
+  if(fruitRafId){cancelAnimationFrame(fruitRafId);fruitRafId=null;}
+  if(bubbleRafId){cancelAnimationFrame(bubbleRafId);bubbleRafId=null;}
+  if(dodgeRafId){cancelAnimationFrame(dodgeRafId);dodgeRafId=null;}
 }
 
 // ============================================================
@@ -236,12 +242,12 @@ function startTimerLocal(tid,bid,sec,onEnd){
 // STAGE INTROS
 // ============================================================
 const STAGE_INTROS={
-  1:{icon:'🍉',title:'Fruit Slicer',badge:'GAME 1',how:'Swipe or drag across flying fruits to slice them! Slice 🍉🍊🍋 for points. Slice 💣 bombs and lose a life. Build combos for mega points!',color:'#ef4444'},
+  1:{icon:'🍉',title:'Fruit Slicer',badge:'GAME 1',how:'Swipe or drag across flying fruits to slice them! Slice 🍉🍊🍋 for points. Slice 💣 bombs and lose a life. Build combos — waves get busier as time goes on!',color:'#ef4444'},
   2:{icon:'🎨',title:'Odd Color Out',badge:'GAME 2',how:'One tile is a slightly different color from the others. Find it and tap it as fast as you can! Speed = bigger bonus points.',color:'#f59e0b'},
   3:{icon:'⚡',title:'Whack-a-Mole',badge:'GAME 3',how:'Moles 🐹 pop up from holes — smash them! Avoid bombs 💣 or lose points. Build a streak for a multiplier bonus!',color:'#10b981'},
-  4:{icon:'🫧',title:'Bubble Pop',badge:'GAME 4',how:'Pop 🟢 green bubbles for points. Tap 🔴 red bombs and lose a life! Bigger bubbles = more points. Go fast!',color:'#06b6d4'},
+  4:{icon:'🫧',title:'Bubble Pop',badge:'GAME 4',how:'The screen is PACKED with bubbles! Pop 🟢 green bubbles for points. Tap 🔴 red bombs and lose a life. Catch the rare 🌟 golden bonus bubbles for big scores!',color:'#06b6d4'},
   5:{icon:'🧠',title:'Memory Flip',badge:'GAME 5',how:'Flip cards to find matching emoji pairs. Match them all as fast as possible. Fewer moves = huge efficiency bonus!',color:'#8b5cf6'},
-  6:{icon:'🎯',title:'Target Rush',badge:'GAME 6',how:'Click the green ✅ targets before they shrink and vanish. Avoid red ❌ targets — clicking them costs points. Targets move fast!',color:'#ec4899'},
+  6:{icon:'🎯',title:'Target Rush',badge:'GAME 6',how:'Click the green ✅ targets before they shrink and vanish. Avoid red ❌ targets — clicking them costs points. Up to 6 targets at once!',color:'#ec4899'},
   7:{icon:'💣',title:'Dodge & Collect',badge:'FINAL GAME',how:'Move your player with mouse/touch. Collect ⭐ stars for points. Dodge 💣 bombs — they shrink your score! Build streaks!',color:'#6366f1'},
 };
 
@@ -290,72 +296,97 @@ function startStage(n){
 // ── GAME 1: FRUIT SLICER ──────────────────────────────────
 // Canvas-based; mouse/touch drag creates a "blade" that slices
 // ============================================================
-const FRUITS=[{e:'🍉',v:30},{e:'🍊',v:25},{e:'🍋',v:20},{e:'🍇',v:35},{e:'🍓',v:40},{e:'🥝',v:28},{e:'🍑',v:22},{e:'🍍',v:45}];
+const FRUITS=[{e:'🍉',v:30},{e:'🍊',v:25},{e:'🍋',v:20},{e:'🍇',v:35},{e:'🍓',v:40},{e:'🥝',v:28},{e:'🍑',v:22},{e:'🍍',v:45},{e:'🍒',v:32},{e:'🫐',v:38}];
 let fruitObjs=[],sliceBlade=[],fruitSliced=0,fruitMissed=0,fruitLives=3,fruitActive=false;
+// fruitRafId declared at module level above
 
 function startFruitSlicer(){
   fruitObjs=[];sliceBlade=[];fruitSliced=0;fruitMissed=0;fruitLives=3;fruitActive=true;
+  if(fruitRafId){cancelAnimationFrame(fruitRafId);fruitRafId=null;}
   showGamePanel('s1-panel');
   updateFruitHUD();
   const cv=document.getElementById('slice-canvas');
-  if(!cv)return;
+  if(!cv){console.error('slice-canvas missing');return;}
   cv.width=cv.offsetWidth||360; cv.height=cv.offsetHeight||310;
   const ctx=cv.getContext('2d');
 
-  // Input
+  // --- Input: remove old listeners before adding new ones ---
   let isDown=false;
   function getXY(e){const r=cv.getBoundingClientRect();const src=e.touches?e.touches[0]:e;return[(src.clientX-r.left)*(cv.width/r.width),(src.clientY-r.top)*(cv.height/r.height)];}
   function onDown(e){e.preventDefault();isDown=true;sliceBlade=[[...getXY(e)]];}
   function onMove(e){e.preventDefault();if(!isDown)return;const pt=getXY(e);sliceBlade.push(pt);if(sliceBlade.length>14)sliceBlade.shift();checkSlice(pt[0],pt[1]);}
   function onUp(){isDown=false;sliceBlade=[];}
-  cv.addEventListener('mousedown',onDown);cv.addEventListener('mousemove',onMove);cv.addEventListener('mouseup',onUp);
-  cv.addEventListener('touchstart',onDown,{passive:false});cv.addEventListener('touchmove',onMove,{passive:false});cv.addEventListener('touchend',onUp);
+  // Clone canvas node to wipe all previous listeners, then re-append
+  const newCv=cv.cloneNode(true);
+  cv.parentNode.replaceChild(newCv,cv);
+  const canvas=newCv;
+  canvas.width=canvas.offsetWidth||360;canvas.height=canvas.offsetHeight||310;
+  const ctx2=canvas.getContext('2d');
+  canvas.addEventListener('mousedown',onDown);canvas.addEventListener('mousemove',onMove);canvas.addEventListener('mouseup',onUp);
+  canvas.addEventListener('touchstart',onDown,{passive:false});canvas.addEventListener('touchmove',onMove,{passive:false});canvas.addEventListener('touchend',onUp);
 
-  // Spawn
+  // --- Spawn: faster rate + multi-spawn waves for engagement ---
+  // Wave 1 (0-20s): relaxed, 1 fruit at a time every 650ms, bomb rate 12%
+  // Wave 2 (20-35s): 2 fruits sometimes, every 500ms, bomb rate 16%
+  // Wave 3 (35-52s): busier, occasional double-launch, bomb rate 18%
+  let elapsed=0;
   const spawnId=setInterval(()=>{
     if(!fruitActive)return;
-    const isBomb=Math.random()<0.18;
-    const x=rand(40,cv.width-40);
-    const vy=-rand(8,14);
-    const vx=(Math.random()-.5)*4;
-    const item=isBomb?{e:'💣',v:0,bomb:true}:pick(FRUITS);
-    fruitObjs.push({e:item.e,v:item.v,bomb:item.bomb||false,x,y:cv.height+30,vx,vy,r:28,hit:false,dead:false,rot:rand(-0.1,0.1),opacity:1,parts:null});
-  },800);
+    elapsed+=0.55;
+    const bombChance = elapsed<20?0.12:elapsed<35?0.16:0.18;
+    const doubleChance = elapsed<20?0:elapsed<35?0.2:0.4;
+    // Always spawn at least one fruit
+    spawnOneFruit(canvas,bombChance);
+    // Sometimes spawn a second simultaneously for variety
+    if(Math.random()<doubleChance) setTimeout(()=>{if(fruitActive)spawnOneFruit(canvas,bombChance*0.5);},120);
+  },550);
   gameIntervals.push(spawnId);
 
-  // Physics loop
+  // --- Physics loop: single RAF id, never accumulates ---
   const G=0.45;
-  let last=0;
   function loop(ts){
-    if(!fruitActive)return;
-    const dt=Math.min(ts-last,40);last=ts;
-    ctx.clearRect(0,0,cv.width,cv.height);
-    // Draw blade
+    if(!fruitActive){
+      // Game ended — clean up and transition (called exactly once)
+      if(fruitRafId!==null){fruitRafId=null;endFruitSlicer();}
+      return;
+    }
+    ctx2.clearRect(0,0,canvas.width,canvas.height);
+    // Draw blade trail
     if(sliceBlade.length>1){
-      ctx.beginPath();ctx.moveTo(sliceBlade[0][0],sliceBlade[0][1]);
-      for(let i=1;i<sliceBlade.length;i++){ctx.lineTo(sliceBlade[i][0],sliceBlade[i][1]);}
-      ctx.strokeStyle='rgba(255,255,255,0.85)';ctx.lineWidth=3;ctx.lineCap='round';ctx.stroke();
+      ctx2.beginPath();ctx2.moveTo(sliceBlade[0][0],sliceBlade[0][1]);
+      for(let i=1;i<sliceBlade.length;i++){ctx2.lineTo(sliceBlade[i][0],sliceBlade[i][1]);}
+      ctx2.strokeStyle='rgba(255,255,255,0.85)';ctx2.lineWidth=3;ctx2.lineCap='round';ctx2.stroke();
     }
     // Update & draw fruits
-    fruitObjs.forEach((f,i)=>{
+    fruitObjs.forEach(f=>{
       f.x+=f.vx;f.y+=f.vy;f.vy+=G;f.rot+=0.04;
-      if(f.hit){f.opacity-=0.05;if(f.opacity<=0)f.dead=true;}
-      else if(f.y>cv.height+60&&!f.hit){
+      if(f.hit){f.opacity-=0.06;if(f.opacity<=0)f.dead=true;}
+      else if(f.y>canvas.height+60&&!f.hit){
         f.dead=true;
         if(!f.bomb){fruitMissed++;fruitLives=Math.max(0,fruitLives-1);updateFruitHUD();sfxWrong();comboCount=0;if(fruitLives<=0)fruitActive=false;}
       }
       if(!f.dead){
-        ctx.save();ctx.globalAlpha=f.opacity;ctx.translate(f.x,f.y);ctx.rotate(f.rot);
-        ctx.font=`${f.r*2}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(f.e,0,0);
-        ctx.restore();
+        ctx2.save();ctx2.globalAlpha=f.opacity;ctx2.translate(f.x,f.y);ctx2.rotate(f.rot);
+        ctx2.font=`${f.r*2}px serif`;ctx2.textAlign='center';ctx2.textBaseline='middle';ctx2.fillText(f.e,0,0);
+        ctx2.restore();
       }
     });
     fruitObjs=fruitObjs.filter(f=>!f.dead);
-    if(fruitActive) gameRafs.push(requestAnimationFrame(loop));
-    else endFruitSlicer();
+    // Keep single RAF id — overwrite previous (it was already executed)
+    fruitRafId=requestAnimationFrame(loop);
   }
-  gameRafs.push(requestAnimationFrame(loop));
-  startTimerLocal('train-timer','train-timer-bar',35,()=>{fruitActive=false;});
+  fruitRafId=requestAnimationFrame(loop);
+  // Extended duration: ~52 seconds (35% longer than original 35s)
+  startTimerLocal('train-timer','train-timer-bar',52,()=>{fruitActive=false;});
+}
+
+function spawnOneFruit(canvas,bombChance){
+  const isBomb=Math.random()<bombChance;
+  const x=rand(40,canvas.width-40);
+  const vy=-rand(7,13);
+  const vx=(Math.random()-.5)*5;
+  const item=isBomb?{e:'💣',v:0,bomb:true}:pick(FRUITS);
+  fruitObjs.push({e:item.e,v:item.v||0,bomb:item.bomb||false,x,y:canvas.height+30,vx,vy,r:28,hit:false,dead:false,rot:rand(-0.15,0.15),opacity:1});
 }
 
 function checkSlice(bx,by){
@@ -376,12 +407,16 @@ function updateFruitHUD(){
   document.getElementById('fruit-lives-row').textContent='❤️'.repeat(Math.max(0,fruitLives))+'🖤'.repeat(Math.max(0,3-fruitLives));
 }
 
+let _fruitEnded=false;
 function endFruitSlicer(){
-  stopLocalTimer();clearGameLoops();fruitActive=false;
+  if(_fruitEnded)return; _fruitEnded=true;
+  fruitActive=false;
+  if(fruitRafId){cancelAnimationFrame(fruitRafId);fruitRafId=null;}
+  stopLocalTimer();clearGameLoops();
   const bonus=fruitLives>=3?300:fruitLives===2?150:fruitLives===1?50:0;
   if(bonus>0){addMyScore(bonus);sfxBonus();showToast(fruitLives>=3?'🏆 FLAWLESS! +300':fruitLives>=2?'⭐ Great! +150':'✅ Survived +50');}
   else showToast('💀 Wiped out!');
-  setTimeout(()=>finishStage(1),1800);
+  setTimeout(()=>{_fruitEnded=false;finishStage(1);},1800);
 }
 
 // ============================================================
@@ -394,11 +429,16 @@ function startOddColor(){
   showGamePanel('s2-panel');
   document.getElementById('color-pts').textContent='0';
   nextColorRound();
-  startTimerLocal('train-timer','train-timer-bar',50,()=>{colorActive=false;finishStage(2);});
+  startTimerLocal('train-timer','train-timer-bar',50,()=>{
+    colorActive=false;
+    if(colorTimer){clearTimeout(colorTimer);colorTimer=null;}
+    finishStage(2);
+  });
 }
 
 function nextColorRound(){
-  if(!colorActive||colorRound>=12){stopLocalTimer();finishStage(2);return;}
+  if(!colorActive)return;  // guard: timer may fire after game ended
+  if(colorRound>=12){colorActive=false;stopLocalTimer();if(colorTimer){clearTimeout(colorTimer);colorTimer=null;}finishStage(2);return;}
   colorRound++;
   document.getElementById('color-round').textContent=colorRound;
   document.getElementById('color-feedback-inline').textContent='';
@@ -414,13 +454,15 @@ function nextColorRound(){
   const oddHue=(hue+diffAmt)%360;
   grid.innerHTML='';
   const roundStart=performance.now();
+  let roundAnswered=false; // prevent double-advance per round
   for(let i=0;i<gridSize;i++){
     const tile=document.createElement('div');tile.className='color-tile';
     const isOdd=i===oddIdx;
     tile.style.background=isOdd?`hsl(${oddHue},${sat}%,${lit}%)`:`hsl(${hue},${sat}%,${lit}%)`;
     tile.addEventListener('click',()=>{
-      if(!colorActive)return;
-      clearTimeout(colorTimer);
+      if(!colorActive||roundAnswered)return;
+      roundAnswered=true;
+      if(colorTimer){clearTimeout(colorTimer);colorTimer=null;}
       const elapsed=(performance.now()-roundStart)/1000;
       if(isOdd){
         comboCount++;const mult=Math.min(comboCount,4);
@@ -442,7 +484,10 @@ function nextColorRound(){
     grid.appendChild(tile);
   }
   // Auto-advance if too slow
-  colorTimer=setTimeout(()=>{comboCount=0;sfxWrong();deductScore(10);nextColorRound();},4000);
+  colorTimer=setTimeout(()=>{
+    if(!colorActive||roundAnswered)return;
+    roundAnswered=true;comboCount=0;sfxWrong();deductScore(10);nextColorRound();
+  },4000);
 }
 
 // ============================================================
@@ -532,76 +577,159 @@ function endWhackMole(){
 
 // ============================================================
 // ── GAME 4: BUBBLE POP ────────────────────────────────────
-// Canvas-based physics bubbles
+// Canvas-based physics bubbles — CROWDED MODE
+// Fixed: single RAF id, endBubblePop always called, no listener duplication
 // ============================================================
 let bubbleObjs=[],bubblePopped=0,bubbleLives=3,bubbleStreak=0,bubbleActive=false;
+// bubbleRafId declared at module level above
+let _bubbleEnded=false;
 
 function startBubblePop(){
-  bubbleObjs=[];bubblePopped=0;bubbleLives=3;bubbleStreak=0;bubbleActive=true;
+  bubbleObjs=[];bubblePopped=0;bubbleLives=3;bubbleStreak=0;bubbleActive=true;_bubbleEnded=false;
+  if(bubbleRafId){cancelAnimationFrame(bubbleRafId);bubbleRafId=null;}
   showGamePanel('s4-panel');
   updateBubbleHUD();
-  const cv=document.getElementById('bubble-canvas');
+
+  // Clone canvas to wipe all previous event listeners
+  const oldCv=document.getElementById('bubble-canvas');
+  if(!oldCv){console.error('bubble-canvas missing');return;}
+  const cv=oldCv.cloneNode(true);
+  oldCv.parentNode.replaceChild(cv,oldCv);
   cv.width=cv.offsetWidth||360;cv.height=cv.offsetHeight||310;
   const ctx=cv.getContext('2d');
-  // Click/touch
+  const W=cv.width,H=cv.height;
+
+  // Click/touch handler — attached once to the fresh clone
   function onClick(e){
     e.preventDefault();
+    if(!bubbleActive)return;
     const r=cv.getBoundingClientRect();
     const src=e.touches?e.touches[0]:e;
-    const x=(src.clientX-r.left)*(cv.width/r.width);
-    const y=(src.clientY-r.top)*(cv.height/r.height);
-    let hit=false;
-    bubbleObjs.forEach(b=>{
-      if(b.dead)return;
+    const x=(src.clientX-r.left)*(W/r.width);
+    const y=(src.clientY-r.top)*(H/r.height);
+    let hitAny=false;
+    // Check in reverse so topmost bubble wins
+    for(let i=bubbleObjs.length-1;i>=0;i--){
+      const b=bubbleObjs[i];
+      if(b.dead)continue;
       const dx=x-b.x,dy=y-b.y;
-      if(Math.sqrt(dx*dx+dy*dy)<b.r){
-        b.dead=true;hit=true;
-        if(b.bomb){bubbleLives=Math.max(0,bubbleLives-1);bubbleStreak=0;comboCount=0;sfxWrong();updateBubbleHUD();showToast('💥 Bomb! −1 life',700);if(bubbleLives<=0)bubbleActive=false;}
-        else{bubblePopped++;bubbleStreak++;comboCount++;const mult=Math.min(comboCount,5);const pts=Math.round(b.pts*mult);addMyScore(pts);sfxPop();if(comboCount>=2)showCombo(comboCount);spawnBubbleEffect(cv,ctx,x,y,`+${pts}`,mult>1);updateBubbleHUD();}
+      if(Math.sqrt(dx*dx+dy*dy)<b.r+4){
+        b.dead=true;hitAny=true;
+        if(b.bomb){
+          bubbleLives=Math.max(0,bubbleLives-1);bubbleStreak=0;comboCount=0;
+          sfxWrong();updateBubbleHUD();showToast('💥 Bomb! −1 life',700);
+          if(bubbleLives<=0){bubbleActive=false;}
+        }else{
+          bubblePopped++;bubbleStreak++;comboCount++;
+          const mult=Math.min(comboCount,5);const pts=Math.round(b.pts*mult);
+          addMyScore(pts);sfxPop();if(comboCount>=2)showCombo(comboCount);
+          showToast(`+${pts}${mult>1?` ×${mult}`:''}`,500);updateBubbleHUD();
+        }
+        break; // one hit per tap
       }
-    });
-    if(!hit){comboCount=0;bubbleStreak=0;}
+    }
+    if(!hitAny){comboCount=0;bubbleStreak=0;}
   }
-  cv.addEventListener('mousedown',onClick);cv.addEventListener('touchstart',onClick,{passive:false});
-  // Spawn
+  cv.addEventListener('mousedown',onClick);
+  cv.addEventListener('touchstart',onClick,{passive:false});
+
+  // --- CROWDED SPAWN: multiple bubbles at once, varied patterns ---
+  // Initial burst: 5 bubbles to fill the arena immediately
+  for(let i=0;i<5;i++) setTimeout(()=>{if(bubbleActive)spawnBubble(W,H);},i*120);
+
+  // Ongoing: faster spawn rate + occasional triple-burst
+  let spawnTick=0;
   const spawnId=setInterval(()=>{
     if(!bubbleActive)return;
-    const isBomb=Math.random()<0.22;
-    const r=isBomb?rand(22,30):rand(20,38);
-    bubbleObjs.push({x:rand(r,cv.width-r),y:cv.height+r,r,bomb:isBomb,pts:Math.round(80/r*20),vy:-rand(1.5,3),vx:(Math.random()-.5)*2,dead:false,pulse:0});
-  },900);
+    spawnTick++;
+    // Always spawn 1
+    spawnBubble(W,H);
+    // Every 3rd tick spawn 2 more (burst)
+    if(spawnTick%3===0){
+      setTimeout(()=>{if(bubbleActive)spawnBubble(W,H);},180);
+      setTimeout(()=>{if(bubbleActive)spawnBubble(W,H);},360);
+    }
+    // Every 7th tick spawn a large slow bonus bubble
+    if(spawnTick%7===0) setTimeout(()=>{if(bubbleActive)spawnBonusBubble(W,H);},90);
+  },600); // 600ms vs original 900ms — much busier
   gameIntervals.push(spawnId);
-  // Draw loop
-  function drawBubble(b){
-    if(b.dead)return;
-    b.pulse=(b.pulse||0)+0.06;
-    const pulseR=b.r+Math.sin(b.pulse)*2;
-    const grad=ctx.createRadialGradient(b.x-b.r*.3,b.y-b.r*.3,0,b.x,b.y,pulseR);
-    if(b.bomb){grad.addColorStop(0,'rgba(255,100,100,0.95)');grad.addColorStop(1,'rgba(180,0,0,0.9)');}
-    else{grad.addColorStop(0,'rgba(100,255,160,0.95)');grad.addColorStop(1,'rgba(0,160,80,0.85)');}
-    ctx.beginPath();ctx.arc(b.x,b.y,pulseR,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();
-    // Shine
-    ctx.beginPath();ctx.arc(b.x-b.r*.3,b.y-b.r*.3,b.r*.25,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.35)';ctx.fill();
-    // Emoji
-    ctx.font=`${b.r}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(b.bomb?'💣':'🫧',b.x,b.y);
-  }
+
+  // --- RAF draw loop: single id, transition handled here ---
   function loop(){
-    if(!bubbleActive)return;
-    ctx.clearRect(0,0,cv.width,cv.height);
-    bubbleObjs.forEach(b=>{if(!b.dead){b.y+=b.vy;b.x+=b.vx;b.vx+=Math.sin(Date.now()/800+b.y)*.03;if(b.x<b.r||b.x>cv.width-b.r)b.vx*=-1;if(b.y<-b.r*2)b.dead=true;drawBubble(b);}});
+    // If game ended, call end exactly once then stop
+    if(!bubbleActive){
+      if(bubbleRafId!==null){bubbleRafId=null;endBubblePop();}
+      return;
+    }
+    ctx.clearRect(0,0,W,H);
+    bubbleObjs.forEach(b=>{
+      if(b.dead)return;
+      // Movement: sinusoidal drift for variety
+      b.y+=b.vy;
+      b.x+=b.vx+Math.sin(Date.now()/900+b.phase)*b.drift;
+      // Bounce off walls
+      if(b.x<b.r){b.x=b.r;b.vx=Math.abs(b.vx);}
+      else if(b.x>W-b.r){b.x=W-b.r;b.vx=-Math.abs(b.vx);}
+      // Remove if off top
+      if(b.y<-b.r*3){b.dead=true;return;}
+      drawBubble(ctx,b);
+    });
     bubbleObjs=bubbleObjs.filter(b=>!b.dead);
-    if(bubbleActive)gameRafs.push(requestAnimationFrame(loop));
-    else endBubblePop();
+    bubbleRafId=requestAnimationFrame(loop);
   }
-  gameRafs.push(requestAnimationFrame(loop));
-  startTimerLocal('train-timer','train-timer-bar',35,()=>{bubbleActive=false;});
+  bubbleRafId=requestAnimationFrame(loop);
+
+  // Watchdog: if no pops for 8s and >3 bubbles on screen, player isn't stuck
+  // (bubbles keep flowing regardless — no deadlock possible)
+  startTimerLocal('train-timer','train-timer-bar',38,()=>{
+    bubbleActive=false; // RAF loop will detect this and call endBubblePop
+  });
 }
 
-const _bubbleEffects=[];
-function spawnBubbleEffect(cv,ctx,x,y,text,big){
-  // Just a toast — canvas effects drawn via DOM overlay
-  showToast(text,500);
+function spawnBubble(W,H){
+  const isBomb=Math.random()<0.22;
+  const r=isBomb?rand(20,28):rand(18,36);
+  // Ensure spawn within bounds
+  const x=rand(r+4,Math.max(r+5,W-r-4));
+  bubbleObjs.push({
+    x,y:H+r,r,bomb:isBomb,
+    pts:Math.round(Math.max(1,(80/r)*20)),
+    vy:-rand(1.8,3.4),vx:(Math.random()-.5)*1.8,
+    drift:rand(0.3,1.2),phase:rand(0,Math.PI*2),
+    dead:false,pulse:rand(0,Math.PI*2)
+  });
+}
+
+function spawnBonusBubble(W,H){
+  // Large slow golden bonus bubble worth more points
+  const r=rand(38,48);
+  const x=rand(r+4,Math.max(r+5,W-r-4));
+  bubbleObjs.push({
+    x,y:H+r,r,bomb:false,
+    pts:Math.round((80/r)*28), // boosted
+    vy:-rand(1.0,1.8),vx:(Math.random()-.5)*1.0,
+    drift:rand(0.5,1.5),phase:rand(0,Math.PI*2),
+    dead:false,pulse:rand(0,Math.PI*2),bonus:true
+  });
+}
+
+function drawBubble(ctx,b){
+  b.pulse=(b.pulse||0)+0.06;
+  const pulseR=b.r+Math.sin(b.pulse)*1.5;
+  const grad=ctx.createRadialGradient(b.x-b.r*.3,b.y-b.r*.3,0,b.x,b.y,pulseR);
+  if(b.bomb){
+    grad.addColorStop(0,'rgba(255,100,100,0.95)');grad.addColorStop(1,'rgba(180,0,0,0.9)');
+  }else if(b.bonus){
+    grad.addColorStop(0,'rgba(255,230,80,0.98)');grad.addColorStop(1,'rgba(200,130,0,0.9)');
+  }else{
+    grad.addColorStop(0,'rgba(100,255,160,0.95)');grad.addColorStop(1,'rgba(0,160,80,0.85)');
+  }
+  ctx.beginPath();ctx.arc(b.x,b.y,pulseR,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();
+  // Shine highlight
+  ctx.beginPath();ctx.arc(b.x-b.r*.28,b.y-b.r*.28,b.r*.22,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.38)';ctx.fill();
+  // Emoji label
+  ctx.font=`${b.r*0.9}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(b.bomb?'💣':b.bonus?'🌟':'🫧',b.x,b.y);
 }
 
 function updateBubbleHUD(){
@@ -611,10 +739,14 @@ function updateBubbleHUD(){
 }
 
 function endBubblePop(){
+  if(_bubbleEnded)return; _bubbleEnded=true;
+  bubbleActive=false;
+  if(bubbleRafId){cancelAnimationFrame(bubbleRafId);bubbleRafId=null;}
   stopLocalTimer();clearGameLoops();
   const bonus=bubbleLives>=3?250:bubbleLives===2?100:bubbleLives===1?40:0;
-  if(bonus>0){addMyScore(bonus);sfxBonus();}
-  setTimeout(()=>finishStage(4),1500);
+  if(bonus>0){addMyScore(bonus);sfxBonus();showToast(bubbleLives>=3?'🏆 Perfect! +250':bubbleLives>=2?'⭐ Good! +100':'✅ Survived +40');}
+  else showToast('💔 Wiped out! Better luck next time.');
+  setTimeout(()=>{_bubbleEnded=false;finishStage(4);},1500);
 }
 
 // ============================================================
@@ -672,6 +804,7 @@ function handleMemClick2(card,e){
 // ============================================================
 // ── GAME 6: TARGET RUSH ───────────────────────────────────
 // Moving, shrinking targets appear — click green, avoid red
+// Fixed: removed recursive spawn pattern that caused exponential spawning
 // ============================================================
 let targetHits=0,targetMisses=0,targetStreak=0,targetActive=false;
 
@@ -681,44 +814,69 @@ function startTargetRush(){
   updateTargetHUD();
   const arena=document.getElementById('target-arena');
   arena.innerHTML='';
-  // Spawn increasing speed
-  let delay=1100;
+  const ar=arena.getBoundingClientRect();
+  const AW=ar.width||340;const AH=ar.height||240;
+
+  // Fixed-interval spawner — no recursive calls, no race conditions
+  // Starts with 3 concurrent targets, spawns one new every 900ms
+  let activeTargetCount=0;
+  const MAX_CONCURRENT=6;
+
   function spawnTarget(){
-    if(!targetActive)return;
+    if(!targetActive||activeTargetCount>=MAX_CONCURRENT)return;
+    activeTargetCount++;
     const isBad=Math.random()<0.25;
-    const size=randInt(36,64);
-    const ar=arena.getBoundingClientRect();
-    const x=rand(size/2,ar.width-size);
-    const y=rand(size/2,ar.height-size);
+    const size=randInt(38,66);
+    const x=rand(4,Math.max(5,AW-size-4));
+    const y=rand(4,Math.max(5,AH-size-4));
     const t=document.createElement('div');
     t.className=`target ${isBad?'target-bad':'target-good'}`;
     t.style.cssText=`width:${size}px;height:${size}px;left:${x}px;top:${y}px;font-size:${size*.45}px;`;
     t.textContent=isBad?'❌':'✅';
-    t.dataset.bad=isBad?'1':'0';
-    // Shrink animation
-    const lifeTime=Math.max(800,2000-targetHits*30);
+    let handled=false; // prevents both click and timeout from acting
+
+    const lifeTime=Math.max(900,2200-targetHits*25);
     t.style.transition=`transform ${lifeTime}ms linear`;
     setTimeout(()=>t.style.transform='scale(0)',10);
-    // Click
+
     t.addEventListener('click',()=>{
-      if(!targetActive||t.dataset.clicked)return;
-      t.dataset.clicked='1';t.remove();
-      if(isBad){targetStreak=0;comboCount=0;sfxWrong();deductScore(40);showHitEffect(arena,x,y,'−40','#ff4757');updateTargetHUD();}
-      else{targetHits++;targetStreak++;comboCount++;const mult=Math.min(comboCount,5);const pts=80*mult;addMyScore(pts);sfxPop();if(comboCount>=2)showCombo(comboCount);showHitEffect(arena,x,y,`+${pts}${mult>1?` ×${mult}`:''}`, '#2ed573');updateTargetHUD();}
-      delay=Math.max(550,delay-15);setTimeout(spawnTarget,delay);
-    });
-    arena.appendChild(t);
-    // Auto-remove = miss
-    setTimeout(()=>{
-      if(t.parentNode&&!t.dataset.clicked){
-        t.remove();
-        if(!isBad){targetMisses++;targetStreak=0;comboCount=0;updateTargetHUD();}
-        if(targetActive)setTimeout(spawnTarget,delay);
+      if(!targetActive||handled)return;
+      handled=true;
+      if(t.parentNode)t.remove();
+      activeTargetCount=Math.max(0,activeTargetCount-1);
+      if(isBad){
+        targetStreak=0;comboCount=0;sfxWrong();deductScore(40);
+        showHitEffect(arena,x,y,'−40','#ff4757');updateTargetHUD();
+      }else{
+        targetHits++;targetStreak++;comboCount++;
+        const mult=Math.min(comboCount,5);const pts=80*mult;
+        addMyScore(pts);sfxPop();if(comboCount>=2)showCombo(comboCount);
+        showHitEffect(arena,x,y,`+${pts}${mult>1?` ×${mult}`:''}`, '#2ed573');
+        updateTargetHUD();
       }
-    },lifeTime+50);
+    });
+
+    arena.appendChild(t);
+
+    // Auto-expire
+    setTimeout(()=>{
+      if(handled)return;
+      handled=true;
+      if(t.parentNode)t.remove();
+      activeTargetCount=Math.max(0,activeTargetCount-1);
+      if(!isBad){targetMisses++;targetStreak=0;comboCount=0;updateTargetHUD();}
+    },lifeTime+80);
   }
-  for(let i=0;i<3;i++)setTimeout(spawnTarget,i*300);
-  startTimerLocal('train-timer','train-timer-bar',30,()=>{targetActive=false;clearGameLoops();endTargetRush();});
+
+  // Seed initial targets
+  for(let i=0;i<3;i++) setTimeout(()=>{if(targetActive)spawnTarget();},i*280);
+  // Regular interval spawner
+  const spawnId=setInterval(()=>{if(targetActive)spawnTarget();},820);
+  gameIntervals.push(spawnId);
+
+  startTimerLocal('train-timer','train-timer-bar',30,()=>{
+    targetActive=false;clearGameLoops();endTargetRush();
+  });
 }
 
 function showHitEffect(arena,x,y,text,color){
@@ -743,40 +901,57 @@ function endTargetRush(){
 // ============================================================
 // ── GAME 7: DODGE & COLLECT ───────────────────────────────
 // Canvas: player moves, collects stars, dodges bombs
+// Fixed: single RAF id, listener wipe via clone, end always fires
 // ============================================================
 let dodgeStars=0,dodgeLives=3,dodgeStreak=0,dodgeActive=false;
+// dodgeRafId declared at module level above
+let _dodgeEnded=false;
 
 function startDodgeCollect(){
-  dodgeStars=0;dodgeLives=3;dodgeStreak=0;dodgeActive=true;
+  dodgeStars=0;dodgeLives=3;dodgeStreak=0;dodgeActive=true;_dodgeEnded=false;
+  if(dodgeRafId){cancelAnimationFrame(dodgeRafId);dodgeRafId=null;}
   showGamePanel('s7-panel');
   updateDodgeHUD();
-  const cv=document.getElementById('dodge-canvas');
+
+  // Clone canvas to wipe all previous event listeners
+  const oldCv=document.getElementById('dodge-canvas');
+  if(!oldCv){console.error('dodge-canvas missing');return;}
+  const cv=oldCv.cloneNode(true);
+  oldCv.parentNode.replaceChild(cv,oldCv);
   cv.width=cv.offsetWidth||360;cv.height=cv.offsetHeight||310;
   const ctx=cv.getContext('2d');
   const W=cv.width,H=cv.height;
-  // Player
+
   const player={x:W/2,y:H-50,r:18,tx:W/2,ty:H-50};
-  // Items
   let items=[];
+
   function spawnItem(){
-    const isBomb=Math.random()<0.3+dodgeStars*.01;
-    items.push({x:rand(20,W-20),y:-20,r:isBomb?18:14,bomb:isBomb,speed:rand(2.5,5),pts:isBomb?0:30+Math.floor(dodgeStreak*5),dead:false});
+    if(!dodgeActive)return;
+    const isBomb=Math.random()<0.3+dodgeStars*.008;
+    const r=isBomb?17:13;
+    // Clamp x within canvas bounds
+    const x=rand(r+4,Math.max(r+5,W-r-4));
+    items.push({x,y:-20,r,bomb:isBomb,speed:rand(2.5,4.8),pts:isBomb?0:30+Math.floor(dodgeStreak*5),dead:false});
   }
-  for(let i=0;i<4;i++)spawnItem();
+  for(let i=0;i<4;i++) spawnItem();
   const spawnId=setInterval(()=>{if(dodgeActive)spawnItem();},900);
   gameIntervals.push(spawnId);
-  // Input: follow pointer/touch
+
+  // Input: attached once to the cloned canvas
   function move(e){
     e.preventDefault();
     const r=cv.getBoundingClientRect();const src=e.touches?e.touches[0]:e;
-    player.tx=(src.clientX-r.left)*(W/r.width);
-    player.ty=(src.clientY-r.top)*(H/r.height);
+    player.tx=Math.max(player.r,Math.min(W-player.r,(src.clientX-r.left)*(W/r.width)));
+    player.ty=Math.max(player.r,Math.min(H-player.r,(src.clientY-r.top)*(H/r.height)));
   }
-  cv.addEventListener('mousemove',move);cv.addEventListener('touchmove',move,{passive:false});
-  // Loop
+  cv.addEventListener('mousemove',move);
+  cv.addEventListener('touchmove',move,{passive:false});
+
   function loop(){
-    if(!dodgeActive)return;
-    // Move player toward target (smooth)
+    if(!dodgeActive){
+      if(dodgeRafId!==null){dodgeRafId=null;endDodgeCollect();}
+      return;
+    }
     player.x+=(player.tx-player.x)*.18;
     player.y+=(player.ty-player.y)*.18;
     player.x=Math.max(player.r,Math.min(W-player.r,player.x));
@@ -788,12 +963,11 @@ function startDodgeCollect(){
     ctx.beginPath();ctx.arc(player.x,player.y,player.r,0,Math.PI*2);ctx.fillStyle=pg;ctx.fill();
     ctx.font=`${player.r*1.2}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText('🚀',player.x,player.y);
-    // Update items
+    // Update & draw items
     items.forEach(item=>{
       if(item.dead)return;
       item.y+=item.speed;
       if(item.y>H+30){item.dead=true;return;}
-      // Draw
       const g=ctx.createRadialGradient(item.x-3,item.y-3,0,item.x,item.y,item.r);
       if(item.bomb){g.addColorStop(0,'#ff6b6b');g.addColorStop(1,'#c0392b');}
       else{g.addColorStop(0,'#ffd700');g.addColorStop(1,'#f39c12');}
@@ -804,15 +978,21 @@ function startDodgeCollect(){
       const dx=player.x-item.x,dy=player.y-item.y;
       if(Math.sqrt(dx*dx+dy*dy)<player.r+item.r){
         item.dead=true;
-        if(item.bomb){dodgeLives=Math.max(0,dodgeLives-1);dodgeStreak=0;comboCount=0;sfxWrong();updateDodgeHUD();showToast('💣 Bomb!',600);if(dodgeLives<=0)dodgeActive=false;}
-        else{dodgeStars++;dodgeStreak++;comboCount++;const mult=Math.min(comboCount,5);const pts=item.pts*mult;addMyScore(pts);sfxPop();if(comboCount>=2)showCombo(comboCount);updateDodgeHUD();}
+        if(item.bomb){
+          dodgeLives=Math.max(0,dodgeLives-1);dodgeStreak=0;comboCount=0;
+          sfxWrong();updateDodgeHUD();showToast('💣 Bomb!',600);
+          if(dodgeLives<=0){dodgeActive=false;}
+        }else{
+          dodgeStars++;dodgeStreak++;comboCount++;
+          const mult=Math.min(comboCount,5);const pts=item.pts*mult;
+          addMyScore(pts);sfxPop();if(comboCount>=2)showCombo(comboCount);updateDodgeHUD();
+        }
       }
     });
     items=items.filter(i=>!i.dead);
-    if(dodgeActive)gameRafs.push(requestAnimationFrame(loop));
-    else endDodgeCollect();
+    dodgeRafId=requestAnimationFrame(loop);
   }
-  gameRafs.push(requestAnimationFrame(loop));
+  dodgeRafId=requestAnimationFrame(loop);
   startTimerLocal('train-timer','train-timer-bar',35,()=>{dodgeActive=false;});
 }
 
@@ -823,10 +1003,14 @@ function updateDodgeHUD(){
 }
 
 function endDodgeCollect(){
+  if(_dodgeEnded)return; _dodgeEnded=true;
+  dodgeActive=false;
+  if(dodgeRafId){cancelAnimationFrame(dodgeRafId);dodgeRafId=null;}
   stopLocalTimer();clearGameLoops();
   const bonus=dodgeLives>=3?350:dodgeLives===2?150:dodgeLives===1?60:0;
   if(bonus>0){addMyScore(bonus);sfxBonus();showToast(dodgeLives>=3?'🏆 PERFECT! +350':dodgeLives>=2?'⭐ Great! +150':'✅ Survived +60');}
-  setTimeout(()=>finishStage(7),1800);
+  else showToast('💀 Wiped out!');
+  setTimeout(()=>{_dodgeEnded=false;finishStage(7);},1800);
 }
 
 // ============================================================
